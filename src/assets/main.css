@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
+
+/* 1. Definimos el orden */
+@layer tailwind-base, primevue, tailwind-utilities;
+
+/* 2. Base de Tailwind */
+@layer tailwind-base {
+  @tailwind base;
+
+  *, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; }
+  img, svg { display: block; vertical-align: middle; }
+}
+
+/* 3. PrimeVue */
+@layer primevue {
+}
+
+/* 4. Utilidades de Tailwind al final */
+@layer tailwind-utilities {
+  @tailwind components;
+  @tailwind utilities;
+}
+
+/* Fuente global */
+* {
+  font-family: 'Sora', sans-serif;
+}
