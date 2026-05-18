@@ -1,5 +1,8 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div
+    class="min-h-screen transition-colors"
+    :class="isDark ? 'bg-gray-950 text-gray-100' : 'bg-gray-50 text-gray-900'"
+  >
     <AppSidebar @collapsed-change="sidebarCollapsed = $event" />
     <AppHeader :sidebar-collapsed="sidebarCollapsed" />
 
@@ -18,8 +21,11 @@
 
 <script setup>
 import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useThemeStore } from '@/stores/theme'
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppHeader from '@/components/AppHeader.vue'
 
 const sidebarCollapsed = ref(false)
+const { isDark } = storeToRefs(useThemeStore())
 </script>

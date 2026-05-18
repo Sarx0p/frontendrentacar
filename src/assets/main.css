@@ -25,3 +25,23 @@
 * {
   font-family: 'Sora', sans-serif;
 }
+
+html[data-theme='dark'],
+#app[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-theme='light'],
+#app[data-theme='light'] {
+  color-scheme: light;
+}
+
+html[data-theme='light'] body,
+html[data-theme='light'] #app {
+  background-color: #f9fafb;
+}
+
+html[data-theme='dark'] body,
+html[data-theme='dark'] #app {
+  background-color: #030712;
+}

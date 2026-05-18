@@ -1,5 +1,9 @@
 import './assets/main.css'
 
+import { applyDarkClass, getInitialDark } from './theme'
+
+applyDarkClass(getInitialDark())
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
