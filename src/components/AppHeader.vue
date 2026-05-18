@@ -81,6 +81,7 @@
           class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
           :class="isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-50'"
           style="color:#c0392b;"
+          @click="handleLogout"
         >
           <i class="pi pi-sign-out" style="color:#c0392b;" /> Cerrar sesión
         </button>
@@ -93,10 +94,15 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import InputText from 'primevue/inputtext'
+import Swal from 'sweetalert2'
 import { useThemeStore } from '@/stores/theme'
+import { useAuthStore } from '@/stores/auth'
 
+const router = useRouter()
+const authStore = useAuthStore()
 const { isDark } = storeToRefs(useThemeStore())
 
 const props = defineProps({
@@ -118,4 +124,26 @@ const searchFieldStyle = computed(() => ({
   color: isDark.value ? '#f3f4f6' : '#111827',
   borderColor: isDark.value ? '#4b5563' : '#e5e7eb',
 }))
+
+async function handleLogout() {
+  userMenuOpen.value = false
+
+  const result = await Swal.fire({
+    title: '¿Cerrar sesión?',
+    text: 'Se cerrará tu sesión actual en el panel de administración.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#c0392b',
+    cancelButtonColor: '#6b7280',
+    confirmButtonText: 'Aceptar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    background: '#fff',
+  })
+
+  if (!result.isConfirmed) return
+
+  authStore.logout()
+  router.push({ name: 'login' })
+}
 </script>
