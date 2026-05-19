@@ -15,16 +15,17 @@
         <div class="bg-[#3b0a0a]" />
       </div>
 
-      <div class="relative z-10 flex flex-col justify-end p-12 login-brand">
-      <img
+      <div class="login-logo-slot">
+        <img
           :src="logoElGuayabo"
           alt="El Guayabo Rent Car"
-          class="login-logo login-logo--form mb-3"
+          class="login-logo login-logo--panel"
         />
-        <p class="text-sm font-semibold tracking-widest uppercase" style="color: #f0a500;">
-          El Guayabo : Admin
+        <p class="login-brand-text">
+          El Guayabo · Admin
         </p>
       </div>
+
     </div>
 
     <div class="flex-1 flex flex-col min-h-screen bg-[#3b0a0a] px-8 py-10 lg:px-16 login-form-panel">
@@ -190,8 +191,7 @@ async function handleLogin() {
   animation: login-fade-in 0.45s ease-out;
 }
 
-.login-form-panel,
-.login-brand {
+.login-form-panel {
   animation: login-slide-in 0.5s ease-out;
 }
 
@@ -250,13 +250,42 @@ async function handleLogin() {
   @apply h-auto object-contain;
 }
 
-.login-logo--form {
-  @apply w-24 max-w-[6rem] h-auto mx-auto lg:mx-0;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.28));
+/* Cuadro central del grid (#3b0a0a, celda 2×2) */
+.login-logo-slot {
+  position: absolute;
+  z-index: 10;
+  left: 25%;
+  top: 25%;
+  width: 50%;
+  height: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  pointer-events: none;
 }
 
 .login-logo--panel {
-  @apply w-24 max-w-[6rem] h-auto;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.28));
+  width: 92%;
+  max-width: 16rem;
+  max-height: min(14rem, 72%);
+  height: auto;
+  flex-shrink: 1;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.35));
+}
+
+.login-brand-text {
+  flex-shrink: 0;
+  margin: 0;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 620;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #f0a500;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 </style>
