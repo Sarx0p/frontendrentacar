@@ -9,10 +9,7 @@
           <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:#c0392b;">
             <i class="pi pi-car text-white"></i>
           </div>
-          <div>
-            <p class="font-extrabold text-gray-900 tracking-widest uppercase text-sm">RentaCar</p>
-            <p class="text-xs font-semibold tracking-widest uppercase" style="color:#f0a500;">Admin Panel</p>
-          </div>
+         
         </div>
 
         <div class="bg-white rounded-2xl shadow-xl shadow-gray-200/80 p-8 border border-gray-100">
@@ -31,7 +28,7 @@
                 <input
                   v-model="form.email"
                   type="email"
-                  placeholder="admin@rentacar.com"
+                  placeholder="user@gmail.com"
                   required
                   class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition"
                   style="focus-ring-color:#c0392b;"
