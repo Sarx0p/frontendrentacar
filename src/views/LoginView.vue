@@ -39,7 +39,7 @@
             <input
               v-model="form.email"
               type="email"
-              placeholder="admin@rentacar.com"
+              placeholder="usuario@gmail.com"
               required
               class="login-input"
               :class="{ 'login-input--error': errors.email }"
@@ -124,58 +124,53 @@ import Swal from 'sweetalert2'
 import { useAuthStore } from '@/stores/auth'
 import logoElGuayabo from '@/assets/logo-el-guayabo.png'
 
-const route = useRoute()
-const router = useRouter()
+const route     = useRoute()
+const router    = useRouter()
 const authStore = useAuthStore()
 
 const form = reactive({
-  email: '',
+  email:    '',
   password: '',
   remember: false,
 })
 
-const errors = reactive({ email: '', password: '' })
+const errors      = reactive({ email: '', password: '' })
 const globalError = ref('')
-const loading = ref(false)
+const loading     = ref(false)
 const showPassword = ref(false)
 
 async function handleLogin() {
-  errors.email = ''
+  errors.email    = ''
   errors.password = ''
   globalError.value = ''
 
-  if (!form.email) {
-    errors.email = 'El correo es requerido.'
-    return
-  }
-  if (!form.password) {
-    errors.password = 'La contraseña es requerida.'
-    return
-  }
+  if (!form.email)    { errors.email    = 'El correo es requerido.';    return }
+  if (!form.password) { errors.password = 'La contraseña es requerida.'; return }
 
   loading.value = true
   try {
-    await new Promise((r) => setTimeout(r, 800))
-    authStore.login(form.remember)
+    await authStore.login(form.email, form.password, form.remember)
 
     await Swal.fire({
-      icon: 'success',
-      title: '¡Sesión iniciada correctamente!',
-      text: 'Bienvenido al panel de RentaCar El Guayabo.',
+      icon:             'success',
+      title:            '¡Sesión iniciada correctamente!',
+      text:             'Bienvenido al panel de RentaCar El Guayabo.',
       confirmButtonColor: '#c0392b',
-      confirmButtonText: 'Continuar',
-      background: '#fff',
-      iconColor: '#c0392b',
+      confirmButtonText:  'Continuar',
+      background:       '#fff',
+      iconColor:        '#c0392b',
     })
 
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
     router.push(redirect || { name: 'dashboard' })
-  } catch {
-    globalError.value = 'Credenciales incorrectas. Intenta de nuevo.'
+
+  } catch (e) {
+    const msg = e.response?.data?.message || 'Credenciales incorrectas. Intenta de nuevo.'
+    globalError.value = msg
     Swal.fire({
-      icon: 'error',
+      icon:  'error',
       title: 'Error al iniciar sesión',
-      text: 'Verifica tu correo y contraseña.',
+      text:   msg,
       confirmButtonColor: '#c0392b',
     })
   } finally {

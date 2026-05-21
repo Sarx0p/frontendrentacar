@@ -1,6 +1,6 @@
 <template>
   <button
-    @click="$emit('click')"
+    @click="$emit('navegar')"
     :title="collapsed ? label : ''"
     class="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 mb-0.5 transition-all duration-150 group relative"
     :style="buttonStyle"
@@ -40,7 +40,7 @@ const props = defineProps({
   badge: Number,
   badgeColor: String,
 })
-defineEmits(['click'])
+defineEmits(['navegar'])
 
 const hovered = ref(false)
 
