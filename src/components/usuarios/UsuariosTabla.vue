@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- Filtros y búsqueda -->
+
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-5 flex flex-col sm:flex-row gap-3">
       <div class="relative flex-1">
         <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <!-- Tabla -->
+
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -58,7 +58,7 @@
                 </div>
               </td>
 
-              <!-- Correo -->
+              <!-- emaila-->
               <td class="px-5 py-4 text-gray-600">{{ usuario.correo }}</td>
 
               <!-- Rol -->
@@ -69,7 +69,7 @@
                 </span>
               </td>
 
-              <!-- Estado -->
+              <!-- estado -->
               <td class="px-5 py-4">
                 <span
                   class="text-xs font-bold px-2.5 py-1 rounded-full cursor-pointer"
@@ -127,12 +127,12 @@ defineEmits(['update:search', 'update:filtro', 'editar', 'eliminar', 'toggle-est
 
 const colores = ['#c0392b','#f0a500','#2563eb','#16a34a','#7c3aed','#0891b2']
 
-// nombre completo desde campos separados
+
 function nombreCompleto(u) {
   return `${u.nombre || ''} ${u.apellido || ''}`.trim() || '—'
 }
 
-// iniciales desde nombre y apellido separados
+
 function initials(u) {
   const n = u.nombre?.[0] || ''
   const a = u.apellido?.[0] || ''
@@ -146,7 +146,7 @@ function avatarColor(nombre) {
   return colores[Math.abs(h) % colores.length]
 }
 
-// el rol viene como array de objetos: [{ name: 'EMPLEADO' }]
+
 function rolNombre(u) {
   return u.roles?.[0]?.name || '—'
 }
