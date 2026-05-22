@@ -69,33 +69,28 @@
                 </span>
               </td>
 
-              <!-- Estado -->
+              <!-- Estado — select desplegable -->
               <td class="px-5 py-4">
-                <span
-                  class="text-xs font-bold px-2.5 py-1 rounded-full cursor-pointer"
-                  :style="usuario.estado === 'ACTIVO'
-                    ? 'background:#dcfce7;color:#166534;'
-                    : 'background:#fee2e2;color:#991b1b;'"
-                  @click="$emit('toggle-estado', usuario)"
-                >{{ usuario.estado === 'ACTIVO' ? 'Activo' : 'Inactivo' }}</span>
+                <select
+                  :value="usuario.estado"
+                  @change="$emit('cambiar-estado', usuario, $event.target.value)"
+                  class="text-xs font-bold px-2.5 py-1.5 rounded-full border-0 outline-none cursor-pointer transition-all"
+                  :style="estadoStyle(usuario.estado)"
+                >
+                  <option value="ACTIVO">Activo</option>
+                  <option value="INACTIVO">Inactivo</option>
+                  <option value="BLOQUEADO">Bloqueado</option>
+                </select>
               </td>
 
-              <!-- Acciones -->
+              <!-- Acciones — solo editar -->
               <td class="px-5 py-4">
-                <div class="flex items-center gap-2">
-                  <button
-                    @click="$emit('editar', usuario)"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
-                    style="border-color:#e5e7eb; color:#6b7280;"
-                    title="Editar"
-                  ><i class="pi pi-pencil text-xs"></i></button>
-                  <button
-                    @click="$emit('eliminar', usuario)"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
-                    style="border-color:#fee2e2; color:#c0392b;"
-                    title="Eliminar"
-                  ><i class="pi pi-trash text-xs"></i></button>
-                </div>
+                <button
+                  @click="$emit('editar', usuario)"
+                  class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
+                  style="border-color:#e5e7eb; color:#6b7280;"
+                  title="Editar"
+                ><i class="pi pi-pencil text-xs"></i></button>
               </td>
             </tr>
 
@@ -123,16 +118,14 @@ defineProps({
   filtros:      Array,
 })
 
-defineEmits(['update:search', 'update:filtro', 'editar', 'eliminar', 'toggle-estado'])
+defineEmits(['update:search', 'update:filtro', 'editar', 'cambiar-estado'])
 
 const colores = ['#c0392b','#f0a500','#2563eb','#16a34a','#7c3aed','#0891b2']
 
-// nombre completo desde campos separados
 function nombreCompleto(u) {
   return `${u.nombre || ''} ${u.apellido || ''}`.trim() || '—'
 }
 
-// iniciales desde nombre y apellido separados
 function initials(u) {
   const n = u.nombre?.[0] || ''
   const a = u.apellido?.[0] || ''
@@ -146,7 +139,6 @@ function avatarColor(nombre) {
   return colores[Math.abs(h) % colores.length]
 }
 
-// el rol viene como array de objetos: [{ name: 'EMPLEADO' }]
 function rolNombre(u) {
   return u.roles?.[0]?.name || '—'
 }
@@ -162,5 +154,14 @@ function rolStyle(rol) {
 
 function rolIcon(rol) {
   return { 'ADMINISTRADOR': 'pi-shield', 'EMPLEADO': 'pi-user', 'CONTADOR': 'pi-calculator' }[rol] || 'pi-user'
+}
+
+function estadoStyle(estado) {
+  const map = {
+    'ACTIVO':    'background:#dcfce7; color:#166534;',
+    'INACTIVO':  'background:#fee2e2; color:#991b1b;',
+    'BLOQUEADO': 'background:#fef9c3; color:#854d0e;',
+  }
+  return map[estado] || 'background:#f3f4f6; color:#4b5563;'
 }
 </script>

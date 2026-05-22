@@ -25,7 +25,7 @@ api.interceptors.response.use(
         router.push('/login')
       }
     }
-    return Promise.reject(error) // ← fuera del if
+    return Promise.reject(error) 
   }
 )
 

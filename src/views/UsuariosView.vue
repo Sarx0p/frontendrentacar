@@ -24,8 +24,7 @@
       @update:search="search = $event"
       @update:filtro="filtroActivo = $event"
       @editar="abrirModalEditar"
-      @eliminar="confirmarEliminar"
-      @toggle-estado="toggleEstado"
+      @cambiar-estado="cambiarEstado"
     />
 
     <UsuariosModal
@@ -36,21 +35,13 @@
       @cerrar="modalAbierto = false"
     />
 
-    <UsuariosEliminar
-      :visible="modalEliminar"
-      :usuario="usuarioAEliminar"
-      @confirmar="eliminarUsuario"
-      @cerrar="modalEliminar = false"
-    />
-
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import UsuariosTabla    from '@/components/usuarios/UsuariosTabla.vue'
-import UsuariosModal    from '@/components/usuarios/UsuariosModal.vue'
-import UsuariosEliminar from '@/components/usuarios/UsuariosEliminar.vue'
+import UsuariosTabla from '@/components/usuarios/UsuariosTabla.vue'
+import UsuariosModal from '@/components/usuarios/UsuariosModal.vue'
 import { useUsuariosStore } from '@/stores/usuarios'
 
 const store = useUsuariosStore()
@@ -58,10 +49,8 @@ const store = useUsuariosStore()
 const search              = ref('')
 const filtroActivo        = ref('todos')
 const modalAbierto        = ref(false)
-const modalEliminar       = ref(false)
 const modoEdicion         = ref(false)
 const usuarioSeleccionado = ref(null)
-const usuarioAEliminar    = ref(null)
 
 const filtros = [
   { label: 'Todos',         value: 'todos' },
@@ -102,13 +91,8 @@ function abrirModalEditar(usuario) {
   modalAbierto.value = true
 }
 
-function confirmarEliminar(usuario) {
-  usuarioAEliminar.value = usuario
-  modalEliminar.value = true
-}
-
-async function toggleEstado(usuario) {
-  await store.toggleEstado(usuario)
+async function cambiarEstado(usuario, nuevoEstado) {
+  await store.cambiarEstado(usuario.id, nuevoEstado)
 }
 
 async function guardarUsuario(form) {
@@ -118,11 +102,5 @@ async function guardarUsuario(form) {
     await store.crear(form)
   }
   modalAbierto.value = false
-}
-
-async function eliminarUsuario() {
-  await store.eliminar(usuarioAEliminar.value.id)
-  modalEliminar.value = false
-  usuarioAEliminar.value = null
 }
 </script>

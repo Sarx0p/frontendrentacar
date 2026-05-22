@@ -9,7 +9,7 @@
       >
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" @click.stop>
 
-
+          <!-- Header -->
           <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <div class="flex items-center gap-3">
               <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#fef2f2;">
@@ -25,16 +25,16 @@
             </button>
           </div>
 
-          <!-- formulario para creear -->
+          <!-- Form -->
           <form @submit.prevent="handleGuardar" class="px-6 py-5 space-y-4">
 
-            <!-- ingreso de nom y apellido -->
+            <!-- Nombre y Apellido -->
             <div class="flex gap-3">
               <div class="flex-1">
                 <label class="field-label">Nombre</label>
                 <div class="relative">
                   <i class="pi pi-user input-icon"></i>
-                  <input v-model="form.nombre" type="text" placeholder="" class="field-input" :class="errors.nombre ? 'error' : ''" />
+                  <input v-model="form.nombre" type="text" placeholder="Juan" class="field-input" :class="errors.nombre ? 'error' : ''" />
                 </div>
                 <p v-if="errors.nombre" class="field-error">{{ errors.nombre }}</p>
               </div>
@@ -42,36 +42,26 @@
                 <label class="field-label">Apellido</label>
                 <div class="relative">
                   <i class="pi pi-user input-icon"></i>
-                  <input v-model="form.apellido" type="text" placeholder="" class="field-input" :class="errors.apellido ? 'error' : ''" />
+                  <input v-model="form.apellido" type="text" placeholder="Pérez" class="field-input" :class="errors.apellido ? 'error' : ''" />
                 </div>
                 <p v-if="errors.apellido" class="field-error">{{ errors.apellido }}</p>
               </div>
             </div>
 
-            <!-- ingreso de correo-->
+            <!-- Correo -->
             <div>
               <label class="field-label">Correo electrónico</label>
               <div class="relative">
                 <i class="pi pi-envelope input-icon"></i>
-                <input v-model="form.email" type="email" placeholder="usuario@gmail.com" class="field-input" :class="errors.email ? 'error' : ''" />
+                <input v-model="form.correo" type="email" placeholder="usuario@gmail.com" class="field-input" :class="errors.correo ? 'error' : ''" />
               </div>
-              <p v-if="errors.email" class="field-error">{{ errors.email }}</p>
+              <p v-if="errors.correo" class="field-error">{{ errors.correo }}</p>
             </div>
 
-            <!-- tlf -->
-            <div>
-              <label class="field-label">Teléfono</label>
-              <div class="relative">
-                <i class="pi pi-phone input-icon"></i>
-                <input v-model="form.telefono" type="tel" placeholder="0000-0000" class="field-input" :class="errors.telefono ? 'error' : ''" />
-              </div>
-              <p v-if="errors.telefono" class="field-error">{{ errors.telefono }}</p>
-            </div>
-
-            <!-- rol a asignar -->
+            <!-- Rol -->
             <div>
               <label class="field-label">Rol</label>
-              <div class="grid grid-cols-3 gap-2">
+              <div class="grid grid-cols-2 gap-2">
                 <button
                   v-for="rol in roles"
                   :key="rol.value"
@@ -93,7 +83,7 @@
               <p v-if="errors.rol" class="field-error mt-1">{{ errors.rol }}</p>
             </div>
 
-            <!-- Contraseña -->
+            <!-- Contraseña solo al crear -->
             <div v-if="!modoEdicion">
               <label class="field-label">Contraseña temporal</label>
               <div class="relative">
@@ -150,38 +140,36 @@ const props = defineProps({
 const emit = defineEmits(['guardar', 'cerrar'])
 
 const roles = [
-  { value: 'Administrador', label: 'Administrador', icon: 'pi-shield' },
-  { value: 'Empleado',      label: 'Empleado',      icon: 'pi-user' },
-  { value: 'Contador',      label: 'Contador',      icon: 'pi-calculator' },
+  { value: 'EMPLEADO', label: 'Empleado', icon: 'pi-user' },
+  { value: 'CONTADOR', label: 'Contador', icon: 'pi-calculator' },
 ]
 
-const loading     = ref(false)
+const loading      = ref(false)
 const showPassword = ref(false)
-const globalError = ref('')
+const globalError  = ref('')
 
-const form = reactive({ id: null, nombre: '', apellido: '', email: '', telefono: '', rol: '', password: '' })
-const errors = reactive({ nombre: '', apellido: '', email: '', telefono: '', rol: '', password: '' })
+const form = reactive({
+  id: null, nombre: '', apellido: '', correo: '', rol: '', password: '',
+})
+const errors = reactive({ nombre: '', apellido: '', correo: '', rol: '', password: '' })
 
-// Rellena el form al editar
 watch(() => props.visible, (val) => {
   if (!val) return
-  globalError.value = ''
+  globalError.value  = ''
   showPassword.value = false
   Object.keys(errors).forEach(k => errors[k] = '')
 
   if (props.modoEdicion && props.usuario) {
-    const [nombre, ...resto] = props.usuario.nombre.split(' ')
     Object.assign(form, {
-      id: props.usuario.id,
-      nombre,
-      apellido: resto.join(' '),
-      email:    props.usuario.email,
-      telefono: props.usuario.telefono,
-      rol:      props.usuario.rol,
+      id:       props.usuario.id,
+      nombre:   props.usuario.nombre   || '',
+      apellido: props.usuario.apellido || '',
+      correo:   props.usuario.correo   || '',
+      rol:      props.usuario.roles?.[0]?.name || '',
       password: '',
     })
   } else {
-    Object.assign(form, { id: null, nombre: '', apellido: '', email: '', telefono: '', rol: '', password: '' })
+    Object.assign(form, { id: null, nombre: '', apellido: '', correo: '', rol: '', password: '' })
   }
 })
 
@@ -190,8 +178,7 @@ function validar() {
   let ok = true
   if (!form.nombre)   { errors.nombre   = 'Requerido'; ok = false }
   if (!form.apellido) { errors.apellido = 'Requerido'; ok = false }
-  if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) { errors.email = 'Correo inválido'; ok = false }
-  if (!form.telefono) { errors.telefono = 'Requerido'; ok = false }
+  if (!form.correo || !/\S+@\S+\.\S+/.test(form.correo)) { errors.correo = 'Correo inválido'; ok = false }
   if (!form.rol)      { errors.rol      = 'Selecciona un rol'; ok = false }
   if (!props.modoEdicion && form.password.length < 8) { errors.password = 'Mínimo 8 caracteres'; ok = false }
   return ok
@@ -199,10 +186,9 @@ function validar() {
 
 async function handleGuardar() {
   if (!validar()) return
-  loading.value = true
+  loading.value     = true
   globalError.value = ''
   try {
-    await new Promise(r => setTimeout(r, 600)) // 🔌 reemplaza con tu API
     emit('guardar', { ...form })
   } catch {
     globalError.value = 'Ocurrió un error. Intenta de nuevo.'
