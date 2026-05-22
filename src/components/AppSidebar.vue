@@ -23,25 +23,25 @@
     <nav class="flex-1 min-h-0 overflow-y-auto py-4 px-2 space-y-4">
       <div>
         <p v-if="!collapsed" class="text-xs font-bold tracking-widest uppercase px-3 mb-2" style="color:#f0a50088;">Principal</p>
-        <SidebarItem icon="pi-home" label="Dashboard" :collapsed="collapsed" :active="activeRoute === 'dashboard'" @click="activeRoute = 'dashboard'" />
-        <SidebarItem icon="pi-car" label="Vehículos" :collapsed="collapsed" :active="activeRoute === 'vehiculos'" @click="activeRoute = 'vehiculos'" :badge="84" />
-        <SidebarItem icon="pi-users" label="Clientes" :collapsed="collapsed" :active="activeRoute === 'clientes'" @click="activeRoute = 'clientes'" />
-        <SidebarItem icon="pi-file" label="Contratos" :collapsed="collapsed" :active="activeRoute === 'contratos'" @click="activeRoute = 'contratos'" :badge="12" />
-        <SidebarItem icon="pi-calendar" label="Reservas" :collapsed="collapsed" :active="activeRoute === 'reservas'" @click="activeRoute = 'reservas'" :badge="5" badgeColor="#260907" />
+        <SidebarItem icon="pi-home"     label="Dashboard"  :collapsed="collapsed" :active="activeRoute === 'dashboard'"  @click="navegar('dashboard')" />
+        <SidebarItem icon="pi-car"      label="Vehículos"  :collapsed="collapsed" :active="activeRoute === 'vehiculos'"  @click="navegar('vehiculos')"  :badge="84" />
+        <SidebarItem icon="pi-users"    label="Clientes"   :collapsed="collapsed" :active="activeRoute === 'clientes'"   @click="navegar('clientes')" />
+        <SidebarItem icon="pi-file"     label="Contratos"  :collapsed="collapsed" :active="activeRoute === 'contratos'"  @click="navegar('contratos')"  :badge="12" />
+        <SidebarItem icon="pi-calendar" label="Reservas"   :collapsed="collapsed" :active="activeRoute === 'reservas'"   @click="navegar('reservas')"   :badge="5" badgeColor="#260907" />
       </div>
 
       <div>
         <p v-if="!collapsed" class="text-xs font-bold tracking-widest uppercase px-3 mb-2" style="color:#f0a50088;">Operaciones</p>
-        <SidebarItem icon="pi-credit-card" label="Pagos" :collapsed="collapsed" :active="activeRoute === 'pagos'" @click="activeRoute = 'pagos'" />
-        <SidebarItem icon="pi-wrench" label="Mantenimiento" :collapsed="collapsed" :active="activeRoute === 'mant'" @click="activeRoute = 'mant'" :badge="3" />
-        <SidebarItem icon="pi-chart-bar" label="Reportes" :collapsed="collapsed" :active="activeRoute === 'reportes'" @click="activeRoute = 'reportes'" />
+        <SidebarItem icon="pi-credit-card" label="Pagos"         :collapsed="collapsed" :active="activeRoute === 'pagos'"        @click="navegar('pagos')" />
+        <SidebarItem icon="pi-wrench"      label="Mantenimiento" :collapsed="collapsed" :active="activeRoute === 'mantenimiento'" @click="navegar('mantenimiento')" :badge="3" />
+        <SidebarItem icon="pi-chart-bar"   label="Reportes"      :collapsed="collapsed" :active="activeRoute === 'reportes'"     @click="navegar('reportes')" />
       </div>
 
       <div>
         <p v-if="!collapsed" class="text-xs font-bold tracking-widest uppercase px-3 mb-2" style="color:#f0a50088;">Admin</p>
-        <SidebarItem icon="pi-id-card" label="Empleados" :collapsed="collapsed" :active="activeRoute === 'empleados'" @click="activeRoute = 'empleados'" />
-        <SidebarItem icon="pi-lock" label="Permisos" :collapsed="collapsed" :active="activeRoute === 'permisos'" @click="activeRoute = 'permisos'" />
-        <SidebarItem icon="pi-cog" label="Configuración" :collapsed="collapsed" :active="activeRoute === 'config'" @click="activeRoute = 'config'" />
+        <SidebarItem icon="pi-id-card" label="Usuarios"     :collapsed="collapsed" :active="activeRoute === 'usuarios'"    @click="navegar('usuarios')" />
+        <SidebarItem icon="pi-lock"    label="Permisos"      :collapsed="collapsed" :active="activeRoute === 'permisos'"     @click="navegar('permisos')" />
+        <SidebarItem icon="pi-cog"     label="Configuración" :collapsed="collapsed" :active="activeRoute === 'configuracion'" @click="navegar('configuracion')" />
 
         <div
           class="rounded-lg mx-1 mt-2 px-2 py-2.5 bg-black/20"
@@ -60,25 +60,37 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import InputSwitch from 'primevue/inputswitch'
 import SidebarItem from './SidebarItem.vue'
 import { useThemeStore } from '@/stores/theme'
 
 const themeStore = useThemeStore()
-
 const darkSwitch = computed({
   get: () => themeStore.isDark,
   set: (v) => themeStore.setDark(v),
 })
 
 const emit = defineEmits(['collapsed-change'])
+const router = useRouter()
+const route  = useRoute()
 
-const collapsed = ref(false)
-const activeRoute = ref('reservas')
+const collapsed   = ref(false)
+const activeRoute = ref('dashboard')
+
+watch(() => route.path, (path) => {
+  const segment = path.replace('/', '').split('/')[0]
+  activeRoute.value = segment || 'dashboard'
+}, { immediate: true })
 
 function toggleCollapse() {
   collapsed.value = !collapsed.value
   emit('collapsed-change', collapsed.value)
+}
+
+function navegar(ruta) {
+  activeRoute.value = ruta
+  router.push('/' + ruta)
 }
 </script>
