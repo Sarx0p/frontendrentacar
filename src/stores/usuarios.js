@@ -16,7 +16,7 @@ export const useUsuariosStore = defineStore('usuarios', () => {
     try {
       const res = await api.get('/admin/usuarios')
       usuarios.value = res.data.data.data
-    } catch (e) {
+    } catch {
       error.value = 'Error al cargar usuarios.'
     } finally {
       loading.value = false
