@@ -48,10 +48,10 @@
         <div
           class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
           style="background:#c0392b;"
-        >JR</div>
+        >{{ userInitials }}</div>
         <div class="flex flex-col items-start leading-tight">
-          <span class="text-sm font-semibold" :class="isDark ? 'text-gray-100' : 'text-gray-800'">usuario</span>
-          <span class="text-xs font-medium" style="color:#f0a500;">Administrador</span>
+          <span class="text-sm font-semibold" :class="isDark ? 'text-gray-100' : 'text-gray-800'">{{ userName }}</span>
+          <span class="text-xs font-medium" style="color:#f0a500;">{{ userRole }}</span>
         </div>
         <i class="pi pi-chevron-down text-xs ml-1" :class="isDark ? 'text-gray-500' : 'text-gray-400'" />
       </button>
@@ -101,9 +101,10 @@ import Swal from 'sweetalert2'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 
-const router = useRouter()
+const router    = useRouter()
 const authStore = useAuthStore()
 const { isDark } = storeToRefs(useThemeStore())
+const { user }   = storeToRefs(authStore)
 
 const props = defineProps({
   sidebarCollapsed: {
@@ -112,38 +113,54 @@ const props = defineProps({
   },
 })
 
-const search = ref('')
+const search       = ref('')
 const userMenuOpen = ref(false)
 
 const sidebarWidth = computed(() => (props.sidebarCollapsed ? '64px' : '256px'))
 
-/** Fuerza fondo/borde por encima de estilos del tema de PrimeVue */
+const userName = computed(() => {
+  if (!user.value) return 'Usuario'
+  return `${user.value.nombre || ''} ${user.value.apellido || ''}`.trim() || 'Usuario'
+})
+
+const userRole = computed(() => {
+  if (!user.value) return 'Administrador'
+  return user.value.roles?.[0] || 'Administrador'
+})
+
+const userInitials = computed(() => {
+  if (!user.value) return 'U'
+  const n = user.value.nombre?.[0] || ''
+  const a = user.value.apellido?.[0] || ''
+  return (n + a).toUpperCase() || 'U'
+})
+
 const searchFieldStyle = computed(() => ({
   paddingLeft: '2.5rem',
   backgroundColor: isDark.value ? '#1f2937' : '#ffffff',
-  color: isDark.value ? '#f3f4f6' : '#111827',
-  borderColor: isDark.value ? '#4b5563' : '#e5e7eb',
+  color:           isDark.value ? '#f3f4f6' : '#111827',
+  borderColor:     isDark.value ? '#4b5563' : '#e5e7eb',
 }))
 
 async function handleLogout() {
   userMenuOpen.value = false
 
   const result = await Swal.fire({
-    title: '¿Cerrar sesión?',
-    text: 'Se cerrará tu sesión actual en el panel de administración.',
-    icon: 'question',
-    showCancelButton: true,
+    title:              '¿Cerrar sesión?',
+    text:               'Se cerrará tu sesión actual en el panel de administración.',
+    icon:               'question',
+    showCancelButton:   true,
     confirmButtonColor: '#c0392b',
-    cancelButtonColor: '#6b7280',
-    confirmButtonText: 'Aceptar',
-    cancelButtonText: 'Cancelar',
-    reverseButtons: true,
-    background: '#fff',
+    cancelButtonColor:  '#6b7280',
+    confirmButtonText:  'Aceptar',
+    cancelButtonText:   'Cancelar',
+    reverseButtons:     true,
+    background:         '#fff',
   })
 
   if (!result.isConfirmed) return
 
-  authStore.logout()
+  await authStore.logout()
   router.push({ name: 'login' })
 }
 </script>

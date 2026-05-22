@@ -15,7 +15,6 @@ export const useUsuariosStore = defineStore('usuarios', () => {
     error.value   = null
     try {
       const res = await api.get('/admin/usuarios')
-      // respuesta paginada: { status, data: { data: [...], total, ... } }
       usuarios.value = res.data.data.data
     } catch (e) {
       error.value = 'Error al cargar usuarios.'
@@ -31,9 +30,9 @@ export const useUsuariosStore = defineStore('usuarios', () => {
       const res = await api.post('/admin/usuarios', {
         nombre:   form.nombre,
         apellido: form.apellido,
-        correo:   form.email,
+        correo:   form.correo,
         password: form.password,
-        rol:      form.rol.toUpperCase(),
+        rol:      form.rol,
       })
       usuarios.value.unshift(res.data.data)
     } catch (e) {
@@ -51,8 +50,8 @@ export const useUsuariosStore = defineStore('usuarios', () => {
       const res = await api.put(`/admin/usuarios/${form.id}`, {
         nombre:   form.nombre,
         apellido: form.apellido,
-        correo:   form.email,
-        rol:      form.rol.toUpperCase(),
+        correo:   form.correo,
+        rol:      form.rol,
       })
       const idx = usuarios.value.findIndex(u => u.id === form.id)
       if (idx !== -1) usuarios.value[idx] = res.data.data
@@ -64,31 +63,18 @@ export const useUsuariosStore = defineStore('usuarios', () => {
     }
   }
 
-  async function eliminar(id) {
-    loading.value = true
-    error.value   = null
-    try {
-      await api.delete(`/admin/usuarios/${id}`)
-      usuarios.value = usuarios.value.filter(u => u.id !== id)
-    } catch (e) {
-      error.value = e.response?.data?.message || 'Error al eliminar usuario.'
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function toggleEstado(usuario) {
+  async function cambiarEstado(id, nuevoEstado) {
     error.value = null
     try {
-      const nuevoEstado = usuario.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
-      await api.put(`/admin/usuarios/${usuario.id}`, { estado: nuevoEstado })
-      const idx = usuarios.value.findIndex(u => u.id === usuario.id)
-      if (idx !== -1) usuarios.value[idx].estado = nuevoEstado
+      const res = await api.delete(`/admin/usuarios/${id}`, {
+        data: { estado: nuevoEstado }
+      })
+      const idx = usuarios.value.findIndex(u => u.id === id)
+      if (idx !== -1) usuarios.value[idx].estado = res.data.data.estado
     } catch (e) {
       error.value = e.response?.data?.message || 'Error al cambiar estado.'
     }
   }
 
-  return { usuarios, loading, error, total, fetchUsuarios, crear, actualizar, eliminar, toggleEstado }
+  return { usuarios, loading, error, total, fetchUsuarios, crear, actualizar, cambiarEstado }
 })
