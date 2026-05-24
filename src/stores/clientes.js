@@ -29,11 +29,22 @@ export const useClientesStore = defineStore('clientes', () => {
     try {
       const res = await api.post('/admin/clientes', form)
       clientes.value.unshift(res.data.data)
+      return res.data.data
     } catch (e) {
       error.value = e.response?.data?.message || 'Error al crear cliente.'
       throw e
     } finally {
       loading.value = false
+    }
+  }
+
+  async function buscarClientes(term) {
+    if (!term?.trim()) return []
+    try {
+      const res = await api.get('/admin/clientes', { params: { buscar: term.trim() } })
+      return res.data.data
+    } catch {
+      return []
     }
   }
 
@@ -52,5 +63,5 @@ export const useClientesStore = defineStore('clientes', () => {
     }
   }
 
-  return { clientes, loading, error, total, fetchClientes, crear, actualizar }
+  return { clientes, loading, error, total, fetchClientes, buscarClientes, crear, actualizar }
 })

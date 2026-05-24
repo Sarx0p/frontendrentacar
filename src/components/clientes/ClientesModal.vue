@@ -7,20 +7,35 @@
         style="background:rgba(0,0,0,0.45);"
         @click.self="$emit('cerrar')"
       >
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" @click.stop>
+        <div
+          class="rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+          :class="isDark ? 'modal-panel-dark bg-gray-900' : 'modal-panel-light bg-white'"
+          @click.stop
+        >
 
-
-          <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+          <div
+            class="flex items-center justify-between px-6 py-5"
+            :class="isDark ? 'border-b border-gray-800' : 'border-b border-gray-100'"
+          >
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#fef2f2;">
-                <i class="pi pi-user text-base" style="color:#c0392b;"></i>
+              <div
+                class="w-9 h-9 rounded-xl flex items-center justify-center"
+                :class="isDark ? 'bg-red-900/60' : 'bg-red-50'"
+              >
+                <i class="pi pi-user text-base" :class="isDark ? 'text-[#f0a500]' : ''" :style="!isDark ? 'color:#c0392b;' : ''"></i>
               </div>
               <div>
-                <p class="font-extrabold text-gray-900">{{ modoEdicion ? 'Editar cliente' : 'Nuevo cliente' }}</p>
-                <p class="text-xs text-gray-400">{{ modoEdicion ? 'Actualiza los datos' : 'Completa la información' }}</p>
+                <p class="font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">{{ modoEdicion ? 'Editar cliente' : 'Nuevo cliente' }}</p>
+                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ modoEdicion ? 'Actualiza los datos' : 'Completa la información' }}</p>
               </div>
             </div>
-            <button @click="$emit('cerrar')" class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors">
+            <button
+              @click="$emit('cerrar')"
+              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors border"
+              :class="isDark
+                ? 'border-red-900/60 text-[#f0a500] hover:bg-red-950/50 hover:border-red-800'
+                : 'border-red-100 text-red-500 hover:bg-red-50'"
+            >
               <i class="pi pi-times text-sm"></i>
             </button>
           </div>
@@ -108,14 +123,24 @@
             </div>
 
 
-            <div v-if="globalError" class="flex items-center gap-2 p-3 rounded-xl text-sm" style="background:#fef2f2; color:#c0392b; border:1px solid #fecaca;">
+            <div
+              v-if="globalError"
+              class="flex items-center gap-2 p-3 rounded-xl text-sm border"
+              :class="isDark ? 'bg-red-950/40 text-red-300 border-red-900/50' : ''"
+              :style="!isDark ? 'background:#fef2f2; color:#c0392b; border-color:#fecaca;' : ''"
+            >
               <i class="pi pi-exclamation-circle"></i>{{ globalError }}
             </div>
 
-
             <div class="flex gap-3 pt-2">
-              <button type="button" @click="$emit('cerrar')"
-                class="flex-1 py-2.5 rounded-xl font-bold text-sm border-2 border-gray-200 text-gray-500 hover:bg-gray-50 transition-all">
+              <button
+                type="button"
+                @click="$emit('cerrar')"
+                class="flex-1 py-2.5 rounded-xl font-bold text-sm border-2 transition-all"
+                :class="isDark
+                  ? 'border-red-800 text-red-300 hover:bg-red-950/40 hover:border-red-700'
+                  : 'border-red-200 text-red-600 hover:bg-red-50'"
+              >
                 Cancelar
               </button>
               <button type="submit" :disabled="loading"
@@ -135,6 +160,9 @@
 
 <script setup>
 import { ref, reactive, watch } from 'vue'
+import { useAppTheme } from '@/composables/useAppTheme'
+
+const { isDark } = useAppTheme()
 
 const props = defineProps({
   visible:     Boolean,
@@ -214,12 +242,24 @@ async function handleGuardar() {
 </script>
 
 <style scoped>
-.field-label { display:block; font-size:0.7rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#4b5563; margin-bottom:0.375rem; }
-.input-icon  { position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); color:#9ca3af; font-size:0.875rem; pointer-events:none; }
-.field-input { width:100%; padding:0.75rem 1rem 0.75rem 2.5rem; border-radius:0.75rem; border:1px solid #e5e7eb; background:#f9fafb; font-size:0.875rem; color:#1f2937; transition:all 0.15s; outline:none; }
-.field-input:focus { border-color:#c0392b; box-shadow:0 0 0 3px rgba(192,57,43,0.1); background:white; }
-.field-input.error { border-color:#f87171; background:#fef2f2; }
+.field-label { display:block; font-size:0.7rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.375rem; }
+.input-icon  { position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); font-size:0.875rem; pointer-events:none; }
+.field-input { width:100%; padding:0.75rem 1rem 0.75rem 2.5rem; border-radius:0.75rem; font-size:0.875rem; transition:all 0.15s; outline:none; }
+.field-input:focus { border-color:#c0392b; box-shadow:0 0 0 3px rgba(192,57,43,0.1); }
 .field-error { font-size:0.7rem; color:#c0392b; margin-top:0.25rem; }
 .modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
+
+.modal-panel-light .field-label { color:#4b5563; }
+.modal-panel-light .input-icon { color:#c0392b; opacity:0.65; }
+.modal-panel-light .field-input { border:1px solid #e5e7eb; background:#f9fafb; color:#1f2937; }
+.modal-panel-light .field-input:focus { background:white; }
+.modal-panel-light .field-input.error { border-color:#f87171; background:#fef2f2; }
+
+.modal-panel-dark .field-label { color:#9ca3af; }
+.modal-panel-dark .input-icon { color:#f0a500; opacity:0.9; }
+.modal-panel-dark .field-input { border:1px solid #4b5563; background:#1f2937; color:#f3f4f6; }
+.modal-panel-dark .field-input:focus { background:#111827; }
+.modal-panel-dark .field-input.error { border-color:#f87171; background:#450a0a; }
+.modal-panel-dark .field-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.85); }
 </style>
