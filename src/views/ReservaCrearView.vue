@@ -21,7 +21,6 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-5 items-start">
 
-      <!-- Columna izquierda: secciones del formulario -->
       <div class="space-y-5 order-2 lg:order-1">
         <ReservaClienteBuscar
           v-model:busqueda="busquedaCliente"
@@ -38,10 +37,12 @@
           v-if="clienteSeleccionado"
           v-model:fecha-inicio="fechaInicio"
           v-model:fecha-fin="fechaFin"
+          v-model:tipo-reserva="tipoReserva"
           :hoy="hoy"
           :error-inicio="errorFechaInicio"
           :error-fin="errorFechaFin"
           :dias-reserva="diasReserva"
+          :tipo-reserva="tipoReserva"
           @change="onFechasChange"
         />
 
@@ -60,7 +61,6 @@
         <p v-if="errorGlobal" class="text-sm text-center font-medium" style="color:#c0392b;">{{ errorGlobal }}</p>
       </div>
 
-      <!-- Columna derecha: resumen (más arriba, sticky) -->
       <div class="order-1 lg:order-2">
         <ReservaResumen
           :cliente="clienteSeleccionado"
@@ -88,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import ClientesModal from '@/components/clientes/ClientesModal.vue'
@@ -112,20 +112,26 @@ const buscandoClientes    = ref(false)
 const modalClienteAbierto = ref(false)
 let debounceTimer = null
 
-const fechaInicio = ref('')
-const fechaFin    = ref('')
+const fechaInicio      = ref('')
+const fechaFin         = ref('')
+const tipoReserva      = ref('')
 const errorFechaInicio = ref('')
 const errorFechaFin    = ref('')
 
-const vehiculosDisponibles  = ref([])
-const vehiculoSeleccionado  = ref(null)
-const cargandoVehiculos     = ref(false)
-const vehiculosConsultados  = ref(false)
+const vehiculosDisponibles = ref([])
+const vehiculoSeleccionado = ref(null)
+const cargandoVehiculos    = ref(false)
+const vehiculosConsultados = ref(false)
 
 const errorGlobal = ref('')
 const creando     = ref(false)
 
 const hoy = computed(() => new Date().toISOString().split('T')[0])
+
+watch(fechaInicio, (val) => {
+  if (!val) { tipoReserva.value = ''; return }
+  tipoReserva.value = val <= hoy.value ? 'INMEDIATA' : 'ANTISIPADA'
+})
 
 const diasReserva = computed(() => {
   if (!fechaInicio.value || !fechaFin.value) return 0
@@ -135,8 +141,9 @@ const diasReserva = computed(() => {
 })
 
 const tipoReservaLabel = computed(() => {
-  if (!fechaInicio.value) return '—'
-  return fechaInicio.value <= hoy.value ? 'Inmediata' : 'Anticipada'
+  if (tipoReserva.value === 'INMEDIATA')  return 'Inmediata'
+  if (tipoReserva.value === 'ANTISIPADA') return 'Anticipada'
+  return '—'
 })
 
 const precioEstimado = computed(() => {
@@ -149,6 +156,7 @@ const puedeConfirmar = computed(() =>
   !!clienteSeleccionado.value &&
   !!fechaInicio.value &&
   !!fechaFin.value &&
+  !!tipoReserva.value &&
   !!vehiculoSeleccionado.value &&
   !errorFechaInicio.value &&
   !errorFechaFin.value
@@ -156,10 +164,7 @@ const puedeConfirmar = computed(() =>
 
 function onBuscarCliente() {
   clearTimeout(debounceTimer)
-  if (!busquedaCliente.value.trim()) {
-    resultadosClientes.value = []
-    return
-  }
+  if (!busquedaCliente.value.trim()) { resultadosClientes.value = []; return }
   debounceTimer = setTimeout(async () => {
     buscandoClientes.value = true
     resultadosClientes.value = await clientesStore.buscarClientes(busquedaCliente.value)
@@ -180,6 +185,7 @@ function limpiarCliente() {
   resultadosClientes.value = []
   fechaInicio.value = ''
   fechaFin.value = ''
+  tipoReserva.value = ''
   vehiculosDisponibles.value = []
   vehiculoSeleccionado.value = null
   vehiculosConsultados.value = false
@@ -214,7 +220,7 @@ function validarFechas() {
   errorFechaInicio.value = ''
   errorFechaFin.value = ''
   if (!fechaInicio.value) { errorFechaInicio.value = 'Requerido'; return false }
-  if (!fechaFin.value) { errorFechaFin.value = 'Requerido'; return false }
+  if (!fechaFin.value)    { errorFechaFin.value    = 'Requerido'; return false }
   if (fechaInicio.value < hoy.value) { errorFechaInicio.value = 'No puede ser anterior a hoy.'; return false }
   if (fechaFin.value < fechaInicio.value) { errorFechaFin.value = 'Debe ser posterior al inicio.'; return false }
   return true
@@ -245,6 +251,7 @@ function seleccionarVehiculo(v) {
 async function confirmarReserva() {
   if (!clienteSeleccionado.value) { errorGlobal.value = 'Selecciona un cliente.'; return }
   if (!validarFechas()) return
+  if (!tipoReserva.value)        { errorGlobal.value = 'Selecciona el tipo de reserva.'; return }
   if (!vehiculoSeleccionado.value) { errorGlobal.value = 'Selecciona un vehículo.'; return }
 
   creando.value = true
@@ -255,6 +262,7 @@ async function confirmarReserva() {
       vehiculo_id:  vehiculoSeleccionado.value.id,
       fecha_inicio: fechaInicio.value,
       fecha_fin:    fechaFin.value,
+      tipo_reserva: tipoReserva.value,
     })
     await Swal.fire({
       icon: 'success',
@@ -271,7 +279,7 @@ async function confirmarReserva() {
       await Swal.fire({
         icon: 'warning',
         title: 'Sesión expirada',
-        text: 'Tu sesión ya no es válida. Inicia sesión de nuevo e intenta crear la reserva.',
+        text: 'Tu sesión ya no es válida. Inicia sesión de nuevo.',
         confirmButtonColor: '#c0392b',
         background: isDark.value ? '#1f2937' : '#fff',
         color: isDark.value ? '#f3f4f6' : '#111827',

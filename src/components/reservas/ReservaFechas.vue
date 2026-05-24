@@ -41,6 +41,47 @@
       </div>
     </div>
 
+    <div class="mt-4">
+      <label class="text-xs font-semibold mb-2 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Tipo de reserva</label>
+      <div class="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          @click="$emit('update:tipoReserva', 'INMEDIATA'); $emit('change')"
+          class="flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl border-2 transition-all"
+          :style="tipoReserva === 'INMEDIATA'
+            ? 'border-color:#922b21; background:#fef2f2;'
+            : isDark ? 'border-color:#374151; background:#1f2937;' : 'border-color:#e5e7eb; background:white;'"
+        >
+          <div
+            class="w-8 h-8 rounded-full flex items-center justify-center"
+            :style="tipoReserva === 'INMEDIATA' ? 'background:#922b21;' : isDark ? 'background:#374151;' : 'background:#f3f4f6;'"
+          >
+            <i class="pi pi-bolt text-sm" :style="tipoReserva === 'INMEDIATA' ? 'color:white' : isDark ? 'color:#9ca3af' : 'color:#9ca3af'"></i>
+          </div>
+          <span class="text-xs font-bold" :style="tipoReserva === 'INMEDIATA' ? 'color:#922b21' : isDark ? 'color:#9ca3af' : 'color:#6b7280'">Inmediata</span>
+          <span class="text-[10px] text-center" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Inicia hoy</span>
+        </button>
+
+        <button
+          type="button"
+          @click="$emit('update:tipoReserva', 'ANTISIPADA'); $emit('change')"
+          class="flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl border-2 transition-all"
+          :style="tipoReserva === 'ANTISIPADA'
+            ? 'border-color:#922b21; background:#fef2f2;'
+            : isDark ? 'border-color:#374151; background:#1f2937;' : 'border-color:#e5e7eb; background:white;'"
+        >
+          <div
+            class="w-8 h-8 rounded-full flex items-center justify-center"
+            :style="tipoReserva === 'ANTISIPADA' ? 'background:#922b21;' : isDark ? 'background:#374151;' : 'background:#f3f4f6;'"
+          >
+            <i class="pi pi-calendar-plus text-sm" :style="tipoReserva === 'ANTISIPADA' ? 'color:white' : isDark ? 'color:#9ca3af' : 'color:#9ca3af'"></i>
+          </div>
+          <span class="text-xs font-bold" :style="tipoReserva === 'ANTISIPADA' ? 'color:#922b21' : isDark ? 'color:#9ca3af' : 'color:#6b7280'">Anticipada</span>
+          <span class="text-[10px] text-center" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Fecha futura</span>
+        </button>
+      </div>
+    </div>
+
     <div
       v-if="fechaInicio && fechaFin && !errorInicio && !errorFin"
       class="mt-4 p-3 rounded-xl flex items-center gap-3 border-l-4"
@@ -61,15 +102,16 @@ import { useAppTheme } from '@/composables/useAppTheme'
 import { formatFecha } from '@/utils/reservaFormatters'
 
 defineProps({
-  fechaInicio: { type: String, default: '' },
-  fechaFin:    { type: String, default: '' },
-  hoy:         { type: String, required: true },
-  errorInicio: { type: String, default: '' },
-  errorFin:    { type: String, default: '' },
-  diasReserva: { type: Number, default: 0 },
+  fechaInicio:  { type: String, default: '' },
+  fechaFin:     { type: String, default: '' },
+  hoy:          { type: String, required: true },
+  errorInicio:  { type: String, default: '' },
+  errorFin:     { type: String, default: '' },
+  diasReserva:  { type: Number, default: 0 },
+  tipoReserva:  { type: String, default: '' },
 })
 
-defineEmits(['update:fechaInicio', 'update:fechaFin', 'change'])
+defineEmits(['update:fechaInicio', 'update:fechaFin', 'update:tipoReserva', 'change'])
 
 const { isDark } = useAppTheme()
 </script>

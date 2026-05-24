@@ -36,7 +36,7 @@ export const useReservasStore = defineStore('reservas', () => {
   }
 
   async function fetchVehiculosDisponibles(fechaInicio, fechaFin) {
-    const res = await api.get('/admin/vehiculos/disponibles', {
+    const res = await api.get('/admin/vehiculos', {
       params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin },
     })
     return res.data.data

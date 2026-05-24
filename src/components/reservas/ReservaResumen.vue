@@ -99,18 +99,7 @@
               <p class="font-bold text-xs leading-snug" :class="isDark ? 'text-gray-100' : 'text-gray-900'">{{ formatFecha(fechaFin) }}</p>
             </div>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <span class="resumen-badge resumen-badge--dias">
-              <i class="pi pi-clock text-[10px]"></i>
-              {{ diasReserva }} día{{ diasReserva !== 1 ? 's' : '' }}
-            </span>
-            <span
-              class="resumen-badge"
-              :class="isDark ? 'resumen-badge--tipo-dark' : 'resumen-badge--tipo-light'"
-            >
-              {{ tipoReserva }}
-            </span>
-          </div>
+
         </template>
         <p v-else class="resumen-vacio" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
           <i class="pi pi-calendar-plus text-lg mb-1 block opacity-40"></i>
