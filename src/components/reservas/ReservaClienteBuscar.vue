@@ -9,7 +9,7 @@
       <input
         :value="busqueda"
         type="text"
-        placeholder="Buscar por nombre, DUI o teléfono..."
+        placeholder="Buscar por nombre, teléfono..."
         class="field-input"
         :disabled="!!clienteSeleccionado"
         @input="$emit('update:busqueda', $event.target.value); $emit('buscar')"
