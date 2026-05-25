@@ -64,7 +64,7 @@
                 <p v-if="errors.dui" class="field-error">{{ errors.dui }}</p>
               </div>
               <div class="flex-1">
-                <label class="field-label">Fecha nacimiento DUI</label>
+                <label class="field-label">Vencimiento de DUI</label>
                 <div class="relative">
                   <i class="pi pi-calendar input-icon"></i>
                   <input v-model="form.nacimiento_dui" type="date" class="field-input" :class="errors.nacimiento_dui ? 'error' : ''" />
@@ -83,7 +83,7 @@
                 <p v-if="errors.numero_licencia" class="field-error">{{ errors.numero_licencia }}</p>
               </div>
               <div class="flex-1">
-                <label class="field-label">Vencimiento licencia</label>
+                <label class="field-label">Vencimiento de  licencia</label>
                 <div class="relative">
                   <i class="pi pi-calendar input-icon"></i>
                   <input v-model="form.vencimiento_licencia" type="date" class="field-input" :class="errors.vencimiento_licencia ? 'error' : ''" />

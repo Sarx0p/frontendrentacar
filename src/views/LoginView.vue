@@ -39,7 +39,6 @@
             <input
               v-model="form.email"
               type="email"
-              placeholder="usuario@gmail.com"
               required
               class="login-input"
               :class="{ 'login-input--error': errors.email }"
@@ -53,7 +52,6 @@
               <input
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
-                placeholder="••••••••"
                 required
                 class="login-input pr-11"
                 :class="{ 'login-input--error': errors.password }"

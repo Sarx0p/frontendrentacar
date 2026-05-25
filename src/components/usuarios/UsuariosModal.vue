@@ -52,7 +52,7 @@
               <label class="field-label" :class="isDark ? 'text-gray-400' : 'text-gray-600'">Correo electrónico</label>
               <div class="relative">
                 <i class="pi pi-envelope input-icon" :class="isDark ? 'text-gray-500' : 'text-gray-400'"></i>
-                <input v-model="form.correo" type="email" placeholder="usuario@gmail.com"
+                <input v-model="form.correo" type="email"
                   class="field-input" :class="[errors.correo ? 'error' : '', isDark ? 'field-input-dark' : 'field-input-light']" />
               </div>
               <p v-if="errors.correo" class="field-error">{{ errors.correo }}</p>

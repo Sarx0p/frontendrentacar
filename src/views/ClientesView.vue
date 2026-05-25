@@ -28,7 +28,7 @@
         <input
           v-model="search"
           type="text"
-          placeholder="Buscar por nombre, DUI o teléfono..."
+          placeholder="Buscar por nombre, teléfono..."
           class="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none transition focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
           :class="isDark
             ? 'border-gray-700 bg-gray-800 text-gray-100 placeholder:text-gray-500'
