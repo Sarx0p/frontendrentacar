@@ -13,7 +13,7 @@ export const useReservasStore = defineStore('reservas', () => {
     try {
       const res = await api.get('/admin/reservas', { params })
       reservas.value = res.data.data.data
-    } catch (e) {
+    } catch  {
       error.value = 'Error al cargar reservas.'
     } finally {
       loading.value = false
@@ -36,7 +36,7 @@ export const useReservasStore = defineStore('reservas', () => {
   }
 
   async function fetchVehiculosDisponibles(fechaInicio, fechaFin) {
-    const res = await api.get('/admin/vehiculos/disponibles', {
+    const res = await api.get('/admin/vehiculos', {
       params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin },
     })
     return res.data.data
