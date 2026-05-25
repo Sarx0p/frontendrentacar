@@ -41,7 +41,7 @@ export const useClientesStore = defineStore('clientes', () => {
   async function buscarClientes(term) {
     if (!term?.trim()) return []
     try {
-      const res = await api.get('/admin/clientes', { params: { buscar: term.trim() } })
+      const res = await api.get('/admin/clientes', { params: { search: term.trim() } })
       return res.data.data.data ?? []
     } catch {
       return []

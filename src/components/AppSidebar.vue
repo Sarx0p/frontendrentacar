@@ -24,16 +24,16 @@
       <div>
         <p v-if="!collapsed" class="text-xs font-bold tracking-widest uppercase px-3 mb-2" style="color:#f0a50088;">Principal</p>
         <SidebarItem icon="pi-home"     label="Dashboard"  :collapsed="collapsed" :active="activeRoute === 'dashboard'"  @click="navegar('dashboard')" />
-        <SidebarItem icon="pi-car"      label="Vehículos"  :collapsed="collapsed" :active="activeRoute === 'vehiculos'"  @click="navegar('vehiculos')"  :badge="84" />
+        <SidebarItem icon="pi-car"      label="Vehículos"  :collapsed="collapsed" :active="activeRoute === 'vehiculos'"  @click="navegar('vehiculos')" />
         <SidebarItem icon="pi-users"    label="Clientes"   :collapsed="collapsed" :active="activeRoute === 'clientes'"   @click="navegar('clientes')" />
-        <SidebarItem icon="pi-file"     label="Contratos"  :collapsed="collapsed" :active="activeRoute === 'contratos'"  @click="navegar('contratos')"  :badge="12" />
-        <SidebarItem icon="pi-calendar" label="Reservas"   :collapsed="collapsed" :active="activeRoute === 'reservas'"   @click="navegar('reservas')"   :badge="5" badgeColor="#260907" />
+        <SidebarItem icon="pi-file"     label="Contratos"  :collapsed="collapsed" :active="activeRoute === 'contratos'"  @click="navegar('contratos')" />
+        <SidebarItem icon="pi-calendar" label="Reservas"   :collapsed="collapsed" :active="activeRoute === 'reservas'"   @click="navegar('reservas')" />
       </div>
 
       <div>
         <p v-if="!collapsed" class="text-xs font-bold tracking-widest uppercase px-3 mb-2" style="color:#f0a50088;">Operaciones</p>
         <SidebarItem icon="pi-credit-card" label="Pagos"         :collapsed="collapsed" :active="activeRoute === 'pagos'"        @click="navegar('pagos')" />
-        <SidebarItem icon="pi-wrench"      label="Mantenimiento" :collapsed="collapsed" :active="activeRoute === 'mantenimiento'" @click="navegar('mantenimiento')" :badge="3" />
+        <SidebarItem icon="pi-wrench"      label="Mantenimiento" :collapsed="collapsed" :active="activeRoute === 'mantenimiento'" @click="navegar('mantenimiento')" />
         <SidebarItem icon="pi-chart-bar"   label="Reportes"      :collapsed="collapsed" :active="activeRoute === 'reportes'"     @click="navegar('reportes')" />
       </div>
 

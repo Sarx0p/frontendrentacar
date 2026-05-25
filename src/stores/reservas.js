@@ -13,7 +13,7 @@ export const useReservasStore = defineStore('reservas', () => {
     try {
       const res = await api.get('/admin/reservas', { params })
       reservas.value = res.data.data.data
-    } catch (e) {
+    } catch  {
       error.value = 'Error al cargar reservas.'
     } finally {
       loading.value = false
