@@ -28,7 +28,7 @@
             <p
               class="text-sm mt-0.5 transition-colors"
               :class="isDark ? 'text-gray-400' : 'text-gray-500'"
-            >Bienvenido de nuevo, <span class="font-semibold" style="color:#c0392b;">{{ authStore.user?.nombre ?? 'Usuario' }}</span> — aquí está el resumen de hoy.</p>
+            >Bienvenido de nuevo, <span class="font-semibold" style="color:#c0392b;">{{ authStore.user?.nombre ?? 'Usuario' }}</span> aquí está el resumen de hoy.</p>
           </div>
           <div
             class="flex items-center gap-2 text-xs rounded-xl px-4 py-2 shadow-sm border transition-colors"
@@ -54,19 +54,10 @@
       <!-- FILA MEDIA -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
 
-        <!-- Reservas por mes -->
-        <div :class="cardShell">
-          <p class="text-xs font-bold uppercase tracking-widest mb-1"
-             :class="isDark ? 'text-gray-500' : 'text-gray-400'">Reservas del año</p>
-          <p class="text-xs mb-4"
-             :class="isDark ? 'text-gray-500' : 'text-gray-400'">por mes — {{ new Date().getFullYear() }}</p>
-          <DashboardMiniLineChart :data="incomeData" color="#c0392b" />
-        </div>
-
         <!-- Flota por estado (donut) -->
         <div :class="cardShell">
           <p class="text-xs font-bold uppercase tracking-widest mb-1"
-             :class="isDark ? 'text-gray-500' : 'text-gray-400'">Flota por estado</p>
+             :class="isDark ? 'text-gray-500' : 'text-gray-400'">Vehiculo por estado</p>
           <p class="text-xs mb-4"
              :class="isDark ? 'text-gray-500' : 'text-gray-400'">distribución actual</p>
           <DashboardDonutChart :data="donutData" />
@@ -138,7 +129,7 @@
 
         <!-- Últimas reservas -->
         <div :class="cardShell">
-          <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center justify-between mb-8">
             <p class="text-sm font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-800'">
               Últimas reservas
             </p>
