@@ -74,7 +74,6 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import InputText from 'primevue/inputtext'
 import Swal from 'sweetalert2'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
@@ -91,7 +90,7 @@ const props = defineProps({
   },
 })
 
-const search       = ref('')
+
 const userMenuOpen = ref(false)
 
 const sidebarWidth = computed(() => (props.sidebarCollapsed ? '64px' : '256px'))
@@ -112,13 +111,6 @@ const userInitials = computed(() => {
   const a = user.value.apellido?.[0] || ''
   return (n + a).toUpperCase() || 'U'
 })
-
-const searchFieldStyle = computed(() => ({
-  paddingLeft: '2.5rem',
-  backgroundColor: isDark.value ? '#1f2937' : '#ffffff',
-  color:           isDark.value ? '#f3f4f6' : '#111827',
-  borderColor:     isDark.value ? '#4b5563' : '#e5e7eb',
-}))
 
 async function handleLogout() {
   userMenuOpen.value = false

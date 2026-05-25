@@ -16,7 +16,7 @@ export const useClientesStore = defineStore('clientes', () => {
     try {
       const res = await api.get('/admin/clientes')
       clientes.value = res.data.data.data
-    } catch (e) {
+    } catch  {
       error.value = 'Error al cargar clientes.'
     } finally {
       loading.value = false
