@@ -4,28 +4,6 @@
     :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'"
     :style="{ left: sidebarWidth, height: '64px' }"
   >
-    <div class="flex-1 max-w-lg">
-      <div class="relative w-full">
-        <span
-          class="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-10 items-center justify-center"
-          aria-hidden="true"
-        >
-          <i
-            class="pi pi-search text-sm leading-none"
-            :class="isDark ? 'text-gray-500' : 'text-gray-400'"
-          />
-        </span>
-        <InputText
-          v-model="search"
-          placeholder="Buscar vehículos, clientes, contratos..."
-          class="w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm leading-normal focus:outline-none focus:ring-2 focus:ring-red-800/30 transition"
-          :class="isDark
-            ? 'border-gray-600 bg-gray-800 text-gray-100 placeholder:text-gray-500'
-            : 'border-gray-200 bg-white text-gray-900 placeholder:text-gray-400'"
-          :style="searchFieldStyle"
-        />
-      </div>
-    </div>
 
     <div class="flex items-center gap-2 ml-auto">
       <button
