@@ -42,5 +42,22 @@ export const useReservasStore = defineStore('reservas', () => {
     return res.data.data
   }
 
-  return { reservas, loading, error, fetchReservas, crear, fetchVehiculosDisponibles }
+  async function actualizar(id, form) {
+    loading.value = true
+    error.value   = null
+    try {
+      const res = await api.put(`/admin/reservas/${id}`, form)
+      const actualizada = res.data.data
+      const idx = reservas.value.findIndex((r) => r.id === id)
+      if (idx !== -1) reservas.value[idx] = actualizada
+      return actualizada
+    } catch (e) {
+      error.value = e.response?.data?.message || 'Error al actualizar la reserva.'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { reservas, loading, error, fetchReservas, crear, actualizar, fetchVehiculosDisponibles }
 })
