@@ -72,6 +72,7 @@
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Tipo</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Estado</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Solicitud</th>
+              <th class="px-5 py-3.5 w-14"></th>
             </tr>
           </thead>
           <tbody>
@@ -113,10 +114,28 @@
               <td class="px-5 py-4 text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
                 {{ formatFechaHora(r.fecha_solicitud) }}
               </td>
+
+              <td class="px-5 py-4">
+                <button
+                  type="button"
+                  class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
+                  :class="[
+                    isDark
+                      ? 'border-red-800 bg-red-950/40 text-[#f0a500] hover:bg-red-950/70 hover:border-red-700'
+                      : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100',
+                    r.estado === 'CANCELADA' ? 'opacity-40 cursor-not-allowed' : '',
+                  ]"
+                  :title="r.estado === 'CANCELADA' ? 'No editable' : 'Editar reserva'"
+                  :disabled="r.estado === 'CANCELADA'"
+                  @click="abrirModalEditar(r)"
+                >
+                  <i class="pi pi-pencil text-xs"></i>
+                </button>
+              </td>
             </tr>
 
             <tr v-if="reservasFiltradas.length === 0">
-              <td colspan="7" class="px-5 py-16 text-center">
+              <td colspan="8" class="px-5 py-16 text-center">
                 <i class="pi pi-calendar text-4xl mb-3 block" :class="isDark ? 'text-gray-700' : 'text-gray-200'"></i>
                 <p class="font-medium" :class="isDark ? 'text-gray-500' : 'text-gray-400'">No se encontraron reservas</p>
                 <router-link
@@ -141,19 +160,31 @@
       </div>
     </div>
 
+    <ReservaEditarModal
+      :visible="modalAbierto"
+      :reserva="reservaSeleccionada"
+      :guardando="guardandoEdicion"
+      @cerrar="cerrarModal"
+      @guardar="guardarReserva"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import Swal from 'sweetalert2'
+import ReservaEditarModal from '@/components/reservas/ReservaEditarModal.vue'
 import { useReservasStore } from '@/stores/reservas'
 import { useAppTheme } from '@/composables/useAppTheme'
 
 const { isDark } = useAppTheme()
 const store = useReservasStore()
 
-const search       = ref('')
-const filtroEstado = ref('')
+const search              = ref('')
+const filtroEstado          = ref('')
+const modalAbierto          = ref(false)
+const reservaSeleccionada   = ref(null)
+const guardandoEdicion      = ref(false)
 
 const reservas = computed(() => store.reservas)
 
@@ -168,6 +199,44 @@ async function aplicarFiltros() {
   if (filtroEstado.value) params.estado = filtroEstado.value
   if (search.value.trim()) params.buscar = search.value.trim()
   await store.fetchReservas(params)
+}
+
+function abrirModalEditar(reserva) {
+  reservaSeleccionada.value = { ...reserva }
+  modalAbierto.value = true
+}
+
+function cerrarModal() {
+  modalAbierto.value = false
+  reservaSeleccionada.value = null
+}
+
+async function guardarReserva(form) {
+  if (!reservaSeleccionada.value?.id) return
+  guardandoEdicion.value = true
+  try {
+    await store.actualizar(reservaSeleccionada.value.id, form)
+    await Swal.fire({
+      icon: 'success',
+      title: 'Reserva actualizada',
+      text: 'Los cambios se guardaron correctamente.',
+      confirmButtonColor: '#922b21',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+    cerrarModal()
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'No se pudo actualizar',
+      text: e.response?.data?.message || store.error || 'Intenta de nuevo.',
+      confirmButtonColor: '#922b21',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  } finally {
+    guardandoEdicion.value = false
+  }
 }
 
 function nombreVehiculo(v) {
