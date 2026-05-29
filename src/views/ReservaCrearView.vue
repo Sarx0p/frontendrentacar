@@ -266,8 +266,13 @@ async function consultarVehiculos() {
     );
     vehiculosConsultados.value = true;
   } catch (e) {
-    errorGlobal.value = e.response?.data?.message || "No se pudieron consultar los vehículos.";
-    vehiculosDisponibles.value = [];
+    if (e.response?.status === 404) {
+      vehiculosDisponibles.value = [];
+      vehiculosConsultados.value = true;
+    } else {
+      errorGlobal.value = e.response?.data?.message || "No se pudieron consultar los vehículos.";
+      vehiculosDisponibles.value = [];
+    }
   } finally {
     cargandoVehiculos.value = false;
   }

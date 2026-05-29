@@ -215,7 +215,18 @@ async function guardarReserva(form) {
   if (!reservaSeleccionada.value?.id) return
   guardandoEdicion.value = true
   try {
-    await store.actualizar(reservaSeleccionada.value.id, form)
+    if (form.estado === 'CANCELADA') {
+      await api.patch(`/api/admin/reservas/${reservaSeleccionada.value.id}/cancelar`, {
+        motivo: form.motivo,
+      })
+      await store.fetchReservas()
+    } else {
+      await store.actualizar(reservaSeleccionada.value.id, {
+        fecha_inicio: form.fecha_inicio,
+        fecha_fin:    form.fecha_fin,
+        tipo_reserva: form.tipo_reserva,
+      })
+    }
     await Swal.fire({
       icon: 'success',
       title: 'Reserva actualizada',
@@ -238,7 +249,6 @@ async function guardarReserva(form) {
     guardandoEdicion.value = false
   }
 }
-
 function nombreVehiculo(v) {
   if (!v) return '—'
   const marca = v.modelo?.marca?.nombre
