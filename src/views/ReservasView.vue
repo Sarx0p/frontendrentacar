@@ -116,21 +116,34 @@
               </td>
 
               <td class="px-5 py-4">
-                <button
-                  type="button"
-                  class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
-                  :class="[
-                    isDark
-                      ? 'border-red-800 bg-red-950/40 text-[#f0a500] hover:bg-red-950/70 hover:border-red-700'
-                      : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100',
-                    r.estado === 'CANCELADA' ? 'opacity-40 cursor-not-allowed' : '',
-                  ]"
-                  :title="r.estado === 'CANCELADA' ? 'No editable' : 'Editar reserva'"
-                  :disabled="r.estado === 'CANCELADA'"
-                  @click="abrirModalEditar(r)"
-                >
-                  <i class="pi pi-pencil text-xs"></i>
-                </button>
+                <div class="flex items-center gap-1.5">
+                  <router-link
+                    v-if="r.estado !== 'CANCELADA' && !r.contrato"
+                    :to="{ name: 'contratos-nuevo', query: { reserva_id: r.id } }"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
+                    :class="isDark
+                      ? 'border-green-900/50 bg-green-950/30 text-green-400 hover:bg-green-950/50'
+                      : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'"
+                    title="Generar contrato"
+                  >
+                    <i class="pi pi-file-edit text-xs"></i>
+                  </router-link>
+                  <button
+                    type="button"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
+                    :class="[
+                      isDark
+                        ? 'border-red-800 bg-red-950/40 text-[#f0a500] hover:bg-red-950/70 hover:border-red-700'
+                        : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100',
+                      r.estado === 'CANCELADA' ? 'opacity-40 cursor-not-allowed' : '',
+                    ]"
+                    :title="r.estado === 'CANCELADA' ? 'No editable' : 'Editar reserva'"
+                    :disabled="r.estado === 'CANCELADA'"
+                    @click="abrirModalEditar(r)"
+                  >
+                    <i class="pi pi-pencil text-xs"></i>
+                  </button>
+                </div>
               </td>
             </tr>
 

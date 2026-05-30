@@ -1,0 +1,414 @@
+<template>
+  <div class="min-h-screen wizard-root" :class="isDark ? 'wizard-root--dark' : 'wizard-root--light'">
+
+    <!-- Top bar -->
+    <header class="wizard-header">
+      <button type="button" class="wizard-back" @click="volver">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <div class="flex-1 min-w-0">
+        <p class="wizard-kicker">Generación digital</p>
+        <h1 class="wizard-title">{{ reservaId ? 'Contrato desde reserva' : 'Nuevo contrato' }}</h1>
+      </div>
+      <div v-if="reservaOrigen" class="wizard-badge-reserva">
+        Reserva #{{ reservaOrigen.id }}
+      </div>
+      <div v-if="contratoGenerado" class="wizard-badge-ok">
+        <i class="pi pi-check"></i> {{ contratoGenerado.numero_contrato }}
+      </div>
+    </header>
+
+    <!-- Stepper horizontal -->
+    <nav class="wizard-stepper" aria-label="Pasos del contrato">
+      <button
+        v-for="s in pasos"
+        :key="s.id"
+        type="button"
+        class="wizard-step"
+        :class="{
+          'wizard-step--active': paso === s.id,
+          'wizard-step--done': s.id < paso || (s.id === paso && s.completo),
+          'wizard-step--clickable': s.id <= pasoMaximo,
+        }"
+        :disabled="s.id > pasoMaximo"
+        @click="irPaso(s.id)"
+      >
+        <span class="wizard-step-num">
+          <i v-if="s.id < paso || (s.completo && s.id !== paso)" class="pi pi-check text-[10px]"></i>
+          <span v-else>{{ s.id }}</span>
+        </span>
+        <span class="wizard-step-label">{{ s.titulo }}</span>
+      </button>
+    </nav>
+
+    <div class="wizard-body">
+      <!-- Contenido del paso -->
+      <div class="wizard-main">
+        <Transition name="slide-fade" mode="out-in">
+          <div :key="paso" class="wizard-panel">
+            <ContratoClienteSection v-if="paso === 1" ref="clienteRef" v-model="cliente" />
+            <ContratoFechasVehiculoSection
+              v-else-if="paso === 2"
+              v-model:fecha-entrega="fechaEntrega"
+              v-model:hora-entrega="horaEntrega"
+              v-model:fecha-devolucion="fechaDevolucion"
+              v-model:hora-devolucion="horaDevolucion"
+              v-model:vehiculo-id="vehiculoId"
+              :vehiculos="vehiculos"
+              :cargando="cargandoVehiculos"
+              :consultados="vehiculosConsultados"
+            />
+            <ContratoPreciosInspeccionSection
+              v-else
+              v-model:descuento="descuento"
+              v-model:nivel-combustible="nivelCombustible"
+              v-model:observaciones-entrega="observacionesEntrega"
+              :dias="dias"
+              :precio-dia="precioDia"
+            />
+          </div>
+        </Transition>
+
+        <p v-if="error" class="wizard-error">{{ error }}</p>
+
+        <!-- Navegación -->
+        <div class="wizard-nav">
+          <button v-if="paso > 1" type="button" class="wizard-btn wizard-btn--ghost" @click="paso--">
+            <i class="pi pi-arrow-left"></i> Anterior
+          </button>
+          <div v-else></div>
+
+          <button
+            v-if="paso < 3"
+            type="button"
+            class="wizard-btn wizard-btn--primary"
+            :disabled="!puedeAvanzar"
+            @click="siguiente"
+          >
+            Siguiente <i class="pi pi-arrow-right"></i>
+          </button>
+          <button
+            v-else
+            type="button"
+            class="wizard-btn wizard-btn--primary"
+            :disabled="!puedeGenerar || generando"
+            @click="generarContrato"
+          >
+            <i :class="generando ? 'pi pi-spin pi-spinner' : 'pi pi-file-pdf'"></i>
+            {{ generando ? 'Generando...' : 'Generar contrato' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Ticket lateral -->
+      <ContratoResumen
+        :cliente="cliente"
+        :fecha-entrega="fechaEntrega"
+        :fecha-devolucion="fechaDevolucion"
+        :vehiculo="vehiculoSel"
+        :dias="dias"
+        :total-estimado="totalEstimado"
+        :paso="paso"
+        :contrato-generado="contratoGenerado"
+        @ver-pdf="mostrarPdf = true"
+      />
+    </div>
+
+    <ContratoPdfPreview :visible="mostrarPdf" :contrato="contratoGenerado" @cerrar="mostrarPdf = false" />
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import Swal from 'sweetalert2'
+import ContratoClienteSection from '@/components/contratos/ContratoClienteSection.vue'
+import ContratoFechasVehiculoSection from '@/components/contratos/ContratoFechasVehiculoSection.vue'
+import ContratoPreciosInspeccionSection from '@/components/contratos/ContratoPreciosInspeccionSection.vue'
+import ContratoResumen from '@/components/contratos/ContratoResumen.vue'
+import ContratoPdfPreview from '@/components/contratos/ContratoPdfPreview.vue'
+import { useContratosStore } from '@/stores/contratos'
+import { useReservasStore } from '@/stores/reservas'
+import { useAppTheme } from '@/composables/useAppTheme'
+import { calcularDias, documentosVigentes } from '@/utils/contratoFormatters'
+
+const router = useRouter()
+const route = useRoute()
+const { isDark } = useAppTheme()
+const contratosStore = useContratosStore()
+const reservasStore = useReservasStore()
+
+const reservaId = ref(route.query.reserva_id ? Number(route.query.reserva_id) : null)
+const reservaOrigen = ref(null)
+const cargandoReserva = ref(false)
+
+const clienteRef = ref(null)
+const paso = ref(1)
+const cliente = ref(null)
+const fechaEntrega = ref('')
+const horaEntrega = ref('06:00')
+const fechaDevolucion = ref('')
+const horaDevolucion = ref('18:00')
+const vehiculoId = ref('')
+const vehiculos = ref([])
+const cargandoVehiculos = ref(false)
+const vehiculosConsultados = ref(false)
+const descuento = ref(0)
+const nivelCombustible = ref('1/2')
+const observacionesEntrega = ref('')
+const generando = ref(false)
+const error = ref('')
+const contratoGenerado = ref(null)
+const mostrarPdf = ref(false)
+
+const dias = computed(() => calcularDias(fechaEntrega.value, fechaDevolucion.value))
+const vehiculoSel = computed(() => {
+  const fromList = vehiculos.value.find((v) => v.id === vehiculoId.value)
+  if (fromList) return fromList
+  if (reservaOrigen.value?.vehiculo?.id === vehiculoId.value) return reservaOrigen.value.vehiculo
+  return null
+})
+const precioDia = computed(() => Number(vehiculoSel.value?.categoria?.precio_dia || 0))
+const totalEstimado = computed(() => Math.max(0, dias.value * precioDia.value - descuento.value))
+const docsOk = computed(() => documentosVigentes(cliente.value).ok)
+
+const paso1Ok = computed(() => !!cliente.value && docsOk.value)
+const paso2Ok = computed(() => !!vehiculoId.value && !!fechaEntrega.value && !!fechaDevolucion.value)
+const puedeGenerar = computed(() => paso1Ok.value && paso2Ok.value && dias.value > 0)
+
+const pasoMaximo = computed(() => {
+  if (paso2Ok.value) return 3
+  if (paso1Ok.value) return 2
+  return 1
+})
+
+const pasos = computed(() => [
+  { id: 1, titulo: 'Cliente', completo: paso1Ok.value },
+  { id: 2, titulo: 'Fechas y vehículo', completo: paso2Ok.value },
+  { id: 3, titulo: 'Precios e inspección', completo: puedeGenerar.value },
+])
+
+const puedeAvanzar = computed(() => {
+  if (paso.value === 1) return paso1Ok.value
+  if (paso.value === 2) return paso2Ok.value
+  return false
+})
+
+function irPaso(n) {
+  if (n <= pasoMaximo.value) paso.value = n
+}
+
+function siguiente() {
+  if (paso.value < 3 && puedeAvanzar.value) paso.value++
+}
+
+async function consultarVehiculos() {
+  if (!fechaEntrega.value || !fechaDevolucion.value || fechaDevolucion.value < fechaEntrega.value) {
+    vehiculos.value = []
+    vehiculosConsultados.value = false
+    return
+  }
+  cargandoVehiculos.value = true
+  vehiculosConsultados.value = false
+  const vehiculoReservado = reservaOrigen.value?.vehiculo_id || vehiculoId.value
+  if (!reservaId.value) vehiculoId.value = ''
+  try {
+    vehiculos.value = await reservasStore.fetchVehiculosDisponibles(
+      fechaEntrega.value,
+      fechaDevolucion.value,
+      reservaId.value || undefined,
+    )
+    if (reservaId.value && vehiculoReservado) {
+      const yaIncluido = vehiculos.value.some((v) => v.id === vehiculoReservado)
+      if (!yaIncluido && reservaOrigen.value?.vehiculo) {
+        vehiculos.value = [reservaOrigen.value.vehiculo, ...vehiculos.value]
+      }
+      vehiculoId.value = vehiculoReservado
+    }
+    vehiculosConsultados.value = true
+  } catch (e) {
+    vehiculos.value = []
+    vehiculosConsultados.value = true
+    error.value = e.response?.data?.message || 'No se pudieron consultar vehículos.'
+  } finally {
+    cargandoVehiculos.value = false
+  }
+}
+
+function fechaSolo(fecha) {
+  if (!fecha) return ''
+  return typeof fecha === 'string' ? fecha.slice(0, 10) : fecha
+}
+
+async function cargarDesdeReserva() {
+  if (!reservaId.value) return
+  cargandoReserva.value = true
+  error.value = ''
+  try {
+    const reserva = await reservasStore.fetchReserva(reservaId.value)
+    if (reserva.contrato) {
+      error.value = 'Esta reserva ya tiene un contrato asociado.'
+      return
+    }
+    if (reserva.estado === 'CANCELADA') {
+      error.value = 'No se puede generar contrato desde una reserva cancelada.'
+      return
+    }
+    reservaOrigen.value = reserva
+    cliente.value = reserva.cliente
+    fechaEntrega.value = fechaSolo(reserva.fecha_inicio)
+    fechaDevolucion.value = fechaSolo(reserva.fecha_fin)
+    vehiculoId.value = reserva.vehiculo_id
+    await consultarVehiculos()
+    paso.value = reserva.cliente ? 2 : 1
+  } catch (e) {
+    error.value = e.response?.data?.message || 'No se pudo cargar la reserva.'
+  } finally {
+    cargandoReserva.value = false
+  }
+}
+
+onMounted(() => {
+  if (reservaId.value) cargarDesdeReserva()
+})
+
+let consultaTimer = null
+watch([fechaEntrega, fechaDevolucion], () => {
+  clearTimeout(consultaTimer)
+  consultaTimer = setTimeout(() => consultarVehiculos(), 400)
+})
+
+async function generarContrato() {
+  if (!puedeGenerar.value) return
+  generando.value = true
+  error.value = ''
+  try {
+    const payload = {
+      cliente_id:                cliente.value.id,
+      vehiculo_id:               vehiculoId.value,
+      fecha_hora_entrega:        `${fechaEntrega.value} ${horaEntrega.value}:00`,
+      fecha_hora_devolucion:     `${fechaDevolucion.value} ${horaDevolucion.value}:00`,
+      precio_por_dia:            precioDia.value,
+      monto_descuento:           descuento.value,
+      nivel_combustible_entrega: nivelCombustible.value,
+      observaciones_entrega:     observacionesEntrega.value,
+    }
+    if (reservaId.value) payload.reserva_id = reservaId.value
+    const contrato = await contratosStore.crear(payload)
+    contratoGenerado.value = contrato
+    await Swal.fire({ icon: 'success', title: 'Contrato generado', text: `N° ${contrato.numero_contrato}`, confirmButtonColor: '#922b21' })
+    mostrarPdf.value = true
+  } catch (e) {
+    error.value = e.response?.status === 401
+      ? 'Tu sesión expiró. Vuelve a iniciar sesión.'
+      : (e.response?.data?.message || contratosStore.error || 'Error al generar el contrato.')
+  } finally {
+    generando.value = false
+  }
+}
+
+function volver() {
+  router.push({ name: 'contratos' })
+}
+</script>
+
+<style scoped>
+.wizard-root--light { background: linear-gradient(160deg, #fafafa 0%, #f3f4f6 50%, #fef2f2 100%); min-height:100vh; }
+.wizard-root--dark { background: linear-gradient(160deg, #030712 0%, #111827 60%, #1a0a08 100%); min-height:100vh; }
+
+.wizard-header {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1.25rem 1.5rem 0.75rem;
+  max-width: 1200px; margin: 0 auto;
+}
+.wizard-back {
+  width: 2.5rem; height: 2.5rem; border-radius: 0.75rem;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(146,43,33,0.25); color: #922b21;
+  background: rgba(146,43,33,0.06); transition: all 0.15s;
+}
+.wizard-back:hover { background: rgba(146,43,33,0.12); }
+.wizard-kicker { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: #922b21; }
+.wizard-title { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.02em; }
+.wizard-root--light .wizard-title { color: #111827; }
+.wizard-root--dark .wizard-title { color: #f9fafb; }
+.wizard-badge-ok {
+  font-size: 0.7rem; font-weight: 800; padding: 0.35rem 0.75rem;
+  border-radius: 999px; background: #dcfce7; color: #166534;
+  display: flex; align-items: center; gap: 0.35rem;
+}
+.wizard-badge-reserva {
+  font-size: 0.7rem; font-weight: 800; padding: 0.35rem 0.75rem;
+  border-radius: 999px; background: rgba(146,43,33,0.1); color: #922b21;
+  border: 1px solid rgba(146,43,33,0.25);
+}
+
+.wizard-stepper {
+  display: flex; gap: 0; max-width: 1200px; margin: 0 auto;
+  padding: 0 1.5rem 1.25rem; overflow-x: auto;
+}
+.wizard-step {
+  flex: 1; display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.75rem 1rem; border: none; background: transparent;
+  border-bottom: 3px solid transparent; min-width: 140px;
+  opacity: 0.45; transition: all 0.2s; cursor: default;
+}
+.wizard-step--clickable { cursor: pointer; opacity: 0.7; }
+.wizard-step--clickable:hover { opacity: 0.9; }
+.wizard-step--active { opacity: 1; border-bottom-color: #922b21; }
+.wizard-step--done { opacity: 0.85; }
+.wizard-step-num {
+  width: 1.65rem; height: 1.65rem; border-radius: 999px;
+  border: 2px solid #922b21; color: #922b21;
+  font-size: 0.75rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.wizard-step--active .wizard-step-num,
+.wizard-step--done .wizard-step-num { background: #922b21; color: #fff; }
+.wizard-step-label { font-size: 0.75rem; font-weight: 700; text-align: left; line-height: 1.2; }
+.wizard-root--light .wizard-step-label { color: #374151; }
+.wizard-root--dark .wizard-step-label { color: #d1d5db; }
+
+.wizard-body {
+  display: grid; grid-template-columns: 1fr; gap: 1.25rem;
+  max-width: 1200px; margin: 0 auto; padding: 0 1.5rem 2rem;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .wizard-body { grid-template-columns: 1fr 300px; }
+}
+
+.wizard-main { min-width: 0; }
+.wizard-panel :deep(.form-section) { border: none; box-shadow: 0 8px 32px rgba(146,43,33,0.08); }
+.wizard-root--dark .wizard-panel :deep(.form-section) { box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
+
+.wizard-error {
+  margin-top: 0.75rem; text-align: center; font-size: 0.875rem; font-weight: 600;
+  color: #c0392b; padding: 0.65rem 1rem; border-radius: 0.75rem;
+  background: rgba(192,57,43,0.08); border: 1px solid rgba(192,57,43,0.2);
+}
+
+.wizard-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 1.25rem; gap: 1rem;
+}
+.wizard-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.75rem 1.35rem; border-radius: 0.75rem;
+  font-size: 0.875rem; font-weight: 700; transition: all 0.15s;
+}
+.wizard-btn--ghost {
+  border: 1.5px solid rgba(146,43,33,0.3); color: #922b21; background: transparent;
+}
+.wizard-btn--ghost:hover { background: rgba(146,43,33,0.06); }
+.wizard-btn--primary {
+  background: linear-gradient(135deg, #922b21, #c0392b); color: #fff; border: none;
+  box-shadow: 0 4px 14px rgba(146,43,33,0.35);
+}
+.wizard-btn--primary:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+.wizard-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.25s ease; }
+.slide-fade-enter-from { opacity: 0; transform: translateX(16px); }
+.slide-fade-leave-to { opacity: 0; transform: translateX(-16px); }
+</style>

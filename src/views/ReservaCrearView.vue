@@ -60,7 +60,6 @@
           :vehiculo-seleccionado="vehiculoSeleccionado"
           :cargando="cargandoVehiculos"
           :consultados="vehiculosConsultados"
-          @consultar="consultarVehiculos"
           @seleccionar="seleccionarVehiculo"
         />
 
@@ -268,10 +267,21 @@ async function consultarVehiculos() {
   } catch (e) {
     errorGlobal.value = e.response?.data?.message || "No se pudieron consultar los vehículos.";
     vehiculosDisponibles.value = [];
+    vehiculosConsultados.value = true;
   } finally {
     cargandoVehiculos.value = false;
   }
 }
+
+let consultaVehiculosTimer = null;
+watch([fechaInicio, fechaFin], () => {
+  onFechasChange();
+  clearTimeout(consultaVehiculosTimer);
+  if (!fechaInicio.value || !fechaFin.value) return;
+  consultaVehiculosTimer = setTimeout(() => {
+    if (validarFechas()) consultarVehiculos();
+  }, 400);
+});
 
 function seleccionarVehiculo(v) {
   vehiculoSeleccionado.value = v;
