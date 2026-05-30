@@ -35,10 +35,20 @@ export const useReservasStore = defineStore("reservas", () => {
     }
   }
 
-  async function fetchVehiculosDisponibles(fechaInicio, fechaFin) {
-    const res = await api.get("/admin/vehiculos", {
-      params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin },
-    });
+  async function fetchVehiculosDisponibles(fechaInicio, fechaFin, reservaId = null) {
+    try {
+      const params = { fecha_inicio: fechaInicio, fecha_fin: fechaFin }
+      if (reservaId) params.reserva_id = reservaId
+      const res = await api.get('/admin/vehiculos', { params });
+      return res.data.data ?? [];
+    } catch (e) {
+      if (e.response?.status === 404) return [];
+      throw e;
+    }
+  }
+
+  async function fetchReserva(id) {
+    const res = await api.get(`/admin/reservas/${id}`);
     return res.data.data;
   }
   async function actualizar(id, form) {
@@ -58,5 +68,5 @@ export const useReservasStore = defineStore("reservas", () => {
     }
   }
 
-  return { reservas, loading, error, fetchReservas, crear, actualizar, fetchVehiculosDisponibles };
+  return { reservas, loading, error, fetchReservas, fetchReserva, crear, actualizar, fetchVehiculosDisponibles };
 });

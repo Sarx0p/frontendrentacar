@@ -4,25 +4,23 @@
     :class="isDark ? 'form-section-dark bg-gray-900 border-gray-800' : 'form-section-light bg-white border-gray-100'"
   >
     <div>
-      <label class="field-label">Consultar disponibilidad</label>
+      <label class="field-label">Vehículos disponibles</label>
       <p class="text-xs mb-4" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-        Busca los vehículos libres según las fechas seleccionadas.
+        Se actualizan automáticamente al elegir las fechas de la reserva.
       </p>
 
-      <button
-        type="button"
-        :disabled="cargando || !fechaInicio || !fechaFin"
-        class="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-50 w-full sm:w-auto"
-        style="background:#922b21;"
-        @click="$emit('consultar')"
+      <p
+        v-if="cargando"
+        class="text-sm rounded-xl p-3 border"
+        :class="isDark ? 'text-gray-400 bg-gray-800/50 border-gray-700' : 'text-gray-600 bg-gray-50 border-gray-100'"
       >
-        <i :class="cargando ? 'pi pi-spin pi-spinner' : 'pi pi-search'"></i>
-        {{ cargando ? 'Consultando...' : 'Consultar vehículos disponibles' }}
-      </button>
+        <i class="pi pi-spin pi-spinner mr-1"></i>
+        Consultando vehículos disponibles...
+      </p>
 
       <p
-        v-if="consultados && vehiculos.length === 0 && !cargando"
-        class="text-sm rounded-xl p-3 border mt-4"
+        v-else-if="consultados && vehiculos.length === 0"
+        class="text-sm rounded-xl p-3 border"
         :class="isDark ? 'text-amber-300 bg-amber-950/30 border-amber-900/40' : 'text-amber-700 bg-amber-50 border-amber-100'"
       >
         <i class="pi pi-exclamation-triangle mr-1"></i>
@@ -133,7 +131,7 @@ defineProps({
   consultados:          { type: Boolean, default: false },
 })
 
-defineEmits(['consultar', 'seleccionar'])
+defineEmits(['seleccionar'])
 
 const { isDark } = useAppTheme()
 

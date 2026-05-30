@@ -6,10 +6,9 @@
     ]"
   >
     <div class="flex items-center gap-3 px-4 py-5 border-b border-red-900/40 min-h-[64px]">
-      <div
-        class="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
-        style="background: #c0392b"
-      ></div>
+      <div class="flex-shrink-0 w-9 h-9 rounded-lg overflow-hidden">
+        <img :src="logoElGuayabo" alt="El Guayabo RentCar" class="w-full h-full object-cover" />
+      </div>
       <div v-if="!collapsed" class="flex flex-col leading-tight">
         <span class="text-white font-extrabold text-base tracking-widest uppercase">RentaCar</span>
         <span class="text-xs font-semibold tracking-widest uppercase" style="color: #f0a500"
@@ -157,6 +156,7 @@ import { useRouter, useRoute } from "vue-router";
 import InputSwitch from "primevue/inputswitch";
 import SidebarItem from "./SidebarItem.vue";
 import { useThemeStore } from "@/stores/theme";
+import logoElGuayabo from "@/assets/logo-el-guayabo.png";
 
 const themeStore = useThemeStore();
 const darkSwitch = computed({
