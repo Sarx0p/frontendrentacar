@@ -11,9 +11,6 @@
       </div>
       <div v-if="!collapsed" class="flex flex-col leading-tight">
         <span class="text-white font-extrabold text-base tracking-widest uppercase">RentaCar</span>
-        <span class="text-xs font-semibold tracking-widest uppercase" style="color: #f0a500"
-          >Administrador</span
-        >
       </div>
       <button class="ml-auto transition-colors" style="color: #f0a500" @click="toggleCollapse">
         <i :class="collapsed ? 'pi pi-angle-right' : 'pi pi-angle-left'" class="text-base"></i>
