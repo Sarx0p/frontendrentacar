@@ -7,7 +7,7 @@
   >
     <div class="flex items-center gap-3 px-4 py-5 border-b border-red-900/40 min-h-[64px]">
       <div class="flex-shrink-0 w-9 h-9 rounded-lg overflow-hidden">
-        <img :src="logoElGuayabo" alt="El Guayabo RentCar" class="w-full h-full object-cover" />
+        <img :src="logoElGuayabo" alt="El Guayabo RentCar" class="w-full h-full object-contain" />
       </div>
       <div v-if="!collapsed" class="flex flex-col leading-tight">
         <span class="text-white font-extrabold text-base tracking-widest uppercase">RentaCar</span>
