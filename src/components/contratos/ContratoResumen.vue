@@ -27,11 +27,11 @@
 
       <div class="ticket-row" :class="{ 'ticket-row--empty': !fechaEntrega }">
         <span class="ticket-key">Entrega</span>
-        <span class="ticket-val">{{ fmt(fechaEntrega) || '—' }}</span>
+        <span class="ticket-val">{{ lineaFechaHora(fechaEntrega, horaEntrega) }}</span>
       </div>
       <div class="ticket-row" :class="{ 'ticket-row--empty': !fechaDevolucion }">
         <span class="ticket-key">Devolución</span>
-        <span class="ticket-val">{{ fmt(fechaDevolucion) || '—' }}</span>
+        <span class="ticket-val">{{ lineaFechaHora(fechaDevolucion, horaDevolucion) }}</span>
       </div>
       <div v-if="dias" class="ticket-row ticket-row--sub">
         <span class="ticket-key">Duración</span>
@@ -77,12 +77,15 @@
 </template>
 
 <script setup>
-import { nombreVehiculo, formatPrecio } from '@/utils/contratoFormatters'
+import { nombreVehiculo, formatPrecio, formatHora12 } from '@/utils/contratoFormatters'
+import { formatFecha } from '@/utils/reservaFormatters'
 
 defineProps({
   cliente:           { type: Object, default: null },
   fechaEntrega:      { type: String, default: '' },
+  horaEntrega:       { type: String, default: '' },
   fechaDevolucion:   { type: String, default: '' },
+  horaDevolucion:    { type: String, default: '' },
   vehiculo:          { type: Object, default: null },
   dias:              { type: Number, default: 0 },
   totalEstimado:     { type: Number, default: 0 },
@@ -92,9 +95,11 @@ defineProps({
 
 defineEmits(['ver-pdf'])
 
-function fmt(f) {
-  if (!f) return ''
-  return new Date(f + 'T00:00:00').toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' })
+function lineaFechaHora(fecha, hora) {
+  if (!fecha) return '—'
+  const f = formatFecha(fecha)
+  if (!hora) return f
+  return `${f}, ${formatHora12(hora)}`
 }
 </script>
 

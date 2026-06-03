@@ -181,7 +181,14 @@ import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { useContratosStore } from '@/stores/contratos'
 import { useAppTheme } from '@/composables/useAppTheme'
-import { NIVELES_COMBUSTIBLE, formatPrecio, nivelCombustiblePct, nombreVehiculo, montoPagadoContrato } from '@/utils/contratoFormatters'
+import {
+  NIVELES_COMBUSTIBLE,
+  formatPrecio,
+  formatFechaHora12,
+  nivelCombustiblePct,
+  nombreVehiculo,
+  montoPagadoContrato,
+} from '@/utils/contratoFormatters'
 
 const route = useRoute()
 const router = useRouter()
@@ -258,8 +265,7 @@ onMounted(async () => {
 })
 
 function fmtFecha(v) {
-  if (!v) return '—'
-  return new Date(v).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return formatFechaHora12(v)
 }
 
 function onComb(idx) { nivelRecepcion.value = NIVELES_COMBUSTIBLE[Number(idx)]?.value || '1/2' }

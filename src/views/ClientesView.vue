@@ -145,6 +145,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import Swal from 'sweetalert2'
+import { formatFecha, fechaSoloISO, fechaHoyLocal } from '@/utils/reservaFormatters'
 import ClientesModal from '@/components/clientes/ClientesModal.vue'
 import { useClientesStore } from '@/stores/clientes'
 import { useAppTheme } from '@/composables/useAppTheme'
@@ -184,12 +186,31 @@ function abrirModalEditar(cliente) {
 }
 
 async function guardarCliente(form) {
-  if (modoEdicion.value) {
-    await store.actualizar(form)
-  } else {
-    await store.crear(form)
+  try {
+    if (modoEdicion.value) {
+      await store.actualizar(form)
+    } else {
+      await store.crear(form)
+      await Swal.fire({
+        icon: 'success',
+        title: '¡Cliente registrado!',
+        text: 'El cliente se creó correctamente.',
+        confirmButtonColor: '#c0392b',
+        background: isDark.value ? '#1f2937' : '#fff',
+        color: isDark.value ? '#f3f4f6' : '#111827',
+      })
+    }
+    modalAbierto.value = false
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error al registrar cliente',
+      text: e.response?.data?.message || store.error || 'No se pudo guardar el cliente.',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
   }
-  modalAbierto.value = false
 }
 
 const colores = ['#c0392b', '#f0a500', '#2563eb', '#16a34a', '#7c3aed', '#0891b2']
@@ -203,12 +224,8 @@ function initials(nombre) {
   if (!nombre) return '?'
   return nombre.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 }
-function formatFecha(fecha) {
-  if (!fecha) return '—'
-  return new Date(fecha).toLocaleDateString('es-SV')
-}
 function licenciaVigente(vencimiento) {
-  if (!vencimiento) return false
-  return new Date(vencimiento) > new Date()
+  const iso = fechaSoloISO(vencimiento)
+  return iso ? iso >= fechaHoyLocal() : false
 }
 </script>

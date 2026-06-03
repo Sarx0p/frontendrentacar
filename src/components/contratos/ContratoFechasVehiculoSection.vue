@@ -16,7 +16,7 @@
       <div>
         <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Entrega — hora</label>
         <select :value="horaEntrega" class="field-input field-input--plain" @change="$emit('update:horaEntrega', $event.target.value)">
-          <option v-for="h in HORAS_PERMITIDAS" :key="'e'+h" :value="h">{{ h }}</option>
+          <option v-for="op in HORAS_PERMITIDAS_OPCIONES" :key="'e' + op.value" :value="op.value">{{ op.label }}</option>
         </select>
       </div>
       <div>
@@ -29,7 +29,7 @@
       <div>
         <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Devolución — hora</label>
         <select :value="horaDevolucion" class="field-input field-input--plain" @change="$emit('update:horaDevolucion', $event.target.value)">
-          <option v-for="h in HORAS_PERMITIDAS" :key="'d'+h" :value="h">{{ h }}</option>
+          <option v-for="op in HORAS_PERMITIDAS_OPCIONES" :key="'d' + op.value" :value="op.value">{{ op.label }}</option>
         </select>
       </div>
     </div>
@@ -77,7 +77,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
-import { HORAS_PERMITIDAS, nombreVehiculo, formatPrecio } from '@/utils/contratoFormatters'
+import { HORAS_PERMITIDAS_OPCIONES, nombreVehiculo, formatPrecio } from '@/utils/contratoFormatters'
 
 defineProps({
   fechaEntrega:    { type: String, default: '' },
