@@ -189,6 +189,7 @@ import Swal from 'sweetalert2'
 import ReservaEditarModal from '@/components/reservas/ReservaEditarModal.vue'
 import { useReservasStore } from '@/stores/reservas'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { formatFecha } from '@/utils/reservaFormatters'
 
 const { isDark } = useAppTheme()
 const store = useReservasStore()
@@ -267,12 +268,6 @@ function nombreVehiculo(v) {
   const marca = v.modelo?.marca?.nombre
   const modelo = v.modelo?.nombre
   return [marca, modelo].filter(Boolean).join(' ') || v.placa
-}
-
-function formatFecha(fecha) {
-  if (!fecha) return '—'
-  const d = new Date(typeof fecha === 'string' && !fecha.includes('T') ? fecha + 'T00:00:00' : fecha)
-  return d.toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 function formatFechaHora(fecha) {

@@ -1,9 +1,16 @@
 <template>
   <section class="form-section rounded-2xl border shadow-sm p-5 sm:p-6" :class="shellClass">
-    <label class="field-label">Cliente (buscar por DUI)</label>
+    <label class="field-label">Cliente</label>
     <div class="relative">
-      <i class="pi pi-id-card input-icon"></i>
-      <input v-model="duiBusqueda" type="text" placeholder="00000000-0" class="field-input" @input="onBuscar" />
+      <i class="pi pi-search input-icon"></i>
+      <input
+        v-model="terminoBusqueda"
+        type="text"
+        placeholder="Buscar por nombre, DUI o teléfono..."
+        class="field-input"
+        :disabled="!!cliente"
+        @input="onBuscar"
+      />
     </div>
 
     <div
@@ -26,20 +33,41 @@
       </p>
     </div>
 
-    <p v-else-if="buscando" class="text-sm mt-3" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-      <i class="pi pi-spin pi-spinner"></i> Buscando...
-    </p>
-    <p v-else-if="duiBusqueda.trim() && !cliente" class="text-xs mt-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-      No encontrado. Registra al cliente desde el módulo Clientes.
-    </p>
+    <template v-else>
+      <div v-if="buscando" class="text-sm mt-3" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+        <i class="pi pi-spin pi-spinner"></i> Buscando...
+      </div>
+
+      <div v-else-if="resultados.length > 0" class="mt-3 space-y-2 max-h-52 overflow-y-auto">
+        <button
+          v-for="c in resultados"
+          :key="c.id"
+          type="button"
+          class="w-full flex items-center gap-3 p-3 rounded-xl text-left border transition-all hover:shadow-sm"
+          :class="isDark ? 'border-gray-700 bg-gray-800/60 hover:bg-gray-800' : 'border-gray-100 bg-gray-50 hover:bg-white'"
+          @click="seleccionar(c)"
+        >
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-sm truncate" :class="isDark ? 'text-gray-100' : 'text-gray-900'">{{ c.nombre }}</p>
+            <p class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ c.dui }} · {{ c.telefono }}</p>
+          </div>
+          <i class="pi pi-chevron-right text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'"></i>
+        </button>
+      </div>
+
+      <p v-else-if="terminoBusqueda.trim()" class="text-xs mt-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+        No encontrado. Registra al cliente desde el módulo Clientes.
+      </p>
+    </template>
   </section>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useClientesStore } from '@/stores/clientes'
 import { documentosVigentes } from '@/utils/contratoFormatters'
+import { formatFecha } from '@/utils/reservaFormatters'
 
 const props = defineProps({ modelValue: { type: Object, default: null } })
 const emit = defineEmits(['update:modelValue'])
@@ -47,31 +75,61 @@ const emit = defineEmits(['update:modelValue'])
 const { isDark } = useAppTheme()
 const clientesStore = useClientesStore()
 
-const duiBusqueda = ref('')
-const cliente = computed({ get: () => props.modelValue, set: (v) => emit('update:modelValue', v) })
+const terminoBusqueda = ref('')
+const resultados = ref([])
+const cliente = computed({
+  get: () => props.modelValue,
+  set: (v) => emit('update:modelValue', v),
+})
 const buscando = ref(false)
 let timer = null
+let busquedaActiva = 0
 
-const shellClass = computed(() => isDark.value ? 'form-section-dark bg-gray-900 border-gray-800' : 'form-section-light bg-white border-gray-100')
+const shellClass = computed(() =>
+  isDark.value ? 'form-section-dark bg-gray-900 border-gray-800' : 'form-section-light bg-white border-gray-100',
+)
 const alertaDocs = computed(() => documentosVigentes(cliente.value))
-
-watch(cliente, (c) => { if (c?.dui) duiBusqueda.value = c.dui })
 
 function onBuscar() {
   clearTimeout(timer)
-  cliente.value = null
-  if (!duiBusqueda.value.trim()) return
+  resultados.value = []
+
+  const term = terminoBusqueda.value.trim()
+  if (!term) {
+    buscando.value = false
+    return
+  }
+
+  const id = ++busquedaActiva
   timer = setTimeout(async () => {
     buscando.value = true
-    const res = await clientesStore.buscarClientes(duiBusqueda.value.trim())
-    const exacto = res.find((c) => c.dui === duiBusqueda.value.trim()) || res[0]
-    if (exacto) cliente.value = exacto
-    buscando.value = false
+    try {
+      const res = await clientesStore.buscarClientes(term)
+      if (id !== busquedaActiva || term !== terminoBusqueda.value.trim()) return
+      resultados.value = res
+    } finally {
+      if (id === busquedaActiva) buscando.value = false
+    }
   }, 350)
 }
 
-function limpiar() { cliente.value = null; duiBusqueda.value = '' }
-function formatFecha(f) { if (!f) return '—'; return new Date(f + 'T00:00:00').toLocaleDateString('es-SV') }
+function seleccionar(c) {
+  busquedaActiva++
+  clearTimeout(timer)
+  cliente.value = c
+  terminoBusqueda.value = ''
+  resultados.value = []
+  buscando.value = false
+}
+
+function limpiar() {
+  busquedaActiva++
+  clearTimeout(timer)
+  cliente.value = null
+  terminoBusqueda.value = ''
+  resultados.value = []
+  buscando.value = false
+}
 
 defineExpose({ alertaDocs })
 </script>
@@ -80,6 +138,7 @@ defineExpose({ alertaDocs })
 .field-label { display:block; font-size:0.7rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.5rem; }
 .input-icon { position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); font-size:0.875rem; pointer-events:none; }
 .field-input { width:100%; padding:0.75rem 1rem 0.75rem 2.5rem; border-radius:0.75rem; font-size:0.875rem; outline:none; }
+.field-input:disabled { opacity:0.7; cursor:not-allowed; }
 .form-section-light .field-label { color:#4b5563; }
 .form-section-light .input-icon { color:#9ca3af; }
 .form-section-light .field-input { border:1px solid #e5e7eb; background:#f9fafb; color:#1f2937; }

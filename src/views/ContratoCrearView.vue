@@ -104,7 +104,9 @@
       <ContratoResumen
         :cliente="cliente"
         :fecha-entrega="fechaEntrega"
+        :hora-entrega="horaEntrega"
         :fecha-devolucion="fechaDevolucion"
+        :hora-devolucion="horaDevolucion"
         :vehiculo="vehiculoSel"
         :dias="dias"
         :total-estimado="totalEstimado"

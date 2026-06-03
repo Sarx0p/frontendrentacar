@@ -1,5 +1,49 @@
 export const HORAS_PERMITIDAS = ['06:00', '06:30', '07:00', '18:00', '18:30', '19:00']
 
+/** Hora 24h (HH:mm) → formato 12h legible, ej. "6:00 a. m." */
+export function formatHora12(hora24) {
+  if (!hora24 || !/^\d{1,2}:\d{2}$/.test(hora24)) return '—'
+  const [h, m] = hora24.split(':').map((x) => parseInt(x, 10))
+  const d = new Date(2000, 0, 1, h, m)
+  return d.toLocaleTimeString('es-SV', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+export const HORAS_PERMITIDAS_OPCIONES = HORAS_PERMITIDAS.map((value) => ({
+  value,
+  label: formatHora12(value),
+}))
+
+/** Fecha y hora de contrato (API) en formato local 12h. */
+export function formatFechaHora12(valor) {
+  if (!valor) return '—'
+  const s = String(valor)
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
+  if (match) {
+    const y = parseInt(match[1], 10)
+    const mo = parseInt(match[2], 10)
+    const d = parseInt(match[3], 10)
+    const hh = parseInt(match[4], 10)
+    const mm = parseInt(match[5], 10)
+    const dt = new Date(y, mo - 1, d, hh, mm)
+    return dt.toLocaleString('es-SV', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+  }
+  return new Date(valor).toLocaleString('es-SV', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
 export const NIVELES_COMBUSTIBLE = [
   { value: 'VACIO', label: 'Vacío', pct: 0 },
   { value: '1/4', label: '1/4', pct: 25 },

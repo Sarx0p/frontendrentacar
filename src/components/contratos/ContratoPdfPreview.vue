@@ -53,7 +53,7 @@
 </template>
 
 <script setup>
-import { nombreVehiculo, formatPrecio } from '@/utils/contratoFormatters'
+import { nombreVehiculo, formatPrecio, formatFechaHora12 } from '@/utils/contratoFormatters'
 
 defineProps({
   visible:  { type: Boolean, default: false },
@@ -63,8 +63,7 @@ defineProps({
 defineEmits(['cerrar'])
 
 function fmt(v) {
-  if (!v) return '—'
-  return new Date(v).toLocaleString('es-SV')
+  return formatFechaHora12(v)
 }
 
 function imprimir() {

@@ -179,7 +179,16 @@ import ContratoPdfPreview from '@/components/contratos/ContratoPdfPreview.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { usePagosStore } from '@/stores/pagos'
 import { useAppTheme } from '@/composables/useAppTheme'
-import { nombreVehiculo, formatPrecio, labelEstadoContrato, labelEstadoPago, totalFinalContrato, montoExtrasContrato, montoPagadoContrato } from '@/utils/contratoFormatters'
+import {
+  nombreVehiculo,
+  formatPrecio,
+  formatFechaHora12,
+  labelEstadoContrato,
+  labelEstadoPago,
+  totalFinalContrato,
+  montoExtrasContrato,
+  montoPagadoContrato,
+} from '@/utils/contratoFormatters'
 
 const { isDark } = useAppTheme()
 const store = useContratosStore()
@@ -214,8 +223,7 @@ const contratosFiltrados = computed(() => {
 onMounted(() => store.fetchContratos())
 
 function fmtFecha(v) {
-  if (!v) return '—'
-  return new Date(v).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' })
+  return formatFechaHora12(v)
 }
 
 function estadoContratoStyle(estado) {
