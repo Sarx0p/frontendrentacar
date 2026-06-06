@@ -33,6 +33,14 @@
     </div>
 
     <!-- Tabla -->
+    <p
+      v-if="store.error"
+      class="mb-4 text-sm font-medium rounded-xl border px-4 py-3"
+      :class="isDark ? 'text-red-300 bg-red-950/30 border-red-900/50' : 'text-red-700 bg-red-50 border-red-200'"
+    >
+      <i class="pi pi-exclamation-circle mr-1"></i>{{ store.error }}
+    </p>
+
     <div
       class="rounded-2xl border shadow-sm overflow-hidden transition-colors"
       :class="isDark

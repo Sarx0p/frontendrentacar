@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import { esAdministrador } from '@/utils/usuario'
 
 export const useUsuariosStore = defineStore('usuarios', () => {
 
@@ -16,8 +17,12 @@ export const useUsuariosStore = defineStore('usuarios', () => {
     try {
       const res = await api.get('/admin/usuarios')
       usuarios.value = res.data.data.data
-    } catch {
-      error.value = 'Error al cargar usuarios.'
+    } catch (e) {
+      if (e.response?.status === 403) {
+        error.value = 'No tienes permiso para ver usuarios. Solo los administradores pueden acceder a este módulo.'
+      } else {
+        error.value = e.response?.data?.message || 'Error al cargar usuarios.'
+      }
     } finally {
       loading.value = false
     }
@@ -47,12 +52,14 @@ export const useUsuariosStore = defineStore('usuarios', () => {
     loading.value = true
     error.value   = null
     try {
-      const res = await api.put(`/admin/usuarios/${form.id}`, {
+      const payload = {
         nombre:   form.nombre,
         apellido: form.apellido,
         correo:   form.correo,
-        rol:      form.rol,
-      })
+      }
+      if (form.rol) payload.rol = form.rol
+
+      const res = await api.put(`/admin/usuarios/${form.id}`, payload)
       const idx = usuarios.value.findIndex(u => u.id === form.id)
       if (idx !== -1) usuarios.value[idx] = res.data.data
     } catch (e) {
@@ -65,6 +72,11 @@ export const useUsuariosStore = defineStore('usuarios', () => {
 
   async function cambiarEstado(id, nuevoEstado) {
     error.value = null
+    const usuario = usuarios.value.find((u) => u.id === id)
+    if (usuario && esAdministrador(usuario)) {
+      error.value = 'No se puede cambiar el estado de un usuario administrador.'
+      return
+    }
     try {
       const res = await api.delete(`/admin/usuarios/${id}`, {
         data: { estado: nuevoEstado }

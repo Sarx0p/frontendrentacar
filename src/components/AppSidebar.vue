@@ -103,6 +103,7 @@
           Admin
         </p>
         <SidebarItem
+          v-if="authStore.isAdmin"
           icon="pi-id-card"
           label="Usuarios"
           :collapsed="collapsed"
@@ -110,6 +111,7 @@
           @click="navegar('usuarios')"
         />
         <SidebarItem
+          v-if="authStore.isAdmin"
           icon="pi-lock"
           label="Permisos"
           :collapsed="collapsed"
@@ -153,9 +155,11 @@ import { useRouter, useRoute } from "vue-router";
 import InputSwitch from "primevue/inputswitch";
 import SidebarItem from "./SidebarItem.vue";
 import { useThemeStore } from "@/stores/theme";
+import { useAuthStore } from "@/stores/auth";
 import logoElGuayabo from "@/assets/logo-el-guayabo.png";
 
 const themeStore = useThemeStore();
+const authStore = useAuthStore();
 const darkSwitch = computed({
   get: () => themeStore.isDark,
   set: (v) => themeStore.setDark(v),
