@@ -19,6 +19,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => Boolean(token.value))
 
+  const userRoles = computed(() => {
+    const roles = user.value?.roles || []
+    return roles.map((r) => (typeof r === 'string' ? r : r?.name)).filter(Boolean)
+  })
+
+  const isAdmin = computed(() => userRoles.value.includes('ADMINISTRADOR'))
+
   async function login(correo, password, remember = false) {
     const res = await api.post('/auth/login', { correo, password })
 
@@ -48,5 +55,5 @@ export const useAuthStore = defineStore('auth', () => {
     storage.setItem('user', JSON.stringify(res.data))
   }
 
-  return { token, user, isAuthenticated, login, logout, me }
+  return { token, user, userRoles, isAdmin, isAuthenticated, login, logout, me }
 })

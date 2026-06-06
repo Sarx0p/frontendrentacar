@@ -85,6 +85,7 @@
               <!-- Estado -->
               <td class="px-5 py-4">
                 <select
+                  v-if="!esAdministrador(usuario)"
                   :value="usuario.estado"
                   @change="$emit('cambiar-estado', usuario, $event.target.value)"
                   class="text-xs font-bold px-2.5 py-1.5 rounded-full border-0 outline-none cursor-pointer transition-all"
@@ -94,6 +95,14 @@
                   <option value="INACTIVO">Inactivo</option>
                   <option value="BLOQUEADO">Bloqueado</option>
                 </select>
+                <span
+                  v-else
+                  class="text-xs font-bold px-2.5 py-1.5 rounded-full inline-block"
+                  :style="estadoStyle(usuario.estado)"
+                  title="El estado de un administrador no se puede modificar"
+                >
+                  {{ labelEstado(usuario.estado) }}
+                </span>
               </td>
 
               <!-- Acciones -->
@@ -128,6 +137,7 @@
 
 <script setup>
 import { useAppTheme } from '@/composables/useAppTheme'
+import { esAdministrador } from '@/utils/usuario'
 
 const { isDark } = useAppTheme()
 
@@ -183,5 +193,10 @@ function estadoStyle(estado) {
     'BLOQUEADO': 'background:#fef9c3; color:#854d0e;',
   }
   return map[estado] || 'background:#f3f4f6; color:#4b5563;'
+}
+
+function labelEstado(estado) {
+  const map = { ACTIVO: 'Activo', INACTIVO: 'Inactivo', BLOQUEADO: 'Bloqueado' }
+  return map[estado] || estado
 }
 </script>

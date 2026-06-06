@@ -29,8 +29,10 @@ const router = createRouter({
           path: 'usuarios',
           name: 'usuarios',
           component: () => import('../views/UsuariosView.vue'),
+          meta: { requiresAdmin: true },
         },
         { path: 'clientes', name: 'clientes', component: () => import('../views/ClientesView.vue') },
+        { path: 'vehiculos', name: 'vehiculos', component: () => import('../views/VehiculosView.vue') },
         { path: 'reservas', name: 'reservas', component: () => import('../views/ReservasView.vue') },
         { path: 'reservas/nueva', name: 'reservas-nueva', component: () => import('../views/ReservaCrearView.vue') },
         { path: 'contratos', name: 'contratos', component: () => import('../views/ContratosView.vue') },
@@ -54,6 +56,10 @@ router.beforeEach((to) => {
   }
 
   if (isGuestRoute && authStore.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+
+  if (to.matched.some((record) => record.meta.requiresAdmin) && !authStore.isAdmin) {
     return { name: 'dashboard' }
   }
 })
