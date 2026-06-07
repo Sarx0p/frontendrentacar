@@ -248,7 +248,10 @@ watch([search, filtroEstado], () => {
   }, 350)
 })
 
-onMounted(() => store.fetchVehiculos())
+onMounted(() => {
+  store.fetchVehiculos()
+  store.fetchCatalogos()
+})
 
 const vehiculosFiltrados = computed(() => vehiculos.value)
 
@@ -264,6 +267,8 @@ function abrirCatalogo(tipo) {
 }
 
 async function onCatalogoGuardado({ tipo }) {
+  store.invalidarCatalogos(tipo)
+  await store.fetchCatalogos(true)
   const labels = {
     marca: 'Marca registrada',
     categoria: 'Categoría registrada',
