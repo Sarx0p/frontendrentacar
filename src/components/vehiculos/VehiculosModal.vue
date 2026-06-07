@@ -148,7 +148,7 @@
                         :disabled="!marcaId"
                       >
                         <option value="">Seleccionar</option>
-                        <option v-for="m in modelos" :key="m.id" :value="m.id">{{ m.nombre }}</option>
+                        <option v-for="m in modelosDisponibles" :key="m.id" :value="m.id">{{ m.nombre }}</option>
                       </select>
                       <p v-if="errors.modelo_id" class="veh-error">{{ errors.modelo_id }}</p>
                     </div>
@@ -253,7 +253,7 @@
                   v-else
                   type="button"
                   class="veh-btn veh-btn--submit flex-1"
-                  :disabled="loading || cargandoCatalogos"
+                  :disabled="loading"
                   @click="handleGuardar"
                 >
                   <i v-if="loading" class="pi pi-spin pi-spinner"></i>
@@ -271,7 +271,8 @@
 
 <script setup>
 import { ref, reactive, watch, computed } from 'vue'
-import api from '@/services/api'
+import { storeToRefs } from 'pinia'
+import { useVehiculosStore } from '@/stores/vehiculos'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { ESTADOS_VEHICULO_NUEVO, ESTADOS_VEHICULO_TODOS, labelEstadoVehiculo } from '@/utils/vehiculoFormatters'
 
@@ -284,6 +285,8 @@ const props = defineProps({
 const emit = defineEmits(['guardar', 'cerrar'])
 
 const { isDark } = useAppTheme()
+const vehiculosStore = useVehiculosStore()
+const { marcas, categorias, propietarios, modelosPorMarca } = storeToRefs(vehiculosStore)
 
 const paso = ref(1)
 const pasos = [
@@ -302,14 +305,16 @@ const coloresRapidos = [
 
 const anioMax = new Date().getFullYear() + 1
 const loading = ref(false)
-const cargandoCatalogos = ref(false)
 const globalError = ref('')
 const marcaId = ref('')
-const marcas = ref([])
 const modelos = ref([])
-const categorias = ref([])
-const propietarios = ref([])
 const categoriaOriginalId = ref(null)
+const bloquearMarcaWatch = ref(false)
+
+const modelosDisponibles = computed(() => {
+  if (!marcaId.value) return modelos.value
+  return modelosPorMarca.value[String(marcaId.value)] ?? modelos.value
+})
 
 const form = reactive({
   id: null,
@@ -335,17 +340,30 @@ const errors = reactive({
 const estadosForm = computed(() => (props.modoEdicion ? ESTADOS_VEHICULO_TODOS : ESTADOS_VEHICULO_NUEVO))
 
 const previewNombre = computed(() => {
-  const mod = modelos.value.find((m) => m.id == form.modelo_id)
+  const mod = modelosDisponibles.value.find((m) => m.id == form.modelo_id)
   const mar = marcas.value.find((m) => m.id == marcaId.value)
   if (mod && mar) return `${mar.nombre} ${mod.nombre}`
   if (mod) return mod.nombre
+  if (props.modoEdicion && props.vehiculo?.modelo) {
+    const m = props.vehiculo.modelo
+    return [m.marca?.nombre, m.nombre].filter(Boolean).join(' ') || 'Vehículo'
+  }
   return 'Vehículo nuevo'
 })
 
-const previewCategoria = computed(() => categorias.value.find((c) => c.id == form.categoria_id)?.nombre || '')
-const previewPropietario = computed(() => propietarios.value.find((p) => p.id == form.propietario_id)?.nombre || '')
+const previewCategoria = computed(() =>
+  categorias.value.find((c) => c.id == form.categoria_id)?.nombre
+  || props.vehiculo?.categoria?.nombre
+  || '',
+)
+const previewPropietario = computed(() =>
+  propietarios.value.find((p) => p.id == form.propietario_id)?.nombre
+  || props.vehiculo?.propietario?.nombre
+  || '',
+)
 const previewPrecio = computed(() => {
   const c = categorias.value.find((cat) => cat.id == form.categoria_id)
+    || (props.vehiculo?.categoria?.id == form.categoria_id ? props.vehiculo.categoria : null)
   return c ? Number(c.precio_dia).toFixed(2) : null
 })
 
@@ -385,70 +403,72 @@ function siguientePaso() {
   if (validarPaso1()) paso.value = 2
 }
 
-async function cargarCatalogos() {
-  cargandoCatalogos.value = true
-  try {
-    const [marcasRes, catsRes, propsRes] = await Promise.allSettled([
-      api.get('/marcas'),
-      api.get('/categorias'),
-      api.get('/admin/propietarios'),
-    ])
-    marcas.value = marcasRes.status === 'fulfilled' ? (marcasRes.value.data.data ?? []) : []
-    categorias.value = catsRes.status === 'fulfilled' ? (catsRes.value.data.data ?? []) : []
-    propietarios.value = propsRes.status === 'fulfilled' ? (propsRes.value.data.data ?? []) : []
-  } finally {
-    cargandoCatalogos.value = false
+function resetForm() {
+  categoriaOriginalId.value = null
+  marcaId.value = ''
+  modelos.value = []
+  Object.assign(form, {
+    id: null, placa: '', color: '', anio: '', modelo_id: '',
+    categoria_id: '', propietario_id: '', estado: 'DISPONIBLE',
+  })
+}
+
+function aplicarVehiculoAlForm(vehiculo) {
+  categoriaOriginalId.value = vehiculo.categoria_id || vehiculo.categoria?.id || null
+  Object.assign(form, {
+    id: vehiculo.id,
+    placa: vehiculo.placa || '',
+    color: vehiculo.color || '',
+    anio: vehiculo.anio || '',
+    modelo_id: vehiculo.modelo_id || '',
+    categoria_id: vehiculo.categoria_id || vehiculo.categoria?.id || '',
+    propietario_id: vehiculo.propietario_id || vehiculo.propietario?.id || '',
+    estado: vehiculo.estado || 'DISPONIBLE',
+  })
+  if (vehiculo.modelo) {
+    modelos.value = [{ ...vehiculo.modelo }]
   }
 }
 
-async function cargarModelos(mId) {
-  if (!mId) { modelos.value = []; return }
-  try {
-    const res = await api.get(`/marcas/${mId}/modelos`)
-    modelos.value = res.data.data ?? []
-  } catch {
-    modelos.value = []
+async function prepararModal() {
+  paso.value = 1
+  globalError.value = ''
+  Object.keys(errors).forEach((k) => { errors[k] = '' })
+
+  if (props.modoEdicion && props.vehiculo) {
+    aplicarVehiculoAlForm(props.vehiculo)
+    const mId = props.vehiculo.modelo?.marca_id || props.vehiculo.modelo?.marca?.id || ''
+    const modeloId = props.vehiculo.modelo_id || ''
+    if (mId) {
+      bloquearMarcaWatch.value = true
+      marcaId.value = mId
+      bloquearMarcaWatch.value = false
+    }
+    vehiculosStore.fetchCatalogos()
+    vehiculosStore.fetchModelos(mId).then((lista) => {
+      if (lista.length) modelos.value = lista
+      if (modeloId) form.modelo_id = modeloId
+    })
+  } else {
+    resetForm()
+    vehiculosStore.fetchCatalogos()
   }
 }
 
 watch(marcaId, async (id) => {
+  if (bloquearMarcaWatch.value) return
   form.modelo_id = ''
-  await cargarModelos(id)
+  if (!id) {
+    modelos.value = []
+    return
+  }
+  modelos.value = await vehiculosStore.fetchModelos(id)
 })
 
 watch(
   () => props.visible,
-  async (val) => {
-    if (!val) return
-    paso.value = 1
-    globalError.value = ''
-    Object.keys(errors).forEach((k) => { errors[k] = '' })
-    await cargarCatalogos()
-
-    if (props.modoEdicion && props.vehiculo) {
-      categoriaOriginalId.value = props.vehiculo.categoria_id || props.vehiculo.categoria?.id || null
-      Object.assign(form, {
-        id: props.vehiculo.id,
-        placa: props.vehiculo.placa || '',
-        color: props.vehiculo.color || '',
-        anio: props.vehiculo.anio || '',
-        modelo_id: props.vehiculo.modelo_id || '',
-        categoria_id: props.vehiculo.categoria_id || '',
-        propietario_id: props.vehiculo.propietario_id || '',
-        estado: props.vehiculo.estado || 'DISPONIBLE',
-      })
-      marcaId.value = props.vehiculo.modelo?.marca_id || props.vehiculo.modelo?.marca?.id || ''
-      if (marcaId.value) await cargarModelos(marcaId.value)
-      form.modelo_id = props.vehiculo.modelo_id || ''
-    } else {
-      categoriaOriginalId.value = null
-      marcaId.value = ''
-      modelos.value = []
-      Object.assign(form, {
-        id: null, placa: '', color: '', anio: '', modelo_id: '',
-        categoria_id: '', propietario_id: '', estado: 'DISPONIBLE',
-      })
-    }
+  (val) => {
+    if (val) prepararModal()
   },
 )
 

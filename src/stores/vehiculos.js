@@ -8,6 +8,13 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
   const error = ref(null)
   const estadosOpciones = ref([])
 
+  const marcas = ref([])
+  const categorias = ref([])
+  const propietarios = ref([])
+  const modelosPorMarca = ref({})
+  const catalogosCargando = ref(false)
+  let catalogosPromesa = null
+
   async function fetchVehiculos(params = {}) {
     loading.value = true
     error.value = null
@@ -21,6 +28,60 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  async function fetchCatalogos(force = false) {
+    if (!force && marcas.value.length && categorias.value.length) {
+      return { marcas: marcas.value, categorias: categorias.value, propietarios: propietarios.value }
+    }
+    if (catalogosPromesa && !force) return catalogosPromesa
+
+    catalogosCargando.value = true
+    catalogosPromesa = (async () => {
+      try {
+        const [marcasRes, catsRes, propsRes] = await Promise.allSettled([
+          api.get('/marcas'),
+          api.get('/categorias'),
+          api.get('/admin/propietarios'),
+        ])
+        marcas.value = marcasRes.status === 'fulfilled' ? (marcasRes.value.data.data ?? []) : []
+        categorias.value = catsRes.status === 'fulfilled' ? (catsRes.value.data.data ?? []) : []
+        propietarios.value = propsRes.status === 'fulfilled' ? (propsRes.value.data.data ?? []) : []
+        return { marcas: marcas.value, categorias: categorias.value, propietarios: propietarios.value }
+      } finally {
+        catalogosCargando.value = false
+        catalogosPromesa = null
+      }
+    })()
+
+    return catalogosPromesa
+  }
+
+  async function fetchModelos(marcaId, force = false) {
+    if (!marcaId) return []
+    const key = String(marcaId)
+    if (!force && modelosPorMarca.value[key]?.length) {
+      return modelosPorMarca.value[key]
+    }
+    try {
+      const res = await api.get(`/marcas/${marcaId}/modelos`)
+      const lista = res.data.data ?? []
+      modelosPorMarca.value[key] = lista
+      return lista
+    } catch {
+      modelosPorMarca.value[key] = []
+      return []
+    }
+  }
+
+  function invalidarCatalogos(tipo) {
+    if (!tipo || tipo === 'marca') {
+      marcas.value = []
+      modelosPorMarca.value = {}
+    }
+    if (!tipo || tipo === 'categoria') categorias.value = []
+    if (!tipo || tipo === 'propietario') propietarios.value = []
+    if (!tipo || tipo === 'modelo') modelosPorMarca.value = {}
   }
 
   async function crear(form) {
@@ -54,5 +115,21 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
     }
   }
 
-  return { vehiculos, loading, error, estadosOpciones, fetchVehiculos, crear, actualizar }
+  return {
+    vehiculos,
+    loading,
+    error,
+    estadosOpciones,
+    marcas,
+    categorias,
+    propietarios,
+    modelosPorMarca,
+    catalogosCargando,
+    fetchVehiculos,
+    fetchCatalogos,
+    fetchModelos,
+    invalidarCatalogos,
+    crear,
+    actualizar,
+  }
 })

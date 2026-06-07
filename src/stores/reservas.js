@@ -36,14 +36,16 @@ export const useReservasStore = defineStore("reservas", () => {
   }
 
   async function fetchVehiculosDisponibles(fechaInicio, fechaFin, reservaId = null) {
+    if (!fechaInicio || !fechaFin) return []
     try {
       const params = { fecha_inicio: fechaInicio, fecha_fin: fechaFin }
       if (reservaId) params.reserva_id = reservaId
-      const res = await api.get('/admin/vehiculos', { params });
-      return res.data.data ?? [];
+      const res = await api.get('/admin/vehiculos/disponibles', { params })
+      const payload = res.data.data
+      return Array.isArray(payload) ? payload : (payload?.data ?? [])
     } catch (e) {
-      if (e.response?.status === 404) return [];
-      throw e;
+      if (e.response?.status === 404) return []
+      throw e
     }
   }
 
