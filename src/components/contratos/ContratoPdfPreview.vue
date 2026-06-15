@@ -1,50 +1,62 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="fixed inset-0 z-[60] overflow-y-auto bg-black/50 p-4" @click.self="$emit('cerrar')">
-      <div class="max-w-3xl mx-auto my-4 bg-white rounded-lg shadow-2xl print:shadow-none print:my-0" id="contrato-pdf">
-        <div class="bg-red-800 text-white px-6 py-4 text-center print:bg-red-800">
-          <h1 class="text-xl font-extrabold tracking-wide">RENTACAR EL GUAYABO</h1>
-          <p class="text-sm opacity-90">Contrato de arrendamiento de vehículo</p>
-          <p class="text-xs mt-1 font-mono">{{ contrato?.numero_contrato }}</p>
-        </div>
-        <div class="p-6 space-y-4 text-sm text-gray-800">
-          <section>
-            <h2 class="font-bold border-b border-gray-300 pb-1 mb-2">DATOS DEL CLIENTE</h2>
-            <p><strong>Nombre:</strong> {{ contrato?.reserva?.cliente?.nombre }}</p>
-            <p><strong>DUI:</strong> {{ contrato?.reserva?.cliente?.dui }}</p>
-            <p><strong>Teléfono:</strong> {{ contrato?.reserva?.cliente?.telefono }}</p>
-          </section>
-          <section>
-            <h2 class="font-bold border-b border-gray-300 pb-1 mb-2">VEHÍCULO</h2>
-            <p><strong>Vehículo:</strong> {{ nombreVehiculo(contrato?.reserva?.vehiculo) }}</p>
-            <p><strong>Placa:</strong> {{ contrato?.reserva?.vehiculo?.placa }} · <strong>Color:</strong> {{ contrato?.reserva?.vehiculo?.color }}</p>
-          </section>
-          <section>
-            <h2 class="font-bold border-b border-gray-300 pb-1 mb-2">PERIODO DE RENTA</h2>
-            <p><strong>Entrega:</strong> {{ fmt(contrato?.fecha_hora_entrega) }}</p>
-            <p><strong>Devolución:</strong> {{ fmt(contrato?.fecha_hora_devolucion) }}</p>
-            <p><strong>Días acordados:</strong> {{ contrato?.dias_acordados }}</p>
-          </section>
-          <section>
-            <h2 class="font-bold border-b border-gray-300 pb-1 mb-2">TARIFAS</h2>
-            <p><strong>Precio por día:</strong> ${{ formatPrecio(contrato?.precio_por_dia) }}</p>
-            <p><strong>Descuento:</strong> ${{ formatPrecio(contrato?.monto_descuento) }}</p>
-            <p class="text-lg font-extrabold text-red-800"><strong>TOTAL:</strong> ${{ formatPrecio(contrato?.monto_total_renta) }}</p>
-          </section>
-          <section>
-            <h2 class="font-bold border-b border-gray-300 pb-1 mb-2">ENTREGA — ESTADO DEL VEHÍCULO</h2>
-            <p><strong>Combustible:</strong> {{ contrato?.nivel_combustible_entrega }}</p>
-            <p><strong>Observaciones:</strong> {{ contrato?.observaciones_entrega || 'Sin observaciones' }}</p>
-          </section>
-          <div class="grid grid-cols-2 gap-8 pt-8 mt-8 border-t">
-            <div class="text-center"><div class="border-t border-gray-400 pt-2 mt-12">Firma cliente</div></div>
-            <div class="text-center"><div class="border-t border-gray-400 pt-2 mt-12">Firma RentaCar</div></div>
+    <div
+      v-if="visible"
+      class="fixed inset-0 z-[60] flex flex-col bg-black/50"
+      @click.self="$emit('cerrar')"
+    >
+      <div class="flex flex-col mx-auto my-4 w-full max-w-4xl flex-1 max-h-[92vh] bg-white rounded-xl shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b bg-red-800 text-white">
+          <div>
+            <p class="font-extrabold text-sm">Contrato PDF</p>
+            <p class="text-xs opacity-80 font-mono">{{ contrato?.numero_contrato }}</p>
           </div>
+          <button type="button" class="w-8 h-8 rounded-lg hover:bg-white/10" @click="$emit('cerrar')">
+            <i class="pi pi-times"></i>
+          </button>
         </div>
-        <div class="flex gap-3 p-4 border-t print:hidden">
-          <button type="button" class="flex-1 py-2 rounded-lg border font-bold" @click="$emit('cerrar')">Cerrar</button>
-          <button type="button" class="flex-1 py-2 rounded-lg text-white font-bold" style="background:#922b21;" @click="imprimir">
-            <i class="pi pi-print mr-1"></i> Imprimir / PDF
+
+        <div class="flex-1 min-h-0 bg-gray-100 relative">
+          <div v-if="cargando" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500">
+            <i class="pi pi-spin pi-spinner text-2xl"></i>
+            <span class="text-sm">Generando PDF...</span>
+          </div>
+          <div v-else-if="error" class="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+            <i class="pi pi-exclamation-triangle text-2xl text-red-600"></i>
+            <p class="text-sm text-gray-600">{{ error }}</p>
+            <button type="button" class="px-4 py-2 text-sm font-bold text-white rounded-lg" style="background:#922b21;" @click="cargarPdf">
+              Reintentar
+            </button>
+          </div>
+          <iframe
+            v-else-if="pdfUrl"
+            :src="pdfUrl"
+            class="w-full h-full min-h-[480px] border-0 bg-white"
+            title="Vista previa del contrato"
+          />
+        </div>
+
+        <div class="flex gap-3 p-4 border-t bg-white">
+          <button type="button" class="flex-1 py-2.5 rounded-lg border font-bold text-sm" @click="$emit('cerrar')">
+            Cerrar
+          </button>
+          <button
+            type="button"
+            class="flex-1 py-2.5 rounded-lg text-white font-bold text-sm disabled:opacity-50"
+            style="background:#922b21;"
+            :disabled="!blob || cargando"
+            @click="descargar"
+          >
+            <i class="pi pi-download mr-1"></i> Descargar PDF
+          </button>
+          <button
+            type="button"
+            class="flex-1 py-2.5 rounded-lg text-white font-bold text-sm disabled:opacity-50"
+            style="background:#c0392b;"
+            :disabled="!pdfUrl || cargando"
+            @click="abrirNuevaPestana"
+          >
+            <i class="pi pi-external-link mr-1"></i> Abrir
           </button>
         </div>
       </div>
@@ -53,28 +65,66 @@
 </template>
 
 <script setup>
-import { nombreVehiculo, formatPrecio, formatFechaHora12 } from '@/utils/contratoFormatters'
+import { ref, watch, onBeforeUnmount } from 'vue'
+import { obtenerPdfBlobUrl, revocarPdfBlobUrl, descargarBlob } from '@/utils/pdfDownload'
 
-defineProps({
+const props = defineProps({
   visible:  { type: Boolean, default: false },
   contrato: { type: Object, default: null },
 })
 
 defineEmits(['cerrar'])
 
-function fmt(v) {
-  return formatFechaHora12(v)
+const cargando = ref(false)
+const error = ref('')
+const pdfUrl = ref('')
+const filename = ref('contrato.pdf')
+const blob = ref(null)
+
+async function cargarPdf() {
+  if (!props.contrato?.id) {
+    error.value = 'Contrato no disponible.'
+    return
+  }
+
+  limpiar()
+  cargando.value = true
+  error.value = ''
+
+  try {
+    const result = await obtenerPdfBlobUrl(`/admin/contratos/${props.contrato.id}/pdf`)
+    pdfUrl.value = result.blobUrl
+    filename.value = result.filename
+    blob.value = result.blob
+  } catch (e) {
+    error.value = e.response?.data?.message || 'No se pudo generar el PDF del contrato.'
+  } finally {
+    cargando.value = false
+  }
 }
 
-function imprimir() {
-  window.print()
+function limpiar() {
+  revocarPdfBlobUrl(pdfUrl.value)
+  pdfUrl.value = ''
+  blob.value = null
 }
+
+function descargar() {
+  if (blob.value) descargarBlob(blob.value, filename.value)
+}
+
+function abrirNuevaPestana() {
+  if (pdfUrl.value) window.open(pdfUrl.value, '_blank')
+}
+
+watch(
+  () => [props.visible, props.contrato?.id],
+  ([vis, id]) => {
+    if (vis && id) cargarPdf()
+    if (!vis) limpiar()
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(limpiar)
 </script>
-
-<style>
-@media print {
-  body * { visibility: hidden; }
-  #contrato-pdf, #contrato-pdf * { visibility: visible; }
-  #contrato-pdf { position: absolute; left: 0; top: 0; width: 100%; }
-}
-</style>

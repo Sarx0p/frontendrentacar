@@ -46,7 +46,20 @@
       <div class="wizard-main">
         <Transition name="slide-fade" mode="out-in">
           <div :key="paso" class="wizard-panel">
-            <ContratoClienteSection v-if="paso === 1" ref="clienteRef" v-model="cliente" />
+            <ContratoClienteSection
+              v-if="paso === 1"
+              ref="clienteRef"
+              v-model="cliente"
+              :cargando-reservas="cargandoReservasCliente"
+              :sin-reserva="sinReservaDisponible"
+              :reservas="reservasCliente"
+              :reserva-seleccionada="reservaOrigen"
+              @cliente-seleccionado="onClienteSeleccionado"
+              @cliente-limpiado="onClienteLimpiado"
+              @reserva-elegir="aplicarReserva"
+              @reserva-limpiar="onReservaLimpiar"
+              @agregar-nuevo="modalClienteAbierto = true"
+            />
             <ContratoFechasVehiculoSection
               v-else-if="paso === 2"
               v-model:fecha-entrega="fechaEntrega"
@@ -117,6 +130,14 @@
     </div>
 
     <ContratoPdfPreview :visible="mostrarPdf" :contrato="contratoGenerado" @cerrar="mostrarPdf = false" />
+
+    <ClientesModal
+      :visible="modalClienteAbierto"
+      :modo-edicion="false"
+      :cliente="null"
+      @guardar="onClienteCreado"
+      @cerrar="modalClienteAbierto = false"
+    />
   </div>
 </template>
 
@@ -129,8 +150,10 @@ import ContratoFechasVehiculoSection from '@/components/contratos/ContratoFechas
 import ContratoPreciosInspeccionSection from '@/components/contratos/ContratoPreciosInspeccionSection.vue'
 import ContratoResumen from '@/components/contratos/ContratoResumen.vue'
 import ContratoPdfPreview from '@/components/contratos/ContratoPdfPreview.vue'
+import ClientesModal from '@/components/clientes/ClientesModal.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { useReservasStore } from '@/stores/reservas'
+import { useClientesStore } from '@/stores/clientes'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { calcularDias, documentosVigentes } from '@/utils/contratoFormatters'
 
@@ -139,9 +162,14 @@ const route = useRoute()
 const { isDark } = useAppTheme()
 const contratosStore = useContratosStore()
 const reservasStore = useReservasStore()
+const clientesStore = useClientesStore()
 
 const reservaId = ref(route.query.reserva_id ? Number(route.query.reserva_id) : null)
 const reservaOrigen = ref(null)
+const reservasCliente = ref([])
+const cargandoReservasCliente = ref(false)
+const sinReservaDisponible = ref(false)
+const modalClienteAbierto = ref(false)
 const cargandoReserva = ref(false)
 
 const clienteRef = ref(null)
@@ -174,7 +202,13 @@ const precioDia = computed(() => Number(vehiculoSel.value?.categoria?.precio_dia
 const totalEstimado = computed(() => Math.max(0, dias.value * precioDia.value - descuento.value))
 const docsOk = computed(() => documentosVigentes(cliente.value).ok)
 
-const paso1Ok = computed(() => !!cliente.value && docsOk.value)
+const paso1Ok = computed(() =>
+  !!cliente.value &&
+  docsOk.value &&
+  !!reservaOrigen.value &&
+  !sinReservaDisponible.value &&
+  !cargandoReservasCliente.value,
+)
 const paso2Ok = computed(() => !!vehiculoId.value && !!fechaEntrega.value && !!fechaDevolucion.value)
 const puedeGenerar = computed(() => paso1Ok.value && paso2Ok.value && dias.value > 0)
 
@@ -202,6 +236,102 @@ function irPaso(n) {
 
 function siguiente() {
   if (paso.value < 3 && puedeAvanzar.value) paso.value++
+}
+
+function limpiarDatosReserva() {
+  reservaOrigen.value = null
+  reservaId.value = null
+  reservasCliente.value = []
+  sinReservaDisponible.value = false
+  fechaEntrega.value = ''
+  fechaDevolucion.value = ''
+  vehiculoId.value = ''
+  vehiculos.value = []
+  vehiculosConsultados.value = false
+}
+
+function onClienteLimpiado() {
+  limpiarDatosReserva()
+  error.value = ''
+}
+
+function onReservaLimpiar() {
+  reservaOrigen.value = null
+  reservaId.value = null
+  fechaEntrega.value = ''
+  fechaDevolucion.value = ''
+  vehiculoId.value = ''
+  vehiculos.value = []
+  vehiculosConsultados.value = false
+}
+
+async function onClienteSeleccionado(c) {
+  if (route.query.reserva_id) return
+  await cargarReservasCliente(c.id)
+}
+
+async function cargarReservasCliente(clienteId) {
+  cargandoReservasCliente.value = true
+  sinReservaDisponible.value = false
+  reservasCliente.value = []
+  reservaOrigen.value = null
+  reservaId.value = null
+  error.value = ''
+
+  try {
+    const list = await reservasStore.fetchReservasActivasCliente(clienteId)
+    reservasCliente.value = list
+
+    if (!list.length) {
+      sinReservaDisponible.value = true
+      return
+    }
+
+    if (list.length === 1) {
+      await aplicarReserva(list[0])
+    }
+  } catch (e) {
+    error.value = e.response?.data?.message || 'No se pudieron consultar las reservas del cliente.'
+  } finally {
+    cargandoReservasCliente.value = false
+  }
+}
+
+async function aplicarReserva(reserva) {
+  if (!reserva || reserva.contrato) return
+  reservaOrigen.value = reserva
+  reservaId.value = reserva.id
+  fechaEntrega.value = fechaSolo(reserva.fecha_inicio)
+  fechaDevolucion.value = fechaSolo(reserva.fecha_fin)
+  vehiculoId.value = reserva.vehiculo_id
+  sinReservaDisponible.value = false
+  await consultarVehiculos()
+}
+
+async function onClienteCreado(form) {
+  try {
+    const creado = await clientesStore.crear(form)
+    modalClienteAbierto.value = false
+    cliente.value = creado
+    await Swal.fire({
+      icon: 'success',
+      title: 'Cliente registrado',
+      text: `${creado.nombre} se agregó correctamente.`,
+      confirmButtonColor: '#922b21',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+    await cargarReservasCliente(creado.id)
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error al registrar cliente',
+      text: e.response?.data?.message || clientesStore.error || 'No se pudo registrar el cliente.',
+      confirmButtonColor: '#922b21',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  }
 }
 
 async function consultarVehiculos() {
@@ -257,6 +387,7 @@ async function cargarDesdeReserva() {
       return
     }
     reservaOrigen.value = reserva
+    reservasCliente.value = [reserva]
     cliente.value = reserva.cliente
     fechaEntrega.value = fechaSolo(reserva.fecha_inicio)
     fechaDevolucion.value = fechaSolo(reserva.fecha_fin)

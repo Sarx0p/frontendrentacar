@@ -56,9 +56,104 @@
       </div>
 
       <p v-else-if="terminoBusqueda.trim()" class="text-xs mt-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-        No encontrado. Registra al cliente desde el módulo Clientes.
+        No encontrado. Puedes registrar un cliente nuevo.
       </p>
+
+      <button
+        type="button"
+        class="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all border-2 border-dashed"
+        :class="isDark
+          ? 'border-gray-600 text-gray-300 hover:border-gray-500 hover:bg-gray-800/50'
+          : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'"
+        @click="$emit('agregar-nuevo')"
+      >
+        <i class="pi pi-user-plus"></i>
+        Agregar nuevo cliente
+      </button>
     </template>
+
+    <!-- Estado de reservas del cliente -->
+    <div v-if="cliente && alertaDocs.ok" class="mt-4 space-y-3">
+      <div v-if="cargandoReservas" class="flex items-center gap-2 text-sm" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+        <i class="pi pi-spin pi-spinner"></i>
+        Consultando reservas del cliente...
+      </div>
+
+      <div
+        v-else-if="sinReserva"
+        class="rounded-xl border p-4"
+        :class="isDark ? 'border-amber-900/50 bg-amber-950/25' : 'border-amber-200 bg-amber-50'"
+      >
+        <p class="text-sm font-bold flex items-center gap-2" :class="isDark ? 'text-amber-300' : 'text-amber-900'">
+          <i class="pi pi-info-circle"></i>
+          Este cliente no tiene reserva activa
+        </p>
+        <p class="text-xs mt-2 leading-relaxed" :class="isDark ? 'text-amber-200/80' : 'text-amber-800'">
+          Para crear un contrato primero debes registrar una reserva con fechas y vehículo.
+        </p>
+        <router-link
+          :to="{ name: 'reservas-nueva' }"
+          class="inline-flex items-center gap-1.5 mt-3 text-xs font-bold"
+          style="color:#c0392b;"
+        >
+          <i class="pi pi-calendar-plus"></i>
+          Crear reserva
+        </router-link>
+      </div>
+
+      <div v-else-if="reservas.length > 1 && !reservaSeleccionada" class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-wider" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+          Reservas disponibles ({{ reservas.length }})
+        </p>
+        <button
+          v-for="r in reservas"
+          :key="r.id"
+          type="button"
+          class="w-full text-left rounded-xl border p-3 transition-all hover:shadow-sm"
+          :class="isDark ? 'border-gray-700 bg-gray-800/60 hover:bg-gray-800' : 'border-gray-200 bg-white hover:border-red-200'"
+          @click="$emit('reserva-elegir', r)"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold" style="color:#922b21;">Reserva #{{ r.id }}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="estadoBadge(r.estado)">{{ r.estado }}</span>
+          </div>
+          <p class="text-sm font-semibold mt-1" :class="isDark ? 'text-gray-100' : 'text-gray-800'">{{ nombreVehiculo(r.vehiculo) }}</p>
+          <p class="text-xs mt-0.5" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+            {{ formatFecha(r.fecha_inicio) }} → {{ formatFecha(r.fecha_fin) }}
+          </p>
+        </button>
+      </div>
+
+      <div
+        v-else-if="reservaSeleccionada"
+        class="rounded-xl border p-4"
+        :class="isDark ? 'border-red-900/40 bg-red-950/20' : 'border-red-100 bg-red-50/60'"
+      >
+        <p class="text-xs font-bold uppercase tracking-wider mb-2" style="color:#922b21;">
+          <i class="pi pi-check-circle"></i>
+          Reserva vinculada #{{ reservaSeleccionada.id }}
+        </p>
+        <p class="text-sm font-semibold" :class="isDark ? 'text-gray-100' : 'text-gray-800'">{{ nombreVehiculo(reservaSeleccionada.vehiculo) }}</p>
+        <p class="text-xs mt-1" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+          Placa: {{ reservaSeleccionada.vehiculo?.placa || '—' }}
+        </p>
+        <p class="text-xs mt-1" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+          Periodo: {{ formatFecha(reservaSeleccionada.fecha_inicio) }} → {{ formatFecha(reservaSeleccionada.fecha_fin) }}
+        </p>
+        <p class="text-[11px] mt-2" :class="isDark ? 'text-gray-500' : 'text-gray-500'">
+          Fechas y vehículo se completaron automáticamente en el paso 2.
+        </p>
+        <button
+          v-if="reservas.length > 1"
+          type="button"
+          class="text-xs font-bold mt-2 underline"
+          style="color:#c0392b;"
+          @click="$emit('reserva-limpiar')"
+        >
+          Elegir otra reserva
+        </button>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -67,10 +162,24 @@ import { ref, computed } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useClientesStore } from '@/stores/clientes'
 import { documentosVigentes } from '@/utils/contratoFormatters'
-import { formatFecha } from '@/utils/reservaFormatters'
+import { formatFecha, nombreVehiculo } from '@/utils/reservaFormatters'
 
-const props = defineProps({ modelValue: { type: Object, default: null } })
-const emit = defineEmits(['update:modelValue'])
+const props = defineProps({
+  modelValue: { type: Object, default: null },
+  cargandoReservas: { type: Boolean, default: false },
+  sinReserva: { type: Boolean, default: false },
+  reservas: { type: Array, default: () => [] },
+  reservaSeleccionada: { type: Object, default: null },
+})
+
+const emit = defineEmits([
+  'update:modelValue',
+  'cliente-seleccionado',
+  'cliente-limpiado',
+  'reserva-elegir',
+  'reserva-limpiar',
+  'agregar-nuevo',
+])
 
 const { isDark } = useAppTheme()
 const clientesStore = useClientesStore()
@@ -81,6 +190,7 @@ const cliente = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),
 })
+
 const buscando = ref(false)
 let timer = null
 let busquedaActiva = 0
@@ -89,6 +199,14 @@ const shellClass = computed(() =>
   isDark.value ? 'form-section-dark bg-gray-900 border-gray-800' : 'form-section-light bg-white border-gray-100',
 )
 const alertaDocs = computed(() => documentosVigentes(cliente.value))
+
+function estadoBadge(estado) {
+  const map = {
+    PENDIENTE: isDark.value ? 'bg-yellow-950/50 text-yellow-400' : 'bg-yellow-100 text-yellow-800',
+    CONFIRMADA: isDark.value ? 'bg-green-950/50 text-green-400' : 'bg-green-100 text-green-800',
+  }
+  return map[estado] ?? (isDark.value ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600')
+}
 
 function onBuscar() {
   clearTimeout(timer)
@@ -120,6 +238,7 @@ function seleccionar(c) {
   terminoBusqueda.value = ''
   resultados.value = []
   buscando.value = false
+  emit('cliente-seleccionado', c)
 }
 
 function limpiar() {
@@ -129,6 +248,7 @@ function limpiar() {
   terminoBusqueda.value = ''
   resultados.value = []
   buscando.value = false
+  emit('cliente-limpiado')
 }
 
 defineExpose({ alertaDocs })
