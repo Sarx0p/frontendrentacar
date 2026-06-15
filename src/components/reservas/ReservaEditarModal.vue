@@ -103,21 +103,8 @@
                 <select v-model="form.estado" class="field-input w-full">
                   <option value="PENDIENTE">Pendiente</option>
                   <option value="CONFIRMADA">Confirmada</option>
-                  <option value="CANCELADA">Cancelada</option>
                 </select>
               </div>
-            </div>
-
-            <div v-if="form.estado === 'CANCELADA'">
-              <label class="field-label">Motivo de cancelación</label>
-              <textarea
-                v-model="form.motivo"
-                rows="3"
-                class="field-input w-full resize-none"
-                :class="errors.motivo ? 'error' : ''"
-                placeholder="Indica por qué se cancela la reserva..."
-              ></textarea>
-              <p v-if="errors.motivo" class="field-error">{{ errors.motivo }}</p>
             </div>
 
             <div class="flex gap-3 pt-2">
@@ -150,7 +137,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
-import { nombreVehiculo } from '@/utils/reservaFormatters'
+import { nombreVehiculo, fechaHoyLocal, sumarDiasISO } from '@/utils/reservaFormatters'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -167,12 +154,12 @@ const form = ref({
   fecha_fin: '',
   tipo_reserva: 'INMEDIATA',
   estado: 'PENDIENTE',
-  motivo: '',
 })
 
 const errors = ref({})
 
-const hoy = computed(() => new Date().toISOString().split('T')[0])
+const hoy = computed(() => fechaHoyLocal())
+const manana = computed(() => sumarDiasISO(hoy.value, 1))
 
 const puedeEditar = computed(() => props.reserva?.estado !== 'CANCELADA')
 
@@ -184,8 +171,7 @@ watch(
       fecha_inicio: toInputDate(r.fecha_inicio),
       fecha_fin:    toInputDate(r.fecha_fin),
       tipo_reserva: r.tipo_reserva || 'INMEDIATA',
-      estado:       r.estado || 'PENDIENTE',
-      motivo:       '',
+      estado:       r.estado === 'CONFIRMADA' ? 'CONFIRMADA' : 'PENDIENTE',
     }
     errors.value = {}
   },
@@ -217,24 +203,24 @@ function validar() {
   if (form.value.fecha_inicio && form.value.fecha_fin && form.value.fecha_fin < form.value.fecha_inicio) {
     errors.value.fecha_fin = 'Debe ser posterior al inicio'
   }
-  if (form.value.estado === 'CANCELADA' && !form.value.motivo?.trim()) {
-    errors.value.motivo = 'Requerido al cancelar'
+  if (
+    form.value.tipo_reserva === 'ANTISIPADA'
+    && form.value.fecha_inicio
+    && form.value.fecha_inicio < manana.value
+  ) {
+    errors.value.fecha_inicio = 'Para reserva anticipada, la fecha de inicio debe ser al menos mañana'
   }
   return Object.keys(errors.value).length === 0
 }
 
 function handleGuardar() {
   if (!validar()) return
-  const payload = {
+  emit('guardar', {
     fecha_inicio: form.value.fecha_inicio,
     fecha_fin:    form.value.fecha_fin,
     tipo_reserva: form.value.tipo_reserva,
     estado:       form.value.estado,
-  }
-  if (form.value.estado === 'CANCELADA') {
-    payload.motivo = form.value.motivo.trim()
-  }
-  emit('guardar', payload)
+  })
 }
 </script>
 

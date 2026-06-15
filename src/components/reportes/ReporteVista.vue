@@ -1,5 +1,5 @@
 <template>
-  <div class="reporte-page min-h-screen p-6" :class="isDark ? 'bg-gray-950' : 'bg-gray-50'">
+  <div class="min-h-screen" :class="isDark ? 'bg-gray-950' : 'bg-gray-50'">
 
     <div v-if="cargando" class="flex flex-col items-center justify-center py-24 gap-3">
       <i class="pi pi-spin pi-spinner text-3xl" style="color:#c0392b;"></i>
@@ -16,7 +16,12 @@
       </button>
     </div>
 
-    <template v-else>
+    <div
+      v-else
+      id="reporte-imprimible"
+      class="reporte-page p-6"
+      :class="isDark ? 'bg-gray-950' : 'bg-gray-50'"
+    >
       <!-- Header -->
       <div
         class="flex items-start justify-between mb-6 pb-4 border-b"
@@ -48,11 +53,13 @@
             </button>
             <button
               type="button"
-              class="flex items-center gap-1 px-3 py-2 text-xs rounded-xl border transition-all font-semibold"
+              class="flex items-center gap-1 px-3 py-2 text-xs rounded-xl border transition-all font-semibold disabled:opacity-50"
               :class="isDark ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-600 hover:bg-gray-50'"
-              @click="imprimir"
+              :disabled="generandoPdf"
+              @click="descargarPdf"
             >
-              <i class="pi pi-print"></i> Imprimir
+              <i :class="generandoPdf ? 'pi pi-spin pi-spinner' : 'pi pi-file-pdf'"></i>
+              {{ generandoPdf ? 'Generando...' : 'Descargar PDF' }}
             </button>
           </div>
         </div>
@@ -183,7 +190,7 @@
           </table>
         </div>
       </div>
-    </template>
+    </div>
 
   </div>
 </template>
@@ -191,14 +198,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import Swal from 'sweetalert2'
 import api from '@/services/api'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { abrirPdf } from '@/utils/pdfDownload'
 import { formatMoney, formatFechaReporte, formatFechaCorta, estadoClaseReporte } from '@/utils/reporteFormatters'
 
 const route = useRoute()
 const { isDark } = useAppTheme()
 
 const cargando = ref(true)
+const generandoPdf = ref(false)
 const error = ref('')
 const datos = ref({
   periodo: { fecha_inicio: '', fecha_fin: '' },
@@ -248,19 +258,31 @@ async function cargarReporte() {
   }
 }
 
-function imprimir() { window.print() }
+async function descargarPdf() {
+  if (cargando.value || error.value) return
+
+  const { fechaInicio, fechaFin, estado } = route.query
+  generandoPdf.value = true
+  try {
+    await abrirPdf('/admin/reportes/pdf', {
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      ...(estado ? { estado } : {}),
+    })
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error al generar PDF',
+      text: e.response?.data?.message || 'No se pudo generar el reporte en PDF.',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  } finally {
+    generandoPdf.value = false
+  }
+}
 
 onMounted(cargarReporte)
 </script>
 
-<style scoped>
-@media print {
-  .no-print { display: none !important; }
-  .reporte-page {
-    background: #fff !important;
-    color: #111 !important;
-    padding: 0 !important;
-  }
-  .page-break { page-break-before: auto; }
-}
-</style>

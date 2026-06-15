@@ -8,7 +8,7 @@
       </div>
       <router-link
         :to="{ name: 'contratos-nuevo' }"
-        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] shadow-sm"
+        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-sm no-underline transition-all hover:opacity-90 hover:no-underline active:scale-[0.98] shadow-sm"
         style="background:#c0392b;"
       >
         <i class="pi pi-plus text-sm"></i>

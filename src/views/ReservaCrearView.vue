@@ -226,6 +226,14 @@ async function onClienteCreado(form) {
     const creado = await clientesStore.crear(form);
     seleccionarCliente(creado);
     modalClienteAbierto.value = false;
+    await Swal.fire({
+      icon: "success",
+      title: "Cliente registrado",
+      text: `${creado.nombre} se agregó correctamente.`,
+      confirmButtonColor: "#c0392b",
+      background: isDark.value ? "#1f2937" : "#fff",
+      color: isDark.value ? "#f3f4f6" : "#111827",
+    });
   } catch (e) {
     await Swal.fire({
       icon: "error",
@@ -328,6 +336,8 @@ async function confirmarReserva() {
     return;
   }
   if (!validarFechas()) return;
+  // Alinear tipo con las fechas por si el usuario lo cambió manualmente
+  tipoReserva.value = fechaInicio.value >= manana.value ? "ANTISIPADA" : "INMEDIATA";
   if (!tipoReserva.value) {
     errorGlobal.value = "Selecciona el tipo de reserva.";
     return;

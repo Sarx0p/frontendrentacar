@@ -6,14 +6,27 @@
         <h1 class="text-2xl font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">Reservas</h1>
         <p class="text-sm mt-0.5" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Gestiona las reservas de vehículos</p>
       </div>
-      <router-link
-        :to="{ name: 'reservas-nueva' }"
-        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] shadow-sm"
-        style="background:#c0392b;"
-      >
-        <i class="pi pi-plus text-sm"></i>
-        Nueva reserva
-      </router-link>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm border transition-all hover:shadow-sm"
+          :class="isDark
+            ? 'border-red-900/40 bg-red-950/20 text-red-300 hover:bg-red-950/40'
+            : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'"
+          @click="modalCanceladasAbierto = true"
+        >
+          <i class="pi pi-history text-sm"></i>
+          Cancelaciones
+        </button>
+        <router-link
+          :to="{ name: 'reservas-nueva' }"
+          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-sm no-underline transition-all hover:opacity-90 hover:no-underline active:scale-[0.98] shadow-sm"
+          style="background:#c0392b;"
+        >
+          <i class="pi pi-plus text-sm"></i>
+          Nueva reserva
+        </router-link>
+      </div>
     </div>
 
     <!-- Filtros -->
@@ -43,7 +56,6 @@
         <option value="">Todos los estados</option>
         <option value="PENDIENTE">Pendiente</option>
         <option value="CONFIRMADA">Confirmada</option>
-        <option value="CANCELADA">Cancelada</option>
       </select>
     </div>
 
@@ -72,7 +84,7 @@
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Tipo</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Estado</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Solicitud</th>
-              <th class="px-5 py-3.5 w-14"></th>
+              <th class="px-5 py-3.5 text-xs font-bold uppercase tracking-widest text-center w-[5.5rem]" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -116,32 +128,45 @@
               </td>
 
               <td class="px-5 py-4">
-                <div class="flex items-center gap-1.5">
-                  <router-link
-                    v-if="r.estado !== 'CANCELADA' && !r.contrato"
-                    :to="{ name: 'contratos-nuevo', query: { reserva_id: r.id } }"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
-                    :class="isDark
-                      ? 'border-green-900/50 bg-green-950/30 text-green-400 hover:bg-green-950/50'
-                      : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'"
-                    title="Generar contrato"
-                  >
-                    <i class="pi pi-file-edit text-xs"></i>
-                  </router-link>
+                <div class="acciones-piramide">
+                  <div class="acciones-piramide__top">
+                    <router-link
+                      v-if="r.estado !== 'CANCELADA' && !r.contrato"
+                      :to="{ name: 'contratos-nuevo', query: { reserva_id: r.id } }"
+                      class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm no-underline hover:no-underline"
+                      :class="isDark
+                        ? 'border-green-900/50 bg-green-950/30 text-green-400 hover:bg-green-950/50'
+                        : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'"
+                      title="Generar contrato"
+                    >
+                      <i class="pi pi-file-edit text-xs"></i>
+                    </router-link>
+                    <button
+                      type="button"
+                      class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
+                      :class="[
+                        isDark
+                          ? 'border-red-800 bg-red-950/40 text-[#f0a500] hover:bg-red-950/70 hover:border-red-700'
+                          : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100',
+                        r.estado === 'CANCELADA' ? 'opacity-40 cursor-not-allowed' : '',
+                      ]"
+                      :title="r.estado === 'CANCELADA' ? 'No editable' : 'Editar reserva'"
+                      :disabled="r.estado === 'CANCELADA'"
+                      @click="abrirModalEditar(r)"
+                    >
+                      <i class="pi pi-pencil text-xs"></i>
+                    </button>
+                  </div>
                   <button
+                    v-if="r.estado !== 'CANCELADA' && !r.contrato"
                     type="button"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
-                    :class="[
-                      isDark
-                        ? 'border-red-800 bg-red-950/40 text-[#f0a500] hover:bg-red-950/70 hover:border-red-700'
-                        : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100',
-                      r.estado === 'CANCELADA' ? 'opacity-40 cursor-not-allowed' : '',
-                    ]"
-                    :title="r.estado === 'CANCELADA' ? 'No editable' : 'Editar reserva'"
-                    :disabled="r.estado === 'CANCELADA'"
-                    @click="abrirModalEditar(r)"
+                    class="acciones-piramide__cancelar"
+                    :class="isDark
+                      ? 'border-red-900/60 bg-red-950/30 text-red-300 hover:bg-red-950/50'
+                      : 'border-red-200 bg-white text-red-600 hover:bg-red-50'"
+                    @click="abrirModalCancelar(r)"
                   >
-                    <i class="pi pi-pencil text-xs"></i>
+                    Cancelar
                   </button>
                 </div>
               </td>
@@ -180,6 +205,19 @@
       @cerrar="cerrarModal"
       @guardar="guardarReserva"
     />
+
+    <ReservaCancelarModal
+      :visible="modalCancelarAbierto"
+      :reserva="reservaACancelar"
+      :guardando="guardandoCancelacion"
+      @cerrar="cerrarModalCancelar"
+      @confirmar="confirmarCancelacion"
+    />
+
+    <ReservasCanceladasModal
+      :visible="modalCanceladasAbierto"
+      @cerrar="modalCanceladasAbierto = false"
+    />
   </div>
 </template>
 
@@ -187,6 +225,8 @@
 import { ref, computed, onMounted } from 'vue'
 import Swal from 'sweetalert2'
 import ReservaEditarModal from '@/components/reservas/ReservaEditarModal.vue'
+import ReservaCancelarModal from '@/components/reservas/ReservaCancelarModal.vue'
+import ReservasCanceladasModal from '@/components/reservas/ReservasCanceladasModal.vue'
 import { useReservasStore } from '@/stores/reservas'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { formatFecha } from '@/utils/reservaFormatters'
@@ -194,25 +234,68 @@ import { formatFecha } from '@/utils/reservaFormatters'
 const { isDark } = useAppTheme()
 const store = useReservasStore()
 
-const search              = ref('')
-const filtroEstado          = ref('')
-const modalAbierto          = ref(false)
-const reservaSeleccionada   = ref(null)
-const guardandoEdicion      = ref(false)
+const search                  = ref('')
+const filtroEstado              = ref('')
+const modalAbierto              = ref(false)
+const modalCancelarAbierto        = ref(false)
+const modalCanceladasAbierto      = ref(false)
+const reservaSeleccionada         = ref(null)
+const reservaACancelar            = ref(null)
+const guardandoEdicion            = ref(false)
+const guardandoCancelacion        = ref(false)
 
 const reservas = computed(() => store.reservas)
 
-onMounted(() => store.fetchReservas())
+onMounted(() => aplicarFiltros())
 
 const reservasFiltradas = computed(() =>
   [...reservas.value].sort((a, b) => a.id - b.id)
 )
 
 async function aplicarFiltros() {
-  const params = {}
+  const params = { excluir_canceladas: 1 }
   if (filtroEstado.value) params.estado = filtroEstado.value
   if (search.value.trim()) params.buscar = search.value.trim()
   await store.fetchReservas(params)
+}
+
+function abrirModalCancelar(reserva) {
+  reservaACancelar.value = reserva
+  modalCancelarAbierto.value = true
+}
+
+function cerrarModalCancelar() {
+  modalCancelarAbierto.value = false
+  reservaACancelar.value = null
+}
+
+async function confirmarCancelacion(motivo) {
+  if (!reservaACancelar.value?.id) return
+  guardandoCancelacion.value = true
+  try {
+    await store.cancelar(reservaACancelar.value.id, motivo)
+    await aplicarFiltros()
+    await Swal.fire({
+      icon: 'success',
+      title: 'Reserva cancelada',
+      text: 'La reserva fue cancelada y ya no aparecerá en la lista activa.',
+      confirmButtonColor: '#922b21',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+    cerrarModalCancelar()
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'No se pudo cancelar',
+      text: e.response?.data?.message || store.error || 'Intenta de nuevo.',
+      confirmButtonColor: '#922b21',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  } finally {
+    guardandoCancelacion.value = false
+  }
 }
 
 function abrirModalEditar(reserva) {
@@ -229,18 +312,13 @@ async function guardarReserva(form) {
   if (!reservaSeleccionada.value?.id) return
   guardandoEdicion.value = true
   try {
-    if (form.estado === 'CANCELADA') {
-      await api.patch(`/api/admin/reservas/${reservaSeleccionada.value.id}/cancelar`, {
-        motivo: form.motivo,
-      })
-      await store.fetchReservas()
-    } else {
-      await store.actualizar(reservaSeleccionada.value.id, {
-        fecha_inicio: form.fecha_inicio,
-        fecha_fin:    form.fecha_fin,
-        tipo_reserva: form.tipo_reserva,
-      })
-    }
+    await store.actualizar(reservaSeleccionada.value.id, {
+      fecha_inicio: form.fecha_inicio,
+      fecha_fin:    form.fecha_fin,
+      tipo_reserva: form.tipo_reserva,
+      estado:       form.estado,
+    })
+    await aplicarFiltros()
     await Swal.fire({
       icon: 'success',
       title: 'Reserva actualizada',
@@ -302,3 +380,35 @@ function tipoStyle(tipo) {
   return styles[tipo] || 'background:#f3f4f6; color:#6b7280;'
 }
 </script>
+
+<style scoped>
+.acciones-piramide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 4.5rem;
+}
+
+.acciones-piramide__top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+}
+
+.acciones-piramide__cancelar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.5rem;
+  border-width: 1px;
+  border-style: solid;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+</style>
