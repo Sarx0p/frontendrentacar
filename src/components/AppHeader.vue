@@ -4,7 +4,9 @@
     :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'"
     :style="{ left: sidebarWidth, height: '64px' }"
   >
-    <div class="flex items-center gap-2 ml-auto">
+    <div class="relative flex items-center gap-2 ml-auto">
+      <NotificationBell ref="bellRef" @panel-change="notifPanelOpen = $event" />
+
       <button
         type="button"
         class="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg transition-colors"
@@ -22,32 +24,13 @@
         <i class="pi pi-chevron-down text-xs ml-1" :class="isDark ? 'text-gray-500' : 'text-gray-400'" />
       </button>
 
-      <NotificationBell ref="bellRef" @panel-change="notifPanelOpen = $event" />
-
       <div
         v-if="userMenuOpen"
-        class="absolute top-16 right-4 rounded-xl shadow-lg border py-2 w-48 z-50"
-        :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+        class="absolute top-16 right-4 z-50"
       >
         <button
           type="button"
-          class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
-          :class="isDark ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
-        >
-          <i class="pi pi-user" :class="isDark ? 'text-gray-500' : 'text-gray-400'" /> Mi perfil
-        </button>
-        <button
-          type="button"
-          class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
-          :class="isDark ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
-        >
-          <i class="pi pi-cog" :class="isDark ? 'text-gray-500' : 'text-gray-400'" /> Configuración
-        </button>
-        <div class="border-t my-1" :class="isDark ? 'border-gray-800' : 'border-gray-100'" />
-        <button
-          type="button"
-          class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
-          :class="isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-50'"
+          class="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl shadow-lg border border-gray-200 bg-white transition-opacity hover:opacity-90 whitespace-nowrap"
           style="color:#c0392b;"
           @click="handleLogout"
         >

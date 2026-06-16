@@ -1,79 +1,60 @@
 <template>
   <div class="min-h-screen" :class="isDark ? 'bg-gray-950' : 'bg-gray-50'">
-    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
       <div>
-        <h1 class="text-2xl font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">Vehículos</h1>
+        <h1 class="text-2xl font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">Catálogo</h1>
         <p class="text-sm mt-0.5" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
-          Gestiona la flota de vehículos
+          {{ subtituloActivo }}
         </p>
       </div>
 
-      <div v-if="authStore.isAdmin" class="w-full sm:w-auto sm:min-w-[320px] flex flex-col gap-2">
-        <p class="text-[10px] font-bold uppercase tracking-widest text-right" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-          Catálogo
-        </p>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <button
-            type="button"
-            @click="abrirCatalogo('marca')"
-            class="accion-sec flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border-2 text-xs font-bold transition-all hover:shadow-sm"
-            :class="isDark ? 'accion-sec-dark' : 'accion-sec-light'"
-          >
-            <span class="flex items-center gap-1">
-              <i class="pi pi-plus text-[10px]" style="color:#c0392b;"></i>
-              <i class="pi pi-bookmark text-sm" style="color:#2563eb;"></i>
-            </span>
-            <span>Marca</span>
-          </button>
-          <button
-            type="button"
-            @click="abrirCatalogo('categoria')"
-            class="accion-sec flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border-2 text-xs font-bold transition-all hover:shadow-sm"
-            :class="isDark ? 'accion-sec-dark' : 'accion-sec-light'"
-          >
-            <span class="flex items-center gap-1">
-              <i class="pi pi-plus text-[10px]" style="color:#c0392b;"></i>
-              <i class="pi pi-tags text-sm" style="color:#7c3aed;"></i>
-            </span>
-            <span>Categoría</span>
-          </button>
-          <button
-            type="button"
-            @click="abrirCatalogo('modelo')"
-            class="accion-sec flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border-2 text-xs font-bold transition-all hover:shadow-sm"
-            :class="isDark ? 'accion-sec-dark' : 'accion-sec-light'"
-          >
-            <span class="flex items-center gap-1">
-              <i class="pi pi-plus text-[10px]" style="color:#c0392b;"></i>
-              <i class="pi pi-sitemap text-sm" style="color:#0891b2;"></i>
-            </span>
-            <span>Modelo</span>
-          </button>
-          <button
-            type="button"
-            @click="abrirCatalogo('propietario')"
-            class="accion-sec flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border-2 text-xs font-bold transition-all hover:shadow-sm"
-            :class="isDark ? 'accion-sec-dark' : 'accion-sec-light'"
-          >
-            <span class="flex items-center gap-1">
-              <i class="pi pi-plus text-[10px]" style="color:#c0392b;"></i>
-              <i class="pi pi-user text-sm" style="color:#16a34a;"></i>
-            </span>
-            <span>Propietario</span>
-          </button>
-        </div>
+      <div v-if="authStore.isAdmin" class="w-full sm:w-auto flex-shrink-0">
         <button
           type="button"
-          @click="abrirModalCrear"
-          class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 shadow-sm"
+          @click="accionNuevo"
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 shadow-sm"
           style="background:#c0392b;"
         >
           <i class="pi pi-plus text-sm"></i>
-          Nuevo vehículo
+          {{ nuevoLabel }}
         </button>
       </div>
     </div>
 
+    <!-- Barra de pestañas -->
+    <div
+      class="rounded-2xl border shadow-sm p-2 mb-4 overflow-x-auto"
+      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+    >
+      <div class="flex gap-1 min-w-max">
+        <button
+          v-for="tab in tabs"
+          :key="tab.value"
+          type="button"
+          @click="cambiarTab(tab.value)"
+          class="catalogo-tab inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all"
+          :class="activeTab === tab.value
+            ? 'catalogo-tab-active'
+            : (isDark ? 'catalogo-tab-inactive-dark' : 'catalogo-tab-inactive-light')"
+        >
+          <span
+            class="tab-icon-wrap w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            :style="estiloIconoTab(tab, activeTab === tab.value)"
+          >
+            <i :class="tab.icon" class="text-sm" />
+          </span>
+          <span>{{ tab.label }}</span>
+          <span
+            class="min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-bold leading-none inline-flex items-center justify-center"
+            :class="activeTab === tab.value
+              ? 'bg-white/25 text-white'
+              : (isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500')"
+          >{{ conteoTab(tab.value) }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Buscador y filtros -->
     <div
       class="rounded-2xl border shadow-sm p-4 mb-5 flex flex-col sm:flex-row gap-3"
       :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
@@ -86,12 +67,13 @@
         <input
           v-model="search"
           type="text"
-          placeholder="Buscar por placa, color, marca o modelo..."
+          :placeholder="searchPlaceholder"
           class="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none transition focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
           :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50'"
         />
       </div>
       <select
+        v-if="activeTab === 'vehiculos'"
         v-model="filtroEstado"
         class="px-4 py-2.5 rounded-xl border text-sm font-medium min-w-[160px]"
         :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-200' : 'border-gray-200 bg-white text-gray-700'"
@@ -102,90 +84,118 @@
     </div>
 
     <p
-      v-if="store.error"
+      v-if="store.error && activeTab === 'vehiculos'"
       class="mb-4 text-sm font-medium rounded-xl border px-4 py-3"
       :class="isDark ? 'text-red-300 bg-red-950/30 border-red-900/50' : 'text-red-700 bg-red-50 border-red-200'"
     >
       <i class="pi pi-exclamation-circle mr-1"></i>{{ store.error }}
     </p>
 
+    <!-- Tabla -->
     <div
       class="rounded-2xl border shadow-sm overflow-hidden"
       :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
     >
-      <div v-if="store.loading" class="flex items-center justify-center py-20 gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+      <div v-if="isLoadingTab" class="flex items-center justify-center py-20 gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
         <i class="pi pi-spin pi-spinner"></i>
-        <span class="text-sm">Cargando vehículos...</span>
+        <span class="text-sm">{{ loadingLabel }}</span>
       </div>
 
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr :style="isDark ? 'background:#111827; border-bottom:1px solid #1f2937;' : 'background:#fafafa; border-bottom:1px solid #f3f4f6;'">
-              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Vehículo</th>
-              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Placa</th>
-              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Categoría</th>
-              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Propietario</th>
-              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Estado</th>
-              <th v-if="authStore.isAdmin" class="px-5 py-3.5"></th>
+              <th
+                v-for="col in columnasActivas"
+                :key="col.key"
+                class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest"
+                :class="isDark ? 'text-gray-500' : 'text-gray-400'"
+              >
+                {{ col.label }}
+              </th>
+              <th
+                v-if="authStore.isAdmin"
+                class="px-5 py-3.5 text-xs font-bold uppercase tracking-widest text-right"
+                :class="isDark ? 'text-gray-500' : 'text-gray-400'"
+              >
+                Acciones
+              </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody :key="activeTab">
             <tr
-              v-for="v in vehiculosFiltrados"
-              :key="v.id"
+              v-for="(item, index) in itemsFiltrados"
+              :key="`${activeTab}-${item.id}-${index}`"
               class="border-b transition-colors"
               :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-50 hover:bg-gray-50/80'"
             >
-              <td class="px-5 py-4">
-                <div class="flex items-center gap-3">
+              <td
+                v-for="col in columnasActivas"
+                :key="`${item.id}-${col.key}`"
+                class="px-5 py-4"
+                :class="isDark ? 'text-gray-300' : 'text-gray-700'"
+              >
+                <div v-if="col.key === 'vehiculo' && activeTab === 'vehiculos'" class="flex items-center gap-3">
                   <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#922b21;">
                     <i class="pi pi-car text-white text-sm"></i>
                   </div>
                   <div>
-                    <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ nombreVehiculo(v) }}</p>
-                    <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ v.color }} · {{ v.anio }}</p>
+                    <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ nombreVehiculo(item) }}</p>
+                    <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+                      {{ [item.color, item.anio].filter(Boolean).join(' · ') || '—' }}
+                    </p>
                   </div>
                 </div>
-              </td>
-              <td class="px-5 py-4 font-mono font-semibold" :class="isDark ? 'text-gray-300' : 'text-gray-700'">{{ v.placa }}</td>
-              <td class="px-5 py-4" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
-                <p>{{ v.categoria?.nombre || '—' }}</p>
-                <p v-if="v.categoria?.precio_dia" class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-                  ${{ Number(v.categoria.precio_dia).toFixed(2) }}/día
-                </p>
-              </td>
-              <td class="px-5 py-4" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ v.propietario?.nombre || '—' }}</td>
-              <td class="px-5 py-4">
-                <span class="text-xs font-bold px-2.5 py-1 rounded-full" :style="estadoVehiculoStyle(v.estado, isDark)">
-                  {{ labelEstadoVehiculo(v.estado) }}
+                <span
+                  v-else-if="col.key === 'estado' && activeTab === 'vehiculos'"
+                  class="text-xs font-bold px-2.5 py-1 rounded-full"
+                  :style="estadoVehiculoStyle(item.estado, isDark)"
+                >
+                  {{ labelEstadoVehiculo(item.estado) }}
+                </span>
+                <span v-else :class="col.key === 'nombre' || col.key === 'modelo' ? 'font-semibold' : ''">
+                  {{ renderCelda(item, col.key) }}
                 </span>
               </td>
-              <td v-if="authStore.isAdmin" class="px-5 py-4">
-                <button
-                  type="button"
-                  @click="abrirModalEditar(v)"
-                  class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
-                  :class="isDark
-                    ? 'border-red-800 bg-red-950/40 text-[#f0a500] hover:bg-red-950/70 hover:border-red-700'
-                    : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'"
-                  title="Editar"
-                >
-                  <i class="pi pi-pencil text-xs"></i>
-                </button>
+              <td v-if="authStore.isAdmin" class="px-5 py-4 text-right">
+                <div class="inline-flex items-center gap-2">
+                  <button
+                    type="button"
+                    @click="accionEditar(item)"
+                    class="w-8 h-8 rounded-lg inline-flex items-center justify-center border transition-all hover:shadow-sm"
+                    :class="isDark
+                      ? 'border-blue-800 bg-blue-950/40 text-blue-300 hover:bg-blue-950/70 hover:border-blue-700'
+                      : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100'"
+                    :title="`Editar ${tabActiva.label.slice(0, -1).toLowerCase()}`"
+                  >
+                    <i class="pi pi-pencil text-xs"></i>
+                  </button>
+                  <button
+                    v-if="['categorias', 'propietarios'].includes(activeTab)"
+                    type="button"
+                    @click="accionEliminar(item)"
+                    class="w-8 h-8 rounded-lg inline-flex items-center justify-center border transition-all hover:shadow-sm"
+                    :class="isDark
+                      ? 'border-red-800 bg-red-950/40 text-red-300 hover:bg-red-950/70 hover:border-red-700'
+                      : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'"
+                    :title="`Eliminar ${tabActiva.label.slice(0, -1).toLowerCase()}`"
+                  >
+                    <i class="pi pi-trash text-xs"></i>
+                  </button>
+                </div>
               </td>
             </tr>
-            <tr v-if="vehiculosFiltrados.length === 0">
-              <td :colspan="authStore.isAdmin ? 6 : 5" class="px-5 py-16 text-center">
-                <i class="pi pi-car text-4xl mb-3 block" :class="isDark ? 'text-gray-700' : 'text-gray-200'"></i>
-                <p class="font-medium" :class="isDark ? 'text-gray-500' : 'text-gray-400'">No se encontraron vehículos</p>
+            <tr v-if="itemsFiltrados.length === 0">
+              <td :colspan="columnasActivas.length + (authStore.isAdmin ? 1 : 0)" class="px-5 py-16 text-center">
+                <i :class="[iconoTabActivo, 'text-4xl mb-3 block', isDark ? 'text-gray-700' : 'text-gray-200']"></i>
+                <p class="font-medium" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ emptyLabel }}</p>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
       <div class="px-5 py-3 border-t text-xs" :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-50 text-gray-400'">
-        {{ vehiculosFiltrados.length }} vehículo{{ vehiculosFiltrados.length !== 1 ? 's' : '' }}
+        Mostrando {{ itemsFiltrados.length }} de {{ conteoTab(activeTab) }} {{ contadorLabel(itemsFiltrados.length) }}
       </div>
     </div>
 
@@ -207,8 +217,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Swal from 'sweetalert2'
+import api from '@/services/api'
 import VehiculosModal from '@/components/vehiculos/VehiculosModal.vue'
 import VehiculosCatalogoModal from '@/components/vehiculos/VehiculosCatalogoModal.vue'
 import { useVehiculosStore } from '@/stores/vehiculos'
@@ -227,33 +238,228 @@ const authStore = useAuthStore()
 
 const search = ref('')
 const filtroEstado = ref('')
+const activeTab = ref('vehiculos')
 const modalAbierto = ref(false)
 const catalogoAbierto = ref(false)
 const catalogoTipo = ref('marca')
 const modoEdicion = ref(false)
 const vehiculoSeleccionado = ref(null)
+const modelos = ref([])
+const cargandoModelos = ref(false)
 
 const estadosFiltro = ESTADOS_VEHICULO_TODOS
 const vehiculos = computed(() => store.vehiculos)
+const marcas = computed(() => store.marcas)
+const categorias = computed(() => store.categorias)
+const propietarios = computed(() => store.propietarios)
 
-let debounceTimer = null
+const tabs = [
+  { value: 'vehiculos', label: 'Vehículos', icon: 'pi pi-car', color: '#c0392b' },
+  { value: 'marcas', label: 'Marcas', icon: 'pi pi-bookmark', color: '#f0a500' },
+  { value: 'categorias', label: 'Categorías', icon: 'pi pi-tags', color: '#2563eb' },
+  { value: 'modelos', label: 'Modelos', icon: 'pi pi-sitemap', color: '#7c3aed' },
+  { value: 'propietarios', label: 'Propietarios', icon: 'pi pi-users', color: '#059669' },
+]
 
-watch([search, filtroEstado], () => {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => {
-    store.fetchVehiculos({
-      search: search.value.trim() || undefined,
-      estado: filtroEstado.value || undefined,
-    })
-  }, 350)
-})
+function estiloIconoTab(tab, activo) {
+  if (activo) {
+    return {
+      background: 'rgba(255,255,255,0.22)',
+      color: tab.color === '#c0392b' ? '#f0a500' : tab.color,
+    }
+  }
+  return {
+    background: `${tab.color}1f`,
+    color: tab.color,
+  }
+}
+
+const columnasPorTab = {
+  vehiculos: [
+    { key: 'vehiculo', label: 'Vehículo' },
+    { key: 'placa', label: 'Placa' },
+    { key: 'categoria_nombre', label: 'Categoría' },
+    { key: 'propietario_nombre', label: 'Propietario' },
+    { key: 'estado', label: 'Estado' },
+  ],
+  marcas: [
+    { key: 'nombre', label: 'Nombre' },
+    { key: 'modelos_count', label: 'Cantidad de modelos' },
+    { key: 'created_at', label: 'Fecha de creación' },
+  ],
+  categorias: [
+    { key: 'nombre', label: 'Nombre' },
+    { key: 'descripcion', label: 'Descripción' },
+    { key: 'vehiculos_count', label: 'Cantidad de vehículos' },
+  ],
+  modelos: [
+    { key: 'modelo', label: 'Modelo' },
+    { key: 'marca_nombre', label: 'Marca' },
+    { key: 'vehiculos_count', label: 'Cantidad de vehículos' },
+  ],
+  propietarios: [
+    { key: 'nombre', label: 'Nombre' },
+    { key: 'telefono', label: 'Teléfono' },
+    { key: 'tipo_propietario', label: 'Tipo' },
+    { key: 'vehiculos_count', label: 'Cantidad de vehículos' },
+  ],
+}
+
+const subtitulos = {
+  vehiculos: 'Gestiona la flota de vehículos',
+  marcas: 'Administra las marcas registradas',
+  categorias: 'Administra las categorías y tarifas',
+  modelos: 'Administra los modelos por marca',
+  propietarios: 'Administra los propietarios de la flota',
+}
 
 onMounted(() => {
   store.fetchVehiculos()
   store.fetchCatalogos()
+  cargarModelos()
 })
 
-const vehiculosFiltrados = computed(() => vehiculos.value)
+function extraerLista(payload) {
+  if (Array.isArray(payload)) return payload
+  if (payload?.data && Array.isArray(payload.data)) return payload.data
+  return []
+}
+
+function esRegistroValido(item, tab) {
+  if (!item || item.id == null) return false
+  if (tab === 'vehiculos') return Boolean(item.placa?.trim?.() || item.placa)
+  return Boolean(String(item.nombre ?? '').trim())
+}
+
+function listaTab(tab) {
+  const map = {
+    vehiculos: extraerLista(vehiculos.value),
+    marcas: extraerLista(marcas.value),
+    categorias: extraerLista(categorias.value),
+    modelos: extraerLista(modelos.value),
+    propietarios: extraerLista(propietarios.value),
+  }
+  return (map[tab] ?? []).filter((item) => esRegistroValido(item, tab))
+}
+
+const baseItemsActivos = computed(() => listaTab(activeTab.value))
+
+const columnasActivas = computed(() => columnasPorTab[activeTab.value] ?? columnasPorTab.vehiculos)
+const subtituloActivo = computed(() => subtitulos[activeTab.value] ?? subtitulos.vehiculos)
+const tabActiva = computed(() => tabs.find((t) => t.value === activeTab.value) ?? tabs[0])
+const iconoTabActivo = computed(() => tabActiva.value.icon)
+
+const itemsFiltrados = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  return baseItemsActivos.value.filter((item) => {
+    if (activeTab.value === 'vehiculos' && filtroEstado.value && item.estado !== filtroEstado.value) {
+      return false
+    }
+    if (!term) return true
+    return textoBusqueda(item).some((v) => String(v).toLowerCase().includes(term))
+  })
+})
+
+function conteoTab(tab) {
+  return listaTab(tab).length
+}
+
+function textoBusqueda(item) {
+  if (activeTab.value === 'vehiculos') {
+    return [nombreVehiculo(item), item.placa, item.color, item.categoria?.nombre, item.propietario?.nombre, item.estado]
+  }
+  if (activeTab.value === 'marcas') {
+    return [item.nombre, String(item.modelos_count ?? '')]
+  }
+  if (activeTab.value === 'categorias') {
+    return [item.nombre, descripcionCategoria(item), String(item.vehiculos_count ?? '')]
+  }
+  if (activeTab.value === 'modelos') {
+    return [item.nombre, item.marca?.nombre, String(item.vehiculos_count ?? '')]
+  }
+  if (activeTab.value === 'propietarios') {
+    return [item.nombre, item.telefono, item.tipo_propietario, String(item.vehiculos_count ?? '')]
+  }
+  return [item.nombre]
+}
+
+const searchPlaceholder = computed(() => {
+  const map = {
+    vehiculos: 'Buscar por placa, color, marca o modelo...',
+    marcas: 'Buscar por nombre de marca...',
+    categorias: 'Buscar por nombre o descripción...',
+    modelos: 'Buscar por modelo o marca...',
+    propietarios: 'Buscar por nombre, teléfono o tipo...',
+  }
+  return map[activeTab.value]
+})
+
+const isLoadingTab = computed(() => {
+  if (activeTab.value === 'vehiculos') return store.loading
+  if (activeTab.value === 'modelos') return cargandoModelos.value
+  return store.catalogosCargando
+})
+
+const loadingLabel = computed(() => `Cargando ${tabActiva.value.label.toLowerCase()}...`)
+const emptyLabel = computed(() => `No se encontraron ${tabActiva.value.label.toLowerCase()}.`)
+
+const nuevoLabel = computed(() => {
+  const map = {
+    vehiculos: 'Nuevo Vehículo',
+    marcas: 'Nueva Marca',
+    categorias: 'Nueva Categoría',
+    modelos: 'Nuevo Modelo',
+    propietarios: 'Nuevo Propietario',
+  }
+  return map[activeTab.value]
+})
+
+function cambiarTab(tab) {
+  if (activeTab.value === tab) return
+  activeTab.value = tab
+  search.value = ''
+  if (tab !== 'vehiculos') filtroEstado.value = ''
+}
+
+function descripcionCategoria(item) {
+  if (!item.precio_dia && item.precio_dia !== 0) return 'Sin tarifa definida'
+  return `Tarifa diaria: $${Number(item.precio_dia).toFixed(2)}`
+}
+
+function formatFecha(fecha) {
+  if (!fecha) return '—'
+  return new Date(fecha).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function renderCelda(item, key) {
+  const map = {
+    placa: item.placa,
+    categoria_nombre: item.categoria?.nombre,
+    propietario_nombre: item.propietario?.nombre,
+    nombre: item.nombre,
+    modelo: item.nombre,
+    marca_nombre: item.marca?.nombre,
+    modelos_count: item.modelos_count ?? 0,
+    vehiculos_count: item.vehiculos_count ?? 0,
+    created_at: item.created_at ? formatFecha(item.created_at) : null,
+    descripcion: descripcionCategoria(item),
+    telefono: item.telefono,
+    tipo_propietario: item.tipo_propietario,
+  }
+  const val = map[key]
+  return val === undefined || val === null || val === '' ? '—' : val
+}
+
+function contadorLabel(total) {
+  const labels = {
+    vehiculos: total === 1 ? 'vehículo' : 'vehículos',
+    marcas: total === 1 ? 'marca' : 'marcas',
+    categorias: total === 1 ? 'categoría' : 'categorías',
+    modelos: total === 1 ? 'modelo' : 'modelos',
+    propietarios: total === 1 ? 'propietario' : 'propietarios',
+  }
+  return labels[activeTab.value] || 'registros'
+}
 
 function abrirModalCrear() {
   modoEdicion.value = false
@@ -268,7 +474,10 @@ function abrirCatalogo(tipo) {
 
 async function onCatalogoGuardado({ tipo }) {
   store.invalidarCatalogos(tipo)
-  await store.fetchCatalogos(true)
+  await Promise.all([
+    store.fetchCatalogos(true),
+    tipo === 'modelo' ? cargarModelos() : Promise.resolve(),
+  ])
   const labels = {
     marca: 'Marca registrada',
     categoria: 'Categoría registrada',
@@ -289,6 +498,233 @@ function abrirModalEditar(v) {
   modoEdicion.value = true
   vehiculoSeleccionado.value = { ...v }
   modalAbierto.value = true
+}
+
+async function accionEditar(item) {
+  try {
+    if (activeTab.value === 'vehiculos') {
+      abrirModalEditar(item)
+      return
+    }
+    if (activeTab.value === 'marcas') {
+      const result = await Swal.fire({
+        title: 'Editar marca',
+        input: 'text',
+        inputValue: item.nombre,
+        inputLabel: 'Nombre',
+        inputPlaceholder: 'Nombre de la marca',
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#c0392b',
+        background: isDark.value ? '#1f2937' : '#fff',
+        color: isDark.value ? '#f3f4f6' : '#111827',
+        inputValidator: (value) => (!value?.trim() ? 'El nombre es obligatorio' : null),
+      })
+      if (!result.isConfirmed) return
+      await api.put(`/marcas/${item.id}`, { nombre: result.value.trim() })
+      await store.fetchCatalogos(true)
+      return
+    }
+    if (activeTab.value === 'categorias') {
+      const { value, isConfirmed } = await Swal.fire({
+      title: 'Editar categoría',
+      html: `
+        <input id="swal-cat-nombre" class="swal2-input" placeholder="Nombre" value="${item.nombre ?? ''}">
+        <input id="swal-cat-precio" type="number" min="1" step="0.01" class="swal2-input" placeholder="Precio por día" value="${item.precio_dia ?? ''}">
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+      preConfirm: () => {
+        const nombre = document.getElementById('swal-cat-nombre')?.value?.trim()
+        const precio = Number(document.getElementById('swal-cat-precio')?.value)
+        if (!nombre) {
+          Swal.showValidationMessage('El nombre es obligatorio')
+          return false
+        }
+        if (!precio || Number.isNaN(precio) || precio < 1) {
+          Swal.showValidationMessage('El precio debe ser mayor o igual a 1')
+          return false
+        }
+        return { nombre, precio_dia: precio }
+      },
+    })
+      if (!isConfirmed) return
+      await api.put(`/categorias/${item.id}`, value)
+      await store.fetchCatalogos(true)
+      return
+    }
+    if (activeTab.value === 'modelos') {
+      await store.fetchCatalogos()
+      const marcasHtml = store.marcas
+        .map((m) => `<option value="${m.id}" ${m.id === item.marca_id ? 'selected' : ''}>${m.nombre}</option>`)
+        .join('')
+      const { value, isConfirmed } = await Swal.fire({
+      title: 'Editar modelo',
+      html: `
+        <input id="swal-mod-nombre" class="swal2-input" placeholder="Nombre" value="${item.nombre ?? ''}">
+        <select id="swal-mod-marca" class="swal2-input">${marcasHtml}</select>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+      preConfirm: () => {
+        const nombre = document.getElementById('swal-mod-nombre')?.value?.trim()
+        const marca_id = Number(document.getElementById('swal-mod-marca')?.value)
+        if (!nombre) {
+          Swal.showValidationMessage('El nombre es obligatorio')
+          return false
+        }
+        if (!marca_id) {
+          Swal.showValidationMessage('Selecciona una marca')
+          return false
+        }
+        return { nombre, marca_id }
+      },
+    })
+      if (!isConfirmed) return
+      await api.put(`/modelos/${item.id}`, value)
+      await cargarModelos()
+      return
+    }
+    if (activeTab.value === 'propietarios') {
+      const tipos = ['PROPIO', 'TERCERO', 'FAMILIAR']
+      const tiposHtml = tipos
+        .map((t) => `<option value="${t}" ${t === item.tipo_propietario ? 'selected' : ''}>${t}</option>`)
+        .join('')
+      const { value, isConfirmed } = await Swal.fire({
+      title: 'Editar propietario',
+      html: `
+        <input id="swal-prop-nombre" class="swal2-input" placeholder="Nombre" value="${item.nombre ?? ''}">
+        <input id="swal-prop-tel" class="swal2-input" placeholder="Teléfono" value="${item.telefono ?? ''}">
+        <select id="swal-prop-tipo" class="swal2-input">${tiposHtml}</select>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+      preConfirm: () => {
+        const nombre = document.getElementById('swal-prop-nombre')?.value?.trim()
+        const telefono = document.getElementById('swal-prop-tel')?.value?.trim()
+        const tipo_propietario = document.getElementById('swal-prop-tipo')?.value
+        if (!nombre) {
+          Swal.showValidationMessage('El nombre es obligatorio')
+          return false
+        }
+        if (!telefono) {
+          Swal.showValidationMessage('El teléfono es obligatorio')
+          return false
+        }
+        if (!tipo_propietario) {
+          Swal.showValidationMessage('Selecciona un tipo')
+          return false
+        }
+        return { nombre, telefono, tipo_propietario }
+      },
+    })
+      if (!isConfirmed) return
+      await api.put(`/admin/propietarios/${item.id}`, value)
+      await store.fetchCatalogos(true)
+    }
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'No se pudo guardar',
+      text: e.response?.data?.message || 'Ocurrió un error al actualizar el registro.',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  }
+}
+
+async function accionEliminar(item) {
+  const nombre = activeTab.value === 'vehiculos' ? nombreVehiculo(item) : item.nombre
+  const result = await Swal.fire({
+    icon: 'warning',
+    title: `¿Eliminar ${tabActiva.value.label.slice(0, -1).toLowerCase()}?`,
+    text: `Se eliminará ${nombre}. Esta acción no se puede deshacer.`,
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#c0392b',
+    cancelButtonColor: '#6b7280',
+    background: isDark.value ? '#1f2937' : '#fff',
+    color: isDark.value ? '#f3f4f6' : '#111827',
+  })
+  if (!result.isConfirmed) return
+
+  try {
+    const endpoints = {
+      vehiculos: `/admin/vehiculos/${item.id}`,
+      marcas: `/marcas/${item.id}`,
+      categorias: `/categorias/${item.id}`,
+      modelos: `/modelos/${item.id}`,
+      propietarios: `/admin/propietarios/${item.id}`,
+    }
+    await api.delete(endpoints[activeTab.value])
+
+    if (activeTab.value === 'vehiculos') {
+      await store.fetchVehiculos()
+    } else if (activeTab.value === 'modelos') {
+      await cargarModelos()
+    } else {
+      await store.fetchCatalogos(true)
+    }
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Registro eliminado',
+      text: 'El registro fue eliminado correctamente.',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'No se pudo eliminar',
+      text: e.response?.data?.message || 'No fue posible eliminar el registro con la configuración actual.',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  }
+}
+
+function accionNuevo() {
+  if (activeTab.value === 'vehiculos') {
+    abrirModalCrear()
+    return
+  }
+  const map = {
+    marcas: 'marca',
+    categorias: 'categoria',
+    modelos: 'modelo',
+    propietarios: 'propietario',
+  }
+  abrirCatalogo(map[activeTab.value])
+}
+
+async function cargarModelos() {
+  cargandoModelos.value = true
+  try {
+    const res = await api.get('/modelos')
+    modelos.value = extraerLista(res.data?.data)
+  } catch {
+    modelos.value = []
+  } finally {
+    cargandoModelos.value = false
+  }
 }
 
 async function guardarVehiculo(form) {
@@ -329,22 +765,23 @@ async function guardarVehiculo(form) {
 </script>
 
 <style scoped>
-.accion-sec-light {
-  border-color: #e5e7eb;
-  background: #fff;
-  color: #374151;
+.catalogo-tab-active {
+  background: #922b21;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(146, 43, 33, 0.35);
 }
-.accion-sec-light:hover {
-  border-color: #d1d5db;
-  background: #f9fafb;
+.catalogo-tab-inactive-light {
+  color: #4b5563;
 }
-.accion-sec-dark {
-  border-color: #374151;
+.catalogo-tab-inactive-light:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+.catalogo-tab-inactive-dark {
+  color: #9ca3af;
+}
+.catalogo-tab-inactive-dark:hover {
   background: #1f2937;
-  color: #d1d5db;
-}
-.accion-sec-dark:hover {
-  border-color: #4b5563;
-  background: #111827;
+  color: #f3f4f6;
 }
 </style>
