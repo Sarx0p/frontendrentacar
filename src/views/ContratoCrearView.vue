@@ -58,7 +58,6 @@
               @cliente-limpiado="onClienteLimpiado"
               @reserva-elegir="aplicarReserva"
               @reserva-limpiar="onReservaLimpiar"
-              @agregar-nuevo="modalClienteAbierto = true"
             />
             <ContratoFechasVehiculoSection
               v-else-if="paso === 2"
@@ -131,13 +130,6 @@
 
     <ContratoPdfPreview :visible="mostrarPdf" :contrato="contratoGenerado" @cerrar="mostrarPdf = false" />
 
-    <ClientesModal
-      :visible="modalClienteAbierto"
-      :modo-edicion="false"
-      :cliente="null"
-      @guardar="onClienteCreado"
-      @cerrar="modalClienteAbierto = false"
-    />
   </div>
 </template>
 
@@ -150,10 +142,8 @@ import ContratoFechasVehiculoSection from '@/components/contratos/ContratoFechas
 import ContratoPreciosInspeccionSection from '@/components/contratos/ContratoPreciosInspeccionSection.vue'
 import ContratoResumen from '@/components/contratos/ContratoResumen.vue'
 import ContratoPdfPreview from '@/components/contratos/ContratoPdfPreview.vue'
-import ClientesModal from '@/components/clientes/ClientesModal.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { useReservasStore } from '@/stores/reservas'
-import { useClientesStore } from '@/stores/clientes'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { calcularDias, documentosVigentes } from '@/utils/contratoFormatters'
 
@@ -162,14 +152,12 @@ const route = useRoute()
 const { isDark } = useAppTheme()
 const contratosStore = useContratosStore()
 const reservasStore = useReservasStore()
-const clientesStore = useClientesStore()
 
 const reservaId = ref(route.query.reserva_id ? Number(route.query.reserva_id) : null)
 const reservaOrigen = ref(null)
 const reservasCliente = ref([])
 const cargandoReservasCliente = ref(false)
 const sinReservaDisponible = ref(false)
-const modalClienteAbierto = ref(false)
 const cargandoReserva = ref(false)
 
 const clienteRef = ref(null)
@@ -306,32 +294,6 @@ async function aplicarReserva(reserva) {
   vehiculoId.value = reserva.vehiculo_id
   sinReservaDisponible.value = false
   await consultarVehiculos()
-}
-
-async function onClienteCreado(form) {
-  try {
-    const creado = await clientesStore.crear(form)
-    modalClienteAbierto.value = false
-    cliente.value = creado
-    await Swal.fire({
-      icon: 'success',
-      title: 'Cliente registrado',
-      text: `${creado.nombre} se agregó correctamente.`,
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
-    await cargarReservasCliente(creado.id)
-  } catch (e) {
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error al registrar cliente',
-      text: e.response?.data?.message || clientesStore.error || 'No se pudo registrar el cliente.',
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
-  }
 }
 
 async function consultarVehiculos() {

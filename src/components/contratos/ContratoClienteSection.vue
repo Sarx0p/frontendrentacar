@@ -55,21 +55,26 @@
         </button>
       </div>
 
-      <p v-else-if="terminoBusqueda.trim()" class="text-xs mt-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-        No encontrado. Puedes registrar un cliente nuevo.
-      </p>
-
-      <button
-        type="button"
-        class="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all border-2 border-dashed"
-        :class="isDark
-          ? 'border-gray-600 text-gray-300 hover:border-gray-500 hover:bg-gray-800/50'
-          : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'"
-        @click="$emit('agregar-nuevo')"
+      <div
+        v-else-if="terminoBusqueda.trim()"
+        class="mt-3 rounded-xl border p-4"
+        :class="isDark ? 'border-gray-700 bg-gray-800/40' : 'border-gray-200 bg-gray-50'"
       >
-        <i class="pi pi-user-plus"></i>
-        Agregar nuevo cliente
-      </button>
+        <p class="text-sm font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">
+          Cliente no encontrado
+        </p>
+        <p class="text-xs mt-2 leading-relaxed" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+          Regístralo desde el formulario de reservas y crea la reserva antes de generar el contrato.
+        </p>
+        <router-link
+          :to="{ name: 'reservas-nueva' }"
+          class="inline-flex items-center gap-1.5 mt-3 text-xs font-bold"
+          style="color:#c0392b;"
+        >
+          <i class="pi pi-calendar-plus"></i>
+          Crear reserva
+        </router-link>
+      </div>
     </template>
 
     <!-- Estado de reservas del cliente -->
@@ -85,19 +90,19 @@
         :class="isDark ? 'border-amber-900/50 bg-amber-950/25' : 'border-amber-200 bg-amber-50'"
       >
         <p class="text-sm font-bold flex items-center gap-2" :class="isDark ? 'text-amber-300' : 'text-amber-900'">
-          <i class="pi pi-info-circle"></i>
-          Este cliente no tiene reserva activa
+          <i class="pi pi-exclamation-triangle"></i>
+          No puedes crear el contrato sin reserva
         </p>
         <p class="text-xs mt-2 leading-relaxed" :class="isDark ? 'text-amber-200/80' : 'text-amber-800'">
-          Para crear un contrato primero debes registrar una reserva con fechas y vehículo.
+          Este cliente no tiene una reserva activa. Debes crear la reserva con fechas y vehículo antes de continuar.
         </p>
         <router-link
           :to="{ name: 'reservas-nueva' }"
-          class="inline-flex items-center gap-1.5 mt-3 text-xs font-bold"
-          style="color:#c0392b;"
+          class="inline-flex items-center gap-1.5 mt-3 text-xs font-bold px-3 py-2 rounded-lg transition-opacity hover:opacity-90"
+          style="background:#c0392b; color:#fff;"
         >
           <i class="pi pi-calendar-plus"></i>
-          Crear reserva
+          Ir a crear reserva
         </router-link>
       </div>
 
@@ -178,7 +183,6 @@ const emit = defineEmits([
   'cliente-limpiado',
   'reserva-elegir',
   'reserva-limpiar',
-  'agregar-nuevo',
 ])
 
 const { isDark } = useAppTheme()

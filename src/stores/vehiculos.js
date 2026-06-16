@@ -2,6 +2,12 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/services/api'
 
+function extraerListaApi(payload) {
+  if (Array.isArray(payload)) return payload
+  if (payload?.data && Array.isArray(payload.data)) return payload.data
+  return []
+}
+
 export const useVehiculosStore = defineStore('vehiculos', () => {
   const vehiculos = ref([])
   const loading = ref(false)
@@ -20,7 +26,8 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
     error.value = null
     try {
       const res = await api.get('/admin/vehiculos', { params })
-      vehiculos.value = res.data.data.data ?? res.data.data ?? []
+      const payload = res.data?.data
+      vehiculos.value = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : [])
       estadosOpciones.value = res.data.meta?.estados ?? []
     } catch (e) {
       error.value = e.response?.data?.message || 'Error al cargar vehículos.'
@@ -44,9 +51,9 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
           api.get('/categorias'),
           api.get('/admin/propietarios'),
         ])
-        marcas.value = marcasRes.status === 'fulfilled' ? (marcasRes.value.data.data ?? []) : []
-        categorias.value = catsRes.status === 'fulfilled' ? (catsRes.value.data.data ?? []) : []
-        propietarios.value = propsRes.status === 'fulfilled' ? (propsRes.value.data.data ?? []) : []
+        marcas.value = marcasRes.status === 'fulfilled' ? extraerListaApi(marcasRes.value.data?.data) : []
+        categorias.value = catsRes.status === 'fulfilled' ? extraerListaApi(catsRes.value.data?.data) : []
+        propietarios.value = propsRes.status === 'fulfilled' ? extraerListaApi(propsRes.value.data?.data) : []
         return { marcas: marcas.value, categorias: categorias.value, propietarios: propietarios.value }
       } finally {
         catalogosCargando.value = false
@@ -65,7 +72,7 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
     }
     try {
       const res = await api.get(`/marcas/${marcaId}/modelos`)
-      const lista = res.data.data ?? []
+      const lista = extraerListaApi(res.data?.data)
       modelosPorMarca.value[key] = lista
       return lista
     } catch {

@@ -16,31 +16,32 @@
 
     <!-- Tipo de reporte -->
     <div
-      class="rounded-2xl border shadow-sm p-5 mb-4"
+      class="rounded-2xl border shadow-sm p-4 mb-4"
       :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
     >
-      <p class="text-xs font-semibold uppercase tracking-widest mb-3" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Tipo de reporte</p>
-
-      <div class="space-y-4">
-        <div v-for="grupo in gruposReporte" :key="grupo.id">
-          <p class="text-xs font-bold mb-2" :style="{ color: grupo.color }">{{ grupo.titulo }}</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button
-              v-for="tipo in grupo.items"
-              :key="tipo.value"
-              type="button"
-              class="text-left px-4 py-3 rounded-xl border transition-all"
-              :class="form.tipo === tipo.value
-                ? (isDark ? 'border-red-700 bg-red-950/30' : 'border-red-200 bg-red-50')
-                : (isDark ? 'border-gray-800 bg-gray-800/40 hover:bg-gray-800' : 'border-gray-100 bg-gray-50 hover:bg-white')"
-              @click="form.tipo = tipo.value"
-            >
-              <p class="text-sm font-bold" :class="isDark ? 'text-gray-100' : 'text-gray-800'">{{ tipo.label }}</p>
-              <p class="text-xs mt-0.5 opacity-60">{{ tipo.descripcion }}</p>
-            </button>
-          </div>
-        </div>
+      <p class="text-xs font-semibold uppercase tracking-widest mb-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Tipo de reporte</p>
+      <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-center">
+        <select
+          v-model="form.tipo"
+          class="w-full rounded-xl px-3 py-2.5 text-sm border focus:outline-none"
+          :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50'"
+        >
+          <optgroup v-for="grupo in gruposReporte" :key="grupo.id" :label="grupo.titulo">
+            <option v-for="tipo in grupo.items" :key="tipo.value" :value="tipo.value">
+              {{ tipo.label }}
+            </option>
+          </optgroup>
+        </select>
+        <span
+          class="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap"
+          :class="isDark ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-600'"
+        >
+          {{ tipoActual?.modo === 'vista' ? 'Vista en pantalla' : 'Exportación PDF' }}
+        </span>
       </div>
+      <p class="text-xs mt-2" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+        {{ tipoActual?.descripcion }}
+      </p>
     </div>
 
     <!-- Periodo -->

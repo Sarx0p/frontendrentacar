@@ -153,10 +153,10 @@ async function handleLogin() {
       icon:             'success',
       title:            '¡Sesión iniciada correctamente!',
       text:             'Bienvenido al panel de RentaCar El Guayabo.',
-      confirmButtonColor: '#c0392b',
+      confirmButtonColor: '#16a34a',
       confirmButtonText:  'Continuar',
       background:       '#fff',
-      iconColor:        '#c0392b',
+      iconColor:        '#16a34a',
     })
 
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
