@@ -110,21 +110,6 @@
           :active="activeRoute === 'usuarios'"
           @click="navegar('usuarios')"
         />
-        <SidebarItem
-          v-if="authStore.isAdmin"
-          icon="pi-lock"
-          label="Permisos"
-          :collapsed="collapsed"
-          :active="activeRoute === 'permisos'"
-          @click="navegar('permisos')"
-        />
-        <SidebarItem
-          icon="pi-cog"
-          label="Configuración"
-          :collapsed="collapsed"
-          :active="activeRoute === 'configuracion'"
-          @click="navegar('configuracion')"
-        />
 
         <div
           class="rounded-lg mx-1 mt-2 px-2 py-2.5 bg-black/20"

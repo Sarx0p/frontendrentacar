@@ -10,11 +10,42 @@
       </div>
       <div>
         <h1 class="text-2xl font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">Generar reporte</h1>
-        <p class="text-sm mt-0.5" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Renta de vehículos</p>
+        <p class="text-sm mt-0.5" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Selecciona el tipo de reporte a generar</p>
       </div>
     </div>
 
+    <!-- Tipo de reporte -->
     <div
+      class="rounded-2xl border shadow-sm p-5 mb-4"
+      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+    >
+      <p class="text-xs font-semibold uppercase tracking-widest mb-3" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Tipo de reporte</p>
+
+      <div class="space-y-4">
+        <div v-for="grupo in gruposReporte" :key="grupo.id">
+          <p class="text-xs font-bold mb-2" :style="{ color: grupo.color }">{{ grupo.titulo }}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              v-for="tipo in grupo.items"
+              :key="tipo.value"
+              type="button"
+              class="text-left px-4 py-3 rounded-xl border transition-all"
+              :class="form.tipo === tipo.value
+                ? (isDark ? 'border-red-700 bg-red-950/30' : 'border-red-200 bg-red-50')
+                : (isDark ? 'border-gray-800 bg-gray-800/40 hover:bg-gray-800' : 'border-gray-100 bg-gray-50 hover:bg-white')"
+              @click="form.tipo = tipo.value"
+            >
+              <p class="text-sm font-bold" :class="isDark ? 'text-gray-100' : 'text-gray-800'">{{ tipo.label }}</p>
+              <p class="text-xs mt-0.5 opacity-60">{{ tipo.descripcion }}</p>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Periodo -->
+    <div
+      v-if="tipoActual?.needsPeriod"
       class="rounded-2xl border shadow-sm p-5 mb-4"
       :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
     >
@@ -28,7 +59,7 @@
           class="px-4 py-2 rounded-full text-sm border transition-all font-semibold"
           :class="form.periodo === p.value
             ? 'text-white border-transparent'
-            : (isDark ? 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-750' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50')"
+            : (isDark ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-white text-gray-600 border-gray-300')"
           :style="form.periodo === p.value ? 'background:#c0392b;border-color:#c0392b;' : ''"
         >
           {{ p.label }}
@@ -40,8 +71,8 @@
           <input
             v-model="form.fechaInicio"
             type="date"
-            class="rounded-xl px-3 py-2.5 text-sm border focus:outline-none focus:ring-2 focus:ring-red-300/40"
-            :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50 text-gray-700'"
+            class="rounded-xl px-3 py-2.5 text-sm border focus:outline-none"
+            :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50'"
           />
         </div>
         <div class="flex flex-col gap-1">
@@ -49,14 +80,16 @@
           <input
             v-model="form.fechaFin"
             type="date"
-            class="rounded-xl px-3 py-2.5 text-sm border focus:outline-none focus:ring-2 focus:ring-red-300/40"
-            :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50 text-gray-700'"
+            class="rounded-xl px-3 py-2.5 text-sm border focus:outline-none"
+            :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50'"
           />
         </div>
       </div>
     </div>
 
+    <!-- Filtro estado (solo desempeño) -->
     <div
+      v-if="tipoActual?.needsEstado"
       class="rounded-2xl border shadow-sm p-5 mb-4"
       :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
     >
@@ -65,8 +98,8 @@
         <label class="text-sm" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Estado de renta</label>
         <select
           v-model="form.estado"
-          class="rounded-xl px-3 py-2.5 text-sm border focus:outline-none focus:ring-2 focus:ring-red-300/40"
-          :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50 text-gray-700'"
+          class="rounded-xl px-3 py-2.5 text-sm border focus:outline-none"
+          :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50'"
         >
           <option value="">Todos</option>
           <option value="activa">Activa</option>
@@ -75,6 +108,42 @@
           <option value="pendiente">Pendiente</option>
         </select>
       </div>
+    </div>
+
+    <!-- Cliente (historial) -->
+    <div
+      v-if="tipoActual?.needsCliente"
+      class="rounded-2xl border shadow-sm p-5 mb-4"
+      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+    >
+      <p class="text-xs font-semibold uppercase tracking-widest mb-3" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Cliente</p>
+      <select
+        v-model="form.clienteId"
+        class="w-full rounded-xl px-3 py-2.5 text-sm border focus:outline-none"
+        :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50'"
+      >
+        <option value="">Selecciona un cliente...</option>
+        <option v-for="c in clientesStore.clientes" :key="c.id" :value="c.id">
+          {{ c.nombre }} — DUI: {{ c.dui }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Licencias (días) -->
+    <div
+      v-if="tipoActual?.needsDias"
+      class="rounded-2xl border shadow-sm p-5 mb-4"
+      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+    >
+      <p class="text-xs font-semibold uppercase tracking-widest mb-3" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Días por vencer</p>
+      <input
+        v-model.number="form.dias"
+        type="number"
+        min="1"
+        max="365"
+        class="w-full rounded-xl px-3 py-2.5 text-sm border focus:outline-none"
+        :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50'"
+      />
     </div>
 
     <div class="flex justify-end mt-6">
@@ -87,7 +156,7 @@
       >
         <i v-if="generando" class="pi pi-spin pi-spinner text-xs"></i>
         <i v-else class="pi pi-file-pdf text-xs"></i>
-        Generar reporte
+        {{ tipoActual?.modo === 'vista' ? 'Generar reporte' : 'Descargar PDF' }}
       </button>
     </div>
 
@@ -95,27 +164,158 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { useClientesStore } from '@/stores/clientes'
+import { abrirPdf } from '@/utils/pdfDownload'
 
 const router = useRouter()
 const { isDark } = useAppTheme()
+const clientesStore = useClientesStore()
 const generando = ref(false)
 
 const form = reactive({
+  tipo: 'desempeno',
   periodo: 'mes',
   fechaInicio: '',
   fechaFin: '',
   estado: '',
+  clienteId: '',
+  dias: 30,
 })
+
+const tiposReporte = [
+  {
+    value: 'desempeno',
+    label: 'Desempeño general',
+    descripcion: 'Resumen de rentas, ingresos y ocupación.',
+    grupo: 'general',
+    modo: 'vista',
+    needsPeriod: true,
+    needsEstado: true,
+    endpoint: null,
+  },
+  {
+    value: 'ingresos-por-vehiculo',
+    label: 'Ingresos por vehículo',
+    descripcion: 'Pagos confirmados agrupados por vehículo.',
+    grupo: 'propietarios',
+    modo: 'pdf',
+    needsPeriod: true,
+    endpoint: '/admin/reportes/ingresos-por-vehiculo',
+  },
+  {
+    value: 'gastos-por-vehiculo',
+    label: 'Gastos por vehículo',
+    descripcion: 'Mantenimientos agrupados por vehículo.',
+    grupo: 'propietarios',
+    modo: 'pdf',
+    needsPeriod: true,
+    endpoint: '/admin/reportes/gastos-por-vehiculo',
+  },
+  {
+    value: 'neto-por-vehiculo',
+    label: 'Resultado neto por vehículo',
+    descripcion: 'Ingresos menos gastos por vehículo.',
+    grupo: 'propietarios',
+    modo: 'pdf',
+    needsPeriod: true,
+    endpoint: '/admin/reportes/neto-por-vehiculo',
+  },
+  {
+    value: 'saldos-pendientes',
+    label: 'Saldos pendientes',
+    descripcion: 'Contratos activos con pago pendiente o parcial.',
+    grupo: 'operativos',
+    modo: 'pdf',
+    needsPeriod: false,
+    endpoint: '/admin/reportes/saldos-pendientes',
+  },
+  {
+    value: 'historial-cliente',
+    label: 'Historial de cliente',
+    descripcion: 'Reservas, contratos, pagos e incidencias.',
+    grupo: 'operativos',
+    modo: 'pdf',
+    needsPeriod: false,
+    needsCliente: true,
+    endpoint: '/admin/reportes/historial-cliente',
+  },
+  {
+    value: 'ingresos',
+    label: 'Detalle de ingresos',
+    descripcion: 'Listado de pagos confirmados.',
+    grupo: 'otros',
+    modo: 'pdf',
+    needsPeriod: true,
+    endpoint: '/admin/reportes/ingresos',
+  },
+  {
+    value: 'estado-flota',
+    label: 'Estado de flota',
+    descripcion: 'Resumen del estado de los vehículos.',
+    grupo: 'otros',
+    modo: 'pdf',
+    needsPeriod: false,
+    endpoint: '/admin/reportes/estado-flota',
+  },
+  {
+    value: 'licencias-por-vencer',
+    label: 'Licencias por vencer',
+    descripcion: 'Clientes con licencia próxima a vencer.',
+    grupo: 'otros',
+    modo: 'pdf',
+    needsPeriod: false,
+    needsDias: true,
+    endpoint: '/admin/reportes/licencias-por-vencer',
+  },
+  {
+    value: 'reservas-canceladas',
+    label: 'Reservas canceladas',
+    descripcion: 'Historial de cancelaciones.',
+    grupo: 'otros',
+    modo: 'pdf',
+    needsPeriod: true,
+    endpoint: '/admin/reportes/reservas-canceladas',
+  },
+]
+
+const gruposReporte = computed(() => [
+  {
+    id: 'general',
+    titulo: 'General',
+    color: '#c0392b',
+    items: tiposReporte.filter((t) => t.grupo === 'general'),
+  },
+  {
+    id: 'propietarios',
+    titulo: 'Propietarios / contabilidad',
+    color: '#922b21',
+    items: tiposReporte.filter((t) => t.grupo === 'propietarios'),
+  },
+  {
+    id: 'operativos',
+    titulo: 'Operativos',
+    color: '#f0a500',
+    items: tiposReporte.filter((t) => t.grupo === 'operativos'),
+  },
+  {
+    id: 'otros',
+    titulo: 'Otros reportes',
+    color: '#6b7280',
+    items: tiposReporte.filter((t) => t.grupo === 'otros'),
+  },
+])
+
+const tipoActual = computed(() => tiposReporte.find((t) => t.value === form.tipo))
 
 const periodos = [
   { value: 'personalizado', label: 'Personalizado' },
-  { value: 'mes',           label: 'Este mes' },
-  { value: 'trimestral',    label: 'Trimestral' },
-  { value: 'anual',         label: 'Anual' },
+  { value: 'mes', label: 'Este mes' },
+  { value: 'trimestral', label: 'Trimestral' },
+  { value: 'anual', label: 'Anual' },
 ]
 
 function seleccionarPeriodo(valor) {
@@ -135,40 +335,74 @@ function seleccionarPeriodo(valor) {
   }
 }
 
+async function alerta(tipo, titulo, texto) {
+  await Swal.fire({
+    icon: tipo,
+    title: titulo,
+    text: texto,
+    confirmButtonColor: '#c0392b',
+    background: isDark.value ? '#1f2937' : '#fff',
+    color: isDark.value ? '#f3f4f6' : '#111827',
+  })
+}
+
 async function generarReporte() {
-  if (!form.fechaInicio || !form.fechaFin) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Fechas requeridas',
-      text: 'Selecciona el periodo del reporte.',
-      confirmButtonColor: '#c0392b',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+  const tipo = tipoActual.value
+  if (!tipo) return
+
+  if (tipo.needsPeriod && (!form.fechaInicio || !form.fechaFin)) {
+    await alerta('warning', 'Fechas requeridas', 'Selecciona el periodo del reporte.')
     return
   }
-  if (form.fechaFin < form.fechaInicio) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Periodo inválido',
-      text: 'La fecha fin debe ser igual o posterior a la fecha inicio.',
-      confirmButtonColor: '#c0392b',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
+  if (tipo.needsPeriod && form.fechaFin < form.fechaInicio) {
+    await alerta('warning', 'Periodo inválido', 'La fecha fin debe ser igual o posterior a la fecha inicio.')
+    return
+  }
+  if (tipo.needsCliente && !form.clienteId) {
+    await alerta('warning', 'Cliente requerido', 'Selecciona el cliente para el historial.')
+    return
+  }
+
+  if (tipo.modo === 'vista') {
+    router.push({
+      name: 'reportes-vista',
+      query: {
+        fechaInicio: form.fechaInicio,
+        fechaFin: form.fechaFin,
+        ...(form.estado ? { estado: form.estado } : {}),
+      },
     })
     return
   }
 
   generando.value = true
-  router.push({
-    name: 'reportes-vista',
-    query: {
-      fechaInicio: form.fechaInicio,
-      fechaFin: form.fechaFin,
-      ...(form.estado ? { estado: form.estado } : {}),
-    },
-  })
+  try {
+    const params = {}
+    if (tipo.needsPeriod) {
+      params.fecha_inicio = form.fechaInicio
+      params.fecha_fin = form.fechaFin
+    }
+    if (tipo.needsDias) {
+      params.dias = form.dias
+    }
+
+    let url = tipo.endpoint
+    if (tipo.needsCliente) {
+      url = `${tipo.endpoint}/${form.clienteId}`
+    }
+
+    await abrirPdf(url, params)
+  } catch (e) {
+    await alerta('error', 'No se pudo generar', e.message || 'Intenta de nuevo.')
+  } finally {
+    generando.value = false
+  }
 }
 
-onMounted(() => seleccionarPeriodo('mes'))
+onMounted(async () => {
+  seleccionarPeriodo('mes')
+  if (!clientesStore.clientes.length) {
+    await clientesStore.fetchClientes()
+  }
+})
 </script>
