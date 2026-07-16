@@ -1,5 +1,9 @@
 const colores = ['#c0392b', '#f0a500', '#2563eb', '#16a34a', '#7c3aed', '#0891b2']
 
+export function esAdministrador(usuario) {
+  return usuario?.roles?.[0]?.name === 'ADMINISTRADOR'
+}
+
 export function avatarColor(nombre) {
   let h = 0
   for (let i = 0; i < nombre.length; i++) h = nombre.charCodeAt(i) + ((h << 5) - h)

@@ -104,14 +104,26 @@
               </td>
 
               <td class="px-5 py-4">
-                <button
-                  @click="abrirModalEditar(cliente)"
-                  class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
-                  :class="isDark
-                    ? 'border-red-800 bg-red-950/40 text-[#f0a500] hover:bg-red-950/70 hover:border-red-700'
-                    : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'"
-                  title="Editar"
-                ><i class="pi pi-pencil text-xs"></i></button>
+                <div class="flex items-center justify-end gap-1.5">
+                  <button
+                    type="button"
+                    @click="abrirHistorial(cliente)"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
+                    :class="isDark
+                      ? 'border-gray-700 bg-gray-800 text-[#f0a500] hover:bg-gray-700 hover:border-gray-600'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'"
+                    title="Ver historial"
+                  ><i class="pi pi-history text-xs"></i></button>
+                  <button
+                    type="button"
+                    @click="abrirModalEditar(cliente)"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm"
+                    :class="isDark
+                      ? 'border-red-800 bg-red-950/40 text-[#f0a500] hover:bg-red-950/70 hover:border-red-700'
+                      : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'"
+                    title="Editar"
+                  ><i class="pi pi-pencil text-xs"></i></button>
+                </div>
               </td>
             </tr>
 
@@ -140,12 +152,21 @@
       @cerrar="modalAbierto = false"
     />
 
+    <ClientesHistorialModal
+      :visible="historialAbierto"
+      :cliente="clienteHistorial"
+      @cerrar="historialAbierto = false"
+    />
+
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import Swal from 'sweetalert2'
+import { formatFecha, fechaSoloISO, fechaHoyLocal } from '@/utils/reservaFormatters'
 import ClientesModal from '@/components/clientes/ClientesModal.vue'
+import ClientesHistorialModal from '@/components/clientes/ClientesHistorialModal.vue'
 import { useClientesStore } from '@/stores/clientes'
 import { useAppTheme } from '@/composables/useAppTheme'
 
@@ -154,8 +175,10 @@ const store = useClientesStore()
 
 const search              = ref('')
 const modalAbierto        = ref(false)
+const historialAbierto    = ref(false)
 const modoEdicion         = ref(false)
 const clienteSeleccionado = ref(null)
+const clienteHistorial    = ref(null)
 
 const clientes = computed(() => store.clientes)
 
@@ -183,13 +206,37 @@ function abrirModalEditar(cliente) {
   modalAbierto.value = true
 }
 
+function abrirHistorial(cliente) {
+  clienteHistorial.value = { ...cliente }
+  historialAbierto.value = true
+}
+
 async function guardarCliente(form) {
-  if (modoEdicion.value) {
-    await store.actualizar(form)
-  } else {
-    await store.crear(form)
+  try {
+    if (modoEdicion.value) {
+      await store.actualizar(form)
+    } else {
+      await store.crear(form)
+      await Swal.fire({
+        icon: 'success',
+        title: '¡Cliente registrado!',
+        text: 'El cliente se creó correctamente.',
+        confirmButtonColor: '#c0392b',
+        background: isDark.value ? '#1f2937' : '#fff',
+        color: isDark.value ? '#f3f4f6' : '#111827',
+      })
+    }
+    modalAbierto.value = false
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error al registrar cliente',
+      text: e.response?.data?.message || store.error || 'No se pudo guardar el cliente.',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
   }
-  modalAbierto.value = false
 }
 
 const colores = ['#c0392b', '#f0a500', '#2563eb', '#16a34a', '#7c3aed', '#0891b2']
@@ -203,12 +250,8 @@ function initials(nombre) {
   if (!nombre) return '?'
   return nombre.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 }
-function formatFecha(fecha) {
-  if (!fecha) return '—'
-  return new Date(fecha).toLocaleDateString('es-SV')
-}
 function licenciaVigente(vencimiento) {
-  if (!vencimiento) return false
-  return new Date(vencimiento) > new Date()
+  const iso = fechaSoloISO(vencimiento)
+  return iso ? iso >= fechaHoyLocal() : false
 }
 </script>

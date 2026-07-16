@@ -16,7 +16,7 @@
           <input
             :value="fechaInicio"
             type="date"
-            :min="hoy"
+            :min="minFechaInicio || hoy"
             class="field-input"
             :class="errorInicio ? 'error' : ''"
             @input="$emit('update:fechaInicio', $event.target.value); $emit('change')"
@@ -31,7 +31,7 @@
           <input
             :value="fechaFin"
             type="date"
-            :min="fechaInicio || hoy"
+            :min="fechaInicio || minFechaInicio || hoy"
             class="field-input"
             :class="errorFin ? 'error' : ''"
             @input="$emit('update:fechaFin', $event.target.value); $emit('change')"
@@ -46,7 +46,7 @@
       <div class="grid grid-cols-2 gap-3">
         <button
           type="button"
-          @click="$emit('update:tipoReserva', 'INMEDIATA'); $emit('change')"
+          @click="$emit('update:tipoReserva', 'INMEDIATA')"
           class="flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl border-2 transition-all"
           :style="tipoReserva === 'INMEDIATA'
             ? 'border-color:#922b21; background:#fef2f2;'
@@ -64,7 +64,7 @@
 
         <button
           type="button"
-          @click="$emit('update:tipoReserva', 'ANTISIPADA'); $emit('change')"
+          @click="$emit('update:tipoReserva', 'ANTISIPADA')"
           class="flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl border-2 transition-all"
           :style="tipoReserva === 'ANTISIPADA'
             ? 'border-color:#922b21; background:#fef2f2;'
@@ -104,7 +104,8 @@ import { formatFecha } from '@/utils/reservaFormatters'
 defineProps({
   fechaInicio:  { type: String, default: '' },
   fechaFin:     { type: String, default: '' },
-  hoy:          { type: String, required: true },
+  hoy:              { type: String, required: true },
+  minFechaInicio:   { type: String, default: '' },
   errorInicio:  { type: String, default: '' },
   errorFin:     { type: String, default: '' },
   diasReserva:  { type: Number, default: 0 },

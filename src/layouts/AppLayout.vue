@@ -20,12 +20,29 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useThemeStore } from '@/stores/theme'
+import { useAuthStore } from '@/stores/auth'
+import { useNotificacionesStore } from '@/stores/notificaciones'
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppHeader from '@/components/AppHeader.vue'
 
 const sidebarCollapsed = ref(false)
 const { isDark } = storeToRefs(useThemeStore())
+const authStore = useAuthStore()
+const notificacionesStore = useNotificacionesStore()
+
+let pollingId = null
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    authStore.me().catch(() => {})
+    pollingId = notificacionesStore.iniciarPolling(60000)
+  }
+})
+
+onUnmounted(() => {
+  if (pollingId) clearInterval(pollingId)
+})
 </script>

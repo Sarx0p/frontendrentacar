@@ -13,7 +13,8 @@
       v-if="badge && !collapsed"
       class="ml-auto text-xs font-bold px-1.5 py-0.5 rounded-full"
       :style="badgeStyle"
-    >{{ badge }}</span>
+      >{{ badge }}</span
+    >
 
     <div
       v-if="collapsed && hovered"
@@ -24,13 +25,14 @@
         v-if="badge"
         class="ml-1 text-xs font-bold px-1 py-0.5 rounded-full"
         :style="badgeStyle"
-      >{{ badge }}</span>
+        >{{ badge }}</span
+      >
     </div>
   </button>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed } from "vue";
 
 const props = defineProps({
   icon: String,
@@ -39,20 +41,20 @@ const props = defineProps({
   active: Boolean,
   badge: Number,
   badgeColor: String,
-})
-defineEmits(['navegar'])
+});
+defineEmits(["navegar"]);
 
-const hovered = ref(false)
+const hovered = ref(false);
 
 const buttonStyle = computed(() => {
-  if (props.active) return { background: '#c0392b', color: 'white', fontWeight: '600' }
-  if (hovered.value) return { background: 'rgba(255,255,255,0.07)', color: 'white' }
-  return { background: 'transparent', color: 'rgba(255,255,255,0.6)' }
-})
+  if (props.active) return { background: "#c0392b", color: "white", fontWeight: "600" };
+  if (hovered.value) return { background: "rgba(255,255,255,0.07)", color: "white" };
+  return { background: "transparent", color: "rgba(255,255,255,0.92)" };
+});
 
 const badgeStyle = computed(() => {
-  const c = props.badgeColor || '#f0a500'
-  if (props.badgeColor) return { background: c, color: '#fff' }
-  return { background: '#f0a500', color: '#3b0a0a' }
-})
+  const c = props.badgeColor || "#f0a500";
+  if (props.badgeColor) return { background: c, color: "#fff" };
+  return { background: "#f0a500", color: "#3b0a0a" };
+});
 </script>

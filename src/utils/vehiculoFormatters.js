@@ -1,0 +1,54 @@
+export const ESTADOS_VEHICULO_NUEVO = [
+  { value: 'DISPONIBLE', label: 'Disponible' },
+  { value: 'INACTIVO', label: 'Inactivo' },
+  { value: 'MANTENIMIENTO', label: 'Mantenimiento' },
+  { value: 'FUERA DE SERVICIO', label: 'Fuera de servicio' },
+]
+
+export const ESTADOS_VEHICULO_TODOS = [
+  ...ESTADOS_VEHICULO_NUEVO,
+  { value: 'RESERVADO', label: 'Reservado' },
+  { value: 'RENTADO', label: 'Rentado' },
+]
+
+export function nombreVehiculo(v) {
+  if (!v) return '—'
+  const marca = v.modelo?.marca?.nombre
+  const modelo = v.modelo?.nombre
+  return [marca, modelo].filter(Boolean).join(' ') || v.placa || '—'
+}
+
+export function labelEstadoVehiculo(estado) {
+  const map = {
+    DISPONIBLE: 'Disponible',
+    RESERVADO: 'Reservado',
+    RENTADO: 'Rentado',
+    MANTENIMIENTO: 'Mantenimiento',
+    'FUERA DE SERVICIO': 'Fuera de servicio',
+    INACTIVO: 'Inactivo',
+  }
+  return map[estado] || estado
+}
+
+export function estadoVehiculoStyle(estado, isDark = false) {
+  if (isDark) {
+    const m = {
+      DISPONIBLE: 'background:#14532d; color:#86efac; border:1px solid #166534;',
+      RESERVADO: 'background:#1e3a5f; color:#93c5fd; border:1px solid #1e40af;',
+      RENTADO: 'background:#7f1d1d; color:#fca5a5; border:1px solid #991b1b;',
+      MANTENIMIENTO: 'background:#713f12; color:#fde68a; border:1px solid #854d0e;',
+      'FUERA DE SERVICIO': 'background:#374151; color:#d1d5db; border:1px solid #4b5563;',
+      INACTIVO: 'background:#374151; color:#9ca3af; border:1px solid #4b5563;',
+    }
+    return m[estado] || m.INACTIVO
+  }
+  const m = {
+    DISPONIBLE: 'background:#dcfce7; color:#166534;',
+    RESERVADO: 'background:#dbeafe; color:#1e40af;',
+    RENTADO: 'background:#fee2e2; color:#991b1b;',
+    MANTENIMIENTO: 'background:#fef9c3; color:#854d0e;',
+    'FUERA DE SERVICIO': 'background:#f3f4f6; color:#4b5563;',
+    INACTIVO: 'background:#f3f4f6; color:#6b7280;',
+  }
+  return m[estado] || m.INACTIVO
+}

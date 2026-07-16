@@ -4,18 +4,8 @@
     :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'"
     :style="{ left: sidebarWidth, height: '64px' }"
   >
-
-    <div class="flex items-center gap-2 ml-auto">
-      <button
-        type="button"
-        class="relative p-2 rounded-full transition-colors"
-        :class="isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'"
-      >
-        <i class="pi pi-bell text-lg" :class="isDark ? 'text-gray-400' : 'text-gray-500'" />
-        <span class="absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style="background:#c0392b;">-</span>
-      </button>
-
-      <div class="w-px h-8 mx-1" :class="isDark ? 'bg-gray-700' : 'bg-gray-200'" />
+    <div class="relative flex items-center gap-2 ml-auto">
+      <NotificationBell ref="bellRef" @panel-change="notifPanelOpen = $event" />
 
       <button
         type="button"
@@ -36,28 +26,11 @@
 
       <div
         v-if="userMenuOpen"
-        class="absolute top-16 right-4 rounded-xl shadow-lg border py-2 w-48 z-50"
-        :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+        class="absolute top-16 right-4 z-50"
       >
         <button
           type="button"
-          class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
-          :class="isDark ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
-        >
-          <i class="pi pi-user" :class="isDark ? 'text-gray-500' : 'text-gray-400'" /> Mi perfil
-        </button>
-        <button
-          type="button"
-          class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
-          :class="isDark ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
-        >
-          <i class="pi pi-cog" :class="isDark ? 'text-gray-500' : 'text-gray-400'" /> Configuración
-        </button>
-        <div class="border-t my-1" :class="isDark ? 'border-gray-800' : 'border-gray-100'" />
-        <button
-          type="button"
-          class="w-full flex items-center gap-2 px-4 py-2 text-sm transition-colors"
-          :class="isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-50'"
+          class="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl shadow-lg border border-gray-200 bg-white transition-opacity hover:opacity-90 whitespace-nowrap"
           style="color:#c0392b;"
           @click="handleLogout"
         >
@@ -67,7 +40,7 @@
     </div>
   </header>
 
-  <div v-if="userMenuOpen" class="fixed inset-0 z-30" @click="userMenuOpen = false" />
+  <div v-if="userMenuOpen || notifPanelOpen" class="fixed inset-0 z-30" @click="cerrarMenus" />
 </template>
 
 <script setup>
@@ -77,11 +50,12 @@ import { storeToRefs } from 'pinia'
 import Swal from 'sweetalert2'
 import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
+import NotificationBell from '@/components/notifications/NotificationBell.vue'
 
-const router    = useRouter()
+const router = useRouter()
 const authStore = useAuthStore()
 const { isDark } = storeToRefs(useThemeStore())
-const { user }   = storeToRefs(authStore)
+const { user } = storeToRefs(authStore)
 
 const props = defineProps({
   sidebarCollapsed: {
@@ -90,8 +64,9 @@ const props = defineProps({
   },
 })
 
-
 const userMenuOpen = ref(false)
+const notifPanelOpen = ref(false)
+const bellRef = ref(null)
 
 const sidebarWidth = computed(() => (props.sidebarCollapsed ? '64px' : '256px'))
 
@@ -112,20 +87,26 @@ const userInitials = computed(() => {
   return (n + a).toUpperCase() || 'U'
 })
 
+function cerrarMenus() {
+  userMenuOpen.value = false
+  notifPanelOpen.value = false
+  bellRef.value?.cerrarPanel?.()
+}
+
 async function handleLogout() {
   userMenuOpen.value = false
 
   const result = await Swal.fire({
-    title:              '¿Cerrar sesión?',
-    text:               'Se cerrará tu sesión actual en el panel de administración.',
-    icon:               'question',
-    showCancelButton:   true,
+    title: '¿Cerrar sesión?',
+    text: 'Se cerrará tu sesión actual en el panel de administración.',
+    icon: 'question',
+    showCancelButton: true,
     confirmButtonColor: '#c0392b',
-    cancelButtonColor:  '#6b7280',
-    confirmButtonText:  'Aceptar',
-    cancelButtonText:   'Cancelar',
-    reverseButtons:     true,
-    background:         '#fff',
+    cancelButtonColor: '#6b7280',
+    confirmButtonText: 'Aceptar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    background: '#fff',
   })
 
   if (!result.isConfirmed) return

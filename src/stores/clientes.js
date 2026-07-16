@@ -63,5 +63,16 @@ export const useClientesStore = defineStore('clientes', () => {
     }
   }
 
-  return { clientes, loading, error, total, fetchClientes, buscarClientes, crear, actualizar }
+  async function fetchHistorial(clienteId) {
+    error.value = null
+    try {
+      const res = await api.get(`/admin/clientes/${clienteId}/historial`)
+      return res.data.data
+    } catch (e) {
+      error.value = e.response?.data?.message || 'Error al cargar historial.'
+      throw e
+    }
+  }
+
+  return { clientes, loading, error, total, fetchClientes, buscarClientes, crear, actualizar, fetchHistorial }
 })

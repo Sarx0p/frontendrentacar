@@ -61,7 +61,21 @@
             <!-- Rol -->
             <div>
               <label class="field-label" :class="isDark ? 'text-gray-400' : 'text-gray-600'">Rol</label>
-              <div class="grid grid-cols-2 gap-2">
+
+              <div
+                v-if="modoEdicion && esAdminUsuario"
+                class="flex items-center gap-2 p-3 rounded-xl border"
+                :class="isDark ? 'border-gray-700 bg-gray-800/60' : 'border-gray-200 bg-gray-50'"
+              >
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full" style="background:#fef2f2; color:#c0392b;">
+                  <i class="pi pi-shield mr-1 text-[10px]"></i>Administrador
+                </span>
+                <span class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+                  El rol de un administrador no se puede modificar.
+                </span>
+              </div>
+
+              <div v-else class="grid grid-cols-2 gap-2">
                 <button
                   v-for="rol in roles"
                   :key="rol.value"
@@ -139,8 +153,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { esAdministrador } from '@/utils/usuario'
 
 const { isDark } = useAppTheme()
 
@@ -165,6 +180,8 @@ const form = reactive({
   id: null, nombre: '', apellido: '', correo: '', rol: '', password: '',
 })
 const errors = reactive({ nombre: '', apellido: '', correo: '', rol: '', password: '' })
+
+const esAdminUsuario = computed(() => props.modoEdicion && esAdministrador(props.usuario))
 
 watch(() => props.visible, (val) => {
   if (!val) return
@@ -192,7 +209,7 @@ function validar() {
   if (!form.nombre)   { errors.nombre   = 'Requerido'; ok = false }
   if (!form.apellido) { errors.apellido = 'Requerido'; ok = false }
   if (!form.correo || !/\S+@\S+\.\S+/.test(form.correo)) { errors.correo = 'Correo inválido'; ok = false }
-  if (!form.rol)      { errors.rol      = 'Selecciona un rol'; ok = false }
+  if (!esAdminUsuario.value && !form.rol) { errors.rol = 'Selecciona un rol'; ok = false }
   if (!props.modoEdicion && form.password.length < 8) { errors.password = 'Mínimo 8 caracteres'; ok = false }
   return ok
 }
@@ -202,7 +219,9 @@ async function handleGuardar() {
   loading.value     = true
   globalError.value = ''
   try {
-    emit('guardar', { ...form })
+    const payload = { ...form }
+    if (esAdminUsuario.value) delete payload.rol
+    emit('guardar', payload)
   } catch {
     globalError.value = 'Ocurrió un error. Intenta de nuevo.'
   } finally {

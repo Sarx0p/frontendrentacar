@@ -45,3 +45,43 @@ html[data-theme='dark'] body,
 html[data-theme='dark'] #app {
   background-color: #030712;
 }
+
+@media print {
+  aside,
+  nav,
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  main {
+    margin-left: 0 !important;
+    padding-top: 0 !important;
+    width: 100% !important;
+  }
+
+  main > div {
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .p-6 {
+    margin: 0 auto !important;
+    max-width: 750px !important;
+    padding: 1.5rem !important;
+  }
+
+  .col-ocupacion,
+  .col-estado {
+    display: none !important;
+  }
+
+  .page-break {
+    page-break-before: always !important;
+  }
+}
+
+@page {
+  margin: 0.5cm;
+  size: A4;
+}

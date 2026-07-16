@@ -45,6 +45,7 @@
           v-model:fecha-fin="fechaFin"
           v-model:tipo-reserva="tipoReserva"
           :hoy="hoy"
+          :min-fecha-inicio="minFechaInicio"
           :error-inicio="errorFechaInicio"
           :error-fin="errorFechaFin"
           :dias-reserva="diasReserva"
@@ -60,7 +61,6 @@
           :vehiculo-seleccionado="vehiculoSeleccionado"
           :cargando="cargandoVehiculos"
           :consultados="vehiculosConsultados"
-          @consultar="consultarVehiculos"
           @seleccionar="seleccionarVehiculo"
         />
 
@@ -107,6 +107,7 @@ import ReservaResumen from "@/components/reservas/ReservaResumen.vue";
 import { useClientesStore } from "@/stores/clientes";
 import { useReservasStore } from "@/stores/reservas";
 import { useAppTheme } from "@/composables/useAppTheme";
+import { fechaHoyLocal, sumarDiasISO, diasEntreFechasISO } from "@/utils/reservaFormatters";
 
 const router = useRouter();
 const { isDark } = useAppTheme();
@@ -134,22 +135,36 @@ const vehiculosConsultados = ref(false);
 const errorGlobal = ref("");
 const creando = ref(false);
 
-const hoy = computed(() => new Date().toISOString().split("T")[0]);
+const hoy = computed(() => fechaHoyLocal());
+const manana = computed(() => sumarDiasISO(hoy.value, 1));
+const minFechaInicio = computed(() =>
+  tipoReserva.value === "ANTISIPADA" ? manana.value : hoy.value,
+);
 
 watch(fechaInicio, (val) => {
   if (!val) {
     tipoReserva.value = "";
     return;
   }
-  tipoReserva.value = val <= hoy.value ? "INMEDIATA" : "ANTISIPADA";
+  tipoReserva.value = val >= manana.value ? "ANTISIPADA" : "INMEDIATA";
 });
 
-const diasReserva = computed(() => {
-  if (!fechaInicio.value || !fechaFin.value) return 0;
-  const d1 = new Date(fechaInicio.value + "T00:00:00");
-  const d2 = new Date(fechaFin.value + "T00:00:00");
-  return Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+watch(tipoReserva, (tipo) => {
+  if (tipo !== "ANTISIPADA" || !fechaInicio.value) return;
+  if (fechaInicio.value < manana.value) {
+    errorFechaInicio.value =
+      "Para reserva anticipada, la fecha de inicio debe ser al menos mañana.";
+    fechaInicio.value = "";
+    fechaFin.value = "";
+    vehiculosDisponibles.value = [];
+    vehiculoSeleccionado.value = null;
+    vehiculosConsultados.value = false;
+  }
 });
+
+const diasReserva = computed(() =>
+  diasEntreFechasISO(fechaInicio.value, fechaFin.value),
+);
 
 const tipoReservaLabel = computed(() => {
   if (tipoReserva.value === "INMEDIATA") return "Inmediata";
@@ -211,6 +226,14 @@ async function onClienteCreado(form) {
     const creado = await clientesStore.crear(form);
     seleccionarCliente(creado);
     modalClienteAbierto.value = false;
+    await Swal.fire({
+      icon: "success",
+      title: "Cliente registrado",
+      text: `${creado.nombre} se agregó correctamente.`,
+      confirmButtonColor: "#c0392b",
+      background: isDark.value ? "#1f2937" : "#fff",
+      color: isDark.value ? "#f3f4f6" : "#111827",
+    });
   } catch (e) {
     await Swal.fire({
       icon: "error",
@@ -231,6 +254,15 @@ function onFechasChange() {
   vehiculoSeleccionado.value = null;
 }
 
+function mensajeErrorValidacion(e) {
+  const errs = e.response?.data?.errors;
+  if (errs && typeof errs === "object") {
+    const first = Object.values(errs).flat()[0];
+    if (first) return first;
+  }
+  return e.response?.data?.message || reservasStore.error || "No se pudo crear la reserva.";
+}
+
 function validarFechas() {
   errorFechaInicio.value = "";
   errorFechaFin.value = "";
@@ -242,12 +274,21 @@ function validarFechas() {
     errorFechaFin.value = "Requerido";
     return false;
   }
+  if (tipoReserva.value === "ANTISIPADA" && fechaInicio.value < manana.value) {
+    errorFechaInicio.value =
+      "Para reserva anticipada, la fecha de inicio debe ser al menos mañana.";
+    return false;
+  }
+  if (tipoReserva.value === "INMEDIATA" && fechaInicio.value < hoy.value) {
+    errorFechaInicio.value = "No puede ser anterior a hoy.";
+    return false;
+  }
   if (fechaInicio.value < hoy.value) {
     errorFechaInicio.value = "No puede ser anterior a hoy.";
     return false;
   }
   if (fechaFin.value < fechaInicio.value) {
-    errorFechaFin.value = "Debe ser posterior al inicio.";
+    errorFechaFin.value = "Debe ser igual o posterior a la fecha de inicio.";
     return false;
   }
   return true;
@@ -268,10 +309,21 @@ async function consultarVehiculos() {
   } catch (e) {
     errorGlobal.value = e.response?.data?.message || "No se pudieron consultar los vehículos.";
     vehiculosDisponibles.value = [];
+    vehiculosConsultados.value = true;
   } finally {
     cargandoVehiculos.value = false;
   }
 }
+
+let consultaVehiculosTimer = null;
+watch([fechaInicio, fechaFin], () => {
+  onFechasChange();
+  clearTimeout(consultaVehiculosTimer);
+  if (!fechaInicio.value || !fechaFin.value) return;
+  consultaVehiculosTimer = setTimeout(() => {
+    if (validarFechas()) consultarVehiculos();
+  }, 400);
+});
 
 function seleccionarVehiculo(v) {
   vehiculoSeleccionado.value = v;
@@ -284,6 +336,8 @@ async function confirmarReserva() {
     return;
   }
   if (!validarFechas()) return;
+  // Alinear tipo con las fechas por si el usuario lo cambió manualmente
+  tipoReserva.value = fechaInicio.value >= manana.value ? "ANTISIPADA" : "INMEDIATA";
   if (!tipoReserva.value) {
     errorGlobal.value = "Selecciona el tipo de reserva.";
     return;
@@ -325,11 +379,10 @@ async function confirmarReserva() {
       });
       return;
     }
-    const msg = e.response?.data?.message || reservasStore.error || "No se pudo crear la reserva.";
     await Swal.fire({
       icon: "error",
       title: "Error al crear reserva",
-      text: msg,
+      text: mensajeErrorValidacion(e),
       confirmButtonColor: "#c0392b",
       background: isDark.value ? "#1f2937" : "#fff",
       color: isDark.value ? "#f3f4f6" : "#111827",
