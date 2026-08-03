@@ -94,8 +94,8 @@
               <div>
                 <label class="field-label">Tipo de reserva</label>
                 <select v-model="form.tipo_reserva" class="field-input w-full">
-                  <option value="INMEDIATA">Inmediata</option>
-                  <option value="ANTISIPADA">Anticipada</option>
+                  <option value="INMEDIATA">Renta directa</option>
+                  <option value="ANTISIPADA">Reserva anticipada</option>
                 </select>
               </div>
               <div>
