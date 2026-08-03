@@ -64,17 +64,22 @@
           Cliente no encontrado
         </p>
         <p class="text-xs mt-2 leading-relaxed" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
-          Regístralo desde el formulario de reservas y crea la reserva antes de generar el contrato.
+          Regístralo sin salir de esta pantalla. Luego necesitarás crear una reserva antes de generar el contrato.
         </p>
-        <router-link
-          :to="{ name: 'reservas-nueva' }"
-          class="inline-flex items-center gap-1.5 mt-3 text-xs font-bold"
-          style="color:#c0392b;"
-        >
-          <i class="pi pi-calendar-plus"></i>
-          Crear reserva
-        </router-link>
       </div>
+
+      <button
+        v-if="!cliente"
+        type="button"
+        class="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all border-2 border-dashed"
+        :class="isDark
+          ? 'border-gray-600 text-gray-300 hover:border-gray-500 hover:bg-gray-800/50'
+          : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'"
+        @click="$emit('agregar-nuevo')"
+      >
+        <i class="pi pi-user-plus"></i>
+        Agregar nuevo cliente
+      </button>
     </template>
 
     <!-- Estado de reservas del cliente -->
@@ -183,6 +188,7 @@ const emit = defineEmits([
   'cliente-limpiado',
   'reserva-elegir',
   'reserva-limpiar',
+  'agregar-nuevo',
 ])
 
 const { isDark } = useAppTheme()
