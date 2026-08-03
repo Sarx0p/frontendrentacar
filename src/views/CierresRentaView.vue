@@ -137,8 +137,8 @@ const contratosFiltrados = computed(() => {
   if (q) {
     list = list.filter((c) =>
       c.numero_contrato?.toLowerCase().includes(q) ||
-      c.reserva?.cliente?.nombre?.toLowerCase().includes(q) ||
-      c.reserva?.cliente?.dui?.includes(q)
+      (c.cliente || c.reserva?.cliente)?.nombre?.toLowerCase().includes(q) ||
+      (c.cliente || c.reserva?.cliente)?.dui?.includes(q)
     )
   }
   return list

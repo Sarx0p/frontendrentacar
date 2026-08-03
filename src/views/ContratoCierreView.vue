@@ -241,8 +241,8 @@ function cargosValidos() {
 const infoContrato = computed(() => {
   if (!contrato.value) return []
   return [
-    { label: 'Cliente', value: contrato.value.reserva?.cliente?.nombre || '—', icon: 'pi-user' },
-    { label: 'Vehículo', value: `${nombreVehiculo(contrato.value.reserva?.vehiculo)} · ${contrato.value.reserva?.vehiculo?.placa || ''}`, icon: 'pi-car' },
+    { label: 'Cliente', value: (contrato.value.cliente || contrato.value.reserva?.cliente)?.nombre || '—', icon: 'pi-user' },
+    { label: 'Vehículo', value: `${nombreVehiculo(contrato.value.vehiculo || contrato.value.reserva?.vehiculo)} · ${(contrato.value.vehiculo || contrato.value.reserva?.vehiculo)?.placa || ''}`, icon: 'pi-car' },
     { label: 'Entrega', value: fmtFecha(contrato.value.fecha_hora_entrega), icon: 'pi-sign-in' },
     { label: 'Devolución', value: fmtFecha(contrato.value.fecha_hora_devolucion), icon: 'pi-sign-out' },
   ]

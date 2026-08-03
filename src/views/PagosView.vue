@@ -23,7 +23,7 @@
         >
           <option value="">Seleccionar contrato...</option>
           <option v-for="c in contratosAbiertos" :key="c.id" :value="c.id">
-            {{ c.numero_contrato }} — {{ c.reserva?.cliente?.nombre }} — Saldo ${{ formatPrecio(saldoDe(c)) }}
+            {{ c.numero_contrato }} — {{ (c.cliente || c.reserva?.cliente)?.nombre }} — Saldo ${{ formatPrecio(saldoDe(c)) }}
           </option>
         </select>
       </div>
@@ -81,7 +81,7 @@
               <td class="px-5 py-4 text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ fmt(p.fecha_pago) }}</td>
               <td class="px-5 py-4 font-mono font-bold" style="color:#922b21;">{{ p.contrato?.numero_contrato || '—' }}</td>
               <td class="px-5 py-4">
-                <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ p.contrato?.reserva?.cliente?.nombre || '—' }}</p>
+                <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ p.contrato?.cliente?.nombre || '—' }}</p>
               </td>
               <td class="px-5 py-4 font-bold tabular-nums" style="color:#166534;">${{ formatPrecio(p.monto) }}</td>
               <td class="px-5 py-4">
