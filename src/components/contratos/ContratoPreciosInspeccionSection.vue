@@ -35,14 +35,17 @@
       <p class="text-xs mb-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Nivel de combustible al entregar</p>
       <input type="range" min="0" max="4" step="1" :value="combustibleIdx" class="w-full accent-red-800" @input="onCombustible($event.target.value)" />
       <p class="text-sm font-bold mt-1" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ nivelLabel }}</p>
-      <label class="field-label mt-4">Observaciones previas</label>
+      <label class="field-label mt-4">Observaciones previas <span style="color:#c0392b;">*</span></label>
+      <p class="text-xs mb-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Condiciones de entrega del vehículo (rayones, golpes, estado general, nivel de limpieza...).</p>
       <textarea
         :value="observacionesEntrega"
         rows="4"
         class="field-input w-full resize-none field-input--plain"
+        :class="{ 'field-input--error': requerido }"
         placeholder="Rayones, golpes, estado general..."
         @input="$emit('update:observacionesEntrega', $event.target.value)"
       ></textarea>
+      <p v-if="requerido" class="field-error">Describe el estado del vehículo antes de generar el contrato.</p>
     </div>
   </section>
 </template>
@@ -59,6 +62,8 @@ const props = defineProps({
   nivelCombustible:     { type: String, default: '1/2' },
   observacionesEntrega: { type: String, default: '' },
 })
+
+const requerido = computed(() => !props.observacionesEntrega.trim())
 
 const emit = defineEmits(['update:descuento', 'update:nivelCombustible', 'update:observacionesEntrega'])
 
@@ -90,4 +95,6 @@ function onCombustible(idx) {
 .form-section-light .field-input { border:1px solid #e5e7eb; background:#f9fafb; color:#1f2937; }
 .form-section-dark .field-label { color:#9ca3af; }
 .form-section-dark .field-input { border:1px solid #4b5563; background:#1f2937; color:#f3f4f6; }
+.field-input--error { border-color:#f87171 !important; }
+.field-error { font-size:0.7rem; color:#c0392b; margin-top:0.35rem; }
 </style>
