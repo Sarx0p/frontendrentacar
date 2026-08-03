@@ -191,14 +191,46 @@
 
                   <div class="veh-field">
                     <label>Propietario</label>
-                    <select
-                      v-model="form.propietario_id"
-                      class="veh-input veh-input--select"
-                      :class="{ 'veh-input--error': errors.propietario_id }"
-                    >
-                      <option value="">Seleccionar propietario</option>
-                      <option v-for="p in propietarios" :key="p.id" :value="p.id">{{ p.nombre }}</option>
-                    </select>
+
+                    <div v-if="propietarioSeleccionado" class="veh-owner-card">
+                      <div class="veh-owner-avatar">{{ (propietarioSeleccionado.nombre || '?').charAt(0).toUpperCase() }}</div>
+                      <div class="flex-1 min-w-0">
+                        <p class="veh-owner-nombre">{{ propietarioSeleccionado.nombre }}</p>
+                        <p class="veh-owner-meta">{{ propietarioSeleccionado.telefono || 'Sin teléfono' }} · {{ labelTipoPropietario(propietarioSeleccionado.tipo_propietario) }}</p>
+                      </div>
+                      <button type="button" class="veh-owner-cambiar" @click="form.propietario_id = ''; busquedaPropietario = ''">Cambiar</button>
+                    </div>
+
+                    <template v-else>
+                      <input
+                        v-model="busquedaPropietario"
+                        type="text"
+                        class="veh-input"
+                        :class="{ 'veh-input--error': errors.propietario_id }"
+                        placeholder="Buscar propietario por nombre..."
+                      />
+                      <div v-if="propietariosFiltrados.length" class="veh-owner-list">
+                        <button
+                          v-for="p in propietariosFiltrados"
+                          :key="p.id"
+                          type="button"
+                          class="veh-owner-option"
+                          @click="form.propietario_id = p.id; busquedaPropietario = ''"
+                        >
+                          <span class="veh-owner-avatar veh-owner-avatar--sm">{{ (p.nombre || '?').charAt(0).toUpperCase() }}</span>
+                          <span class="flex-1 min-w-0 text-left">
+                            <span class="veh-owner-nombre block">{{ p.nombre }}</span>
+                            <span class="veh-owner-meta block">{{ p.telefono || 'Sin teléfono' }} · {{ labelTipoPropietario(p.tipo_propietario) }}</span>
+                          </span>
+                        </button>
+                      </div>
+                      <p v-else-if="busquedaPropietario.trim()" class="veh-owner-empty">No se encontraron propietarios.</p>
+
+                      <button type="button" class="veh-owner-nuevo" @click="catalogoPropietarioAbierto = true">
+                        <i class="pi pi-user-plus"></i> Agregar nuevo propietario
+                      </button>
+                    </template>
+
                     <p v-if="errors.propietario_id" class="veh-error">{{ errors.propietario_id }}</p>
                   </div>
 
@@ -267,11 +299,20 @@
       </div>
     </Transition>
   </Teleport>
+
+  <VehiculosCatalogoModal
+    :visible="catalogoPropietarioAbierto"
+    tipo="propietario"
+    @cerrar="catalogoPropietarioAbierto = false"
+    @guardado="onPropietarioCreado"
+  />
 </template>
 
 <script setup>
 import { ref, reactive, watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import Swal from 'sweetalert2'
+import VehiculosCatalogoModal from '@/components/vehiculos/VehiculosCatalogoModal.vue'
 import { useVehiculosStore } from '@/stores/vehiculos'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { ESTADOS_VEHICULO_NUEVO, ESTADOS_VEHICULO_TODOS, labelEstadoVehiculo } from '@/utils/vehiculoFormatters'
@@ -315,6 +356,37 @@ const modelosDisponibles = computed(() => {
   if (!marcaId.value) return modelos.value
   return modelosPorMarca.value[String(marcaId.value)] ?? modelos.value
 })
+
+const busquedaPropietario = ref('')
+const catalogoPropietarioAbierto = ref(false)
+
+const tiposPropietarioLabel = {
+  PROPIO: 'Propio',
+  TERCERO: 'Tercero',
+  FAMILIAR: 'Familiar',
+}
+function labelTipoPropietario(tipo) {
+  return tiposPropietarioLabel[tipo] || tipo || '—'
+}
+
+const propietarioSeleccionado = computed(() =>
+  propietarios.value.find((p) => p.id == form.propietario_id) || null,
+)
+const propietariosFiltrados = computed(() => {
+  const term = busquedaPropietario.value.trim().toLowerCase()
+  if (!term) return propietarios.value
+  return propietarios.value.filter((p) => p.nombre?.toLowerCase().includes(term))
+})
+
+async function onPropietarioCreado({ data }) {
+  vehiculosStore.invalidarCatalogos('propietario')
+  await vehiculosStore.fetchCatalogos(true)
+  if (data?.id) {
+    form.propietario_id = data.id
+    busquedaPropietario.value = ''
+  }
+  Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Propietario registrado', showConfirmButton: false, timer: 2200 })
+}
 
 const form = reactive({
   id: null,
@@ -433,6 +505,7 @@ function aplicarVehiculoAlForm(vehiculo) {
 async function prepararModal() {
   paso.value = 1
   globalError.value = ''
+  busquedaPropietario.value = ''
   Object.keys(errors).forEach((k) => { errors[k] = '' })
 
   if (props.modoEdicion && props.vehiculo) {
@@ -734,6 +807,84 @@ function handleGuardar() {
   font-weight: 600;
 }
 .veh-form-area--dark .veh-cat-hint { color: #f0a500; }
+
+.veh-owner-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.875rem;
+  border: 2px solid #922b21;
+  background: rgba(146, 43, 33, 0.06);
+}
+.veh-form-area--dark .veh-owner-card { background: rgba(146, 43, 33, 0.18); }
+.veh-owner-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  background: #922b21;
+  color: #fff;
+}
+.veh-owner-avatar--sm { width: 2rem; height: 2rem; font-size: 0.7rem; }
+.veh-owner-nombre { font-size: 0.85rem; font-weight: 700; }
+.veh-form-area--light .veh-owner-nombre { color: #1f2937; }
+.veh-form-area--dark .veh-owner-nombre { color: #f3f4f6; }
+.veh-owner-meta { font-size: 0.7rem; opacity: 0.65; }
+.veh-owner-cambiar {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.5rem;
+  background: #922b21;
+  color: #fff;
+  flex-shrink: 0;
+}
+.veh-owner-list {
+  margin-top: 0.5rem;
+  max-height: 10rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.veh-owner-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.75rem;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  transition: border-color 0.15s, background 0.15s;
+}
+.veh-form-area--dark .veh-owner-option { background: #1f2937; border-color: #374151; }
+.veh-owner-option:hover { border-color: #922b21; background: #fef2f2; }
+.veh-form-area--dark .veh-owner-option:hover { background: #263040; }
+.veh-owner-empty { font-size: 0.7rem; opacity: 0.6; margin-top: 0.5rem; }
+.veh-owner-nuevo {
+  margin-top: 0.6rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-radius: 0.75rem;
+  border: 2px dashed #d1d5db;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #6b7280;
+  transition: border-color 0.15s, color 0.15s;
+}
+.veh-form-area--dark .veh-owner-nuevo { border-color: #4b5563; color: #9ca3af; }
+.veh-owner-nuevo:hover { border-color: #922b21; color: #922b21; }
+.veh-form-area--dark .veh-owner-nuevo:hover { border-color: #f0a500; color: #f0a500; }
 
 .veh-estado-btn {
   display: flex;
