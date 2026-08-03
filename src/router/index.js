@@ -38,6 +38,7 @@ const router = createRouter({
         { path: 'contratos', name: 'contratos', component: () => import('../views/ContratosView.vue') },
         { path: 'contratos/nuevo', name: 'contratos-nuevo', component: () => import('../views/ContratoCrearView.vue') },
         { path: 'contratos/:id/cierre', name: 'contrato-cierre', component: () => import('../views/ContratoCierreView.vue') },
+        { path: 'cierres', name: 'cierres-renta', component: () => import('../views/CierresRentaView.vue') },
         { path: 'pagos', name: 'pagos', component: () => import('../views/PagosView.vue') },
         { path: 'mantenimiento', name: 'mantenimiento', component: () => import('../views/MantenimientoView.vue') },
         { path: 'reportes', name: 'reportes', component: () => import('../components/reportes/ReportesView.vue') },
