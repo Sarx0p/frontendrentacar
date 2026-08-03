@@ -86,7 +86,7 @@
               </td>
 
               <td class="px-5 py-4" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
-                {{ cliente.municipio }}, {{ cliente.departamento }}
+                {{ ubicacionCliente(cliente) }}
               </td>
 
               <td class="px-5 py-4">
@@ -253,5 +253,10 @@ function initials(nombre) {
 function licenciaVigente(vencimiento) {
   const iso = fechaSoloISO(vencimiento)
   return iso ? iso >= fechaHoyLocal() : false
+}
+function ubicacionCliente(cliente) {
+  const municipio = cliente.municipio?.nombre
+  const departamento = cliente.municipio?.departamento?.nombre
+  return [municipio, departamento].filter(Boolean).join(', ') || '—'
 }
 </script>
