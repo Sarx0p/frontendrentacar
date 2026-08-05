@@ -1,8 +1,9 @@
-import { defineStore } from 'pinia'
+﻿import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 
 const LEIDAS_KEY = 'rentacar_notificaciones_leidas'
+let notificacionesDisponibles = true
 
 function cargarLeidas() {
   try {
@@ -68,6 +69,7 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
   }
 
   async function fetchNotificaciones(silencioso = false) {
+    if (!notificacionesDisponibles) return
     if (!silencioso) loading.value = true
     error.value = null
     try {
@@ -92,6 +94,13 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
         }
       }
     } catch (e) {
+      if (e.response?.status === 404) {
+        notificacionesDisponibles = false
+        error.value = null
+        items.value = []
+        primeraCarga.value = false
+        return
+      }
       error.value = e.response?.data?.message || 'No se pudieron cargar las notificaciones.'
       if (!silencioso) items.value = []
     } finally {
@@ -118,3 +127,6 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
     iniciarPolling,
   }
 })
+
+
+

@@ -21,7 +21,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   const userRoles = computed(() => {
     const roles = user.value?.roles || []
-    return roles.map((r) => (typeof r === 'string' ? r : r?.name)).filter(Boolean)
+    return roles
+      .map((r) => (typeof r === 'string' ? r : r?.name))
+      .filter(Boolean)
+      .map((rol) => String(rol).trim().toUpperCase())
   })
 
   const isAdmin = computed(() => userRoles.value.includes('ADMINISTRADOR'))
@@ -50,9 +53,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function me() {
     const res = await api.get('/auth/me')
-    user.value = res.data
+    const currentRoles = user.value?.roles
+    user.value = {
+      ...res.data,
+      roles: res.data?.roles || currentRoles || [],
+    }
     const storage = localStorage.getItem('token') ? localStorage : sessionStorage
-    storage.setItem('user', JSON.stringify(res.data))
+    storage.setItem('user', JSON.stringify(user.value))
   }
 
   return { token, user, userRoles, isAdmin, isAuthenticated, login, logout, me }

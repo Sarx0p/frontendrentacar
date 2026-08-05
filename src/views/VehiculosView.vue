@@ -1,5 +1,5 @@
-<template>
-  <div class="min-h-screen" :class="isDark ? 'bg-gray-950' : 'bg-gray-50'">
+﻿<template>
+  <div class="min-h-screen" :class="isDark ? 'bg-gray-950' : 'bg-slate-100'">
     <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
       <div>
         <h1 class="text-2xl font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">Catálogo</h1>
@@ -24,7 +24,7 @@
     <!-- Barra de pestañas -->
     <div
       class="rounded-2xl border shadow-sm p-2 mb-4 overflow-x-auto"
-      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'"
     >
       <div class="flex gap-1 min-w-max">
         <button
@@ -57,7 +57,7 @@
     <!-- Buscador y filtros -->
     <div
       class="rounded-2xl border shadow-sm p-4 mb-5 flex flex-col sm:flex-row gap-3"
-      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'"
     >
       <div class="relative flex-1">
         <i
@@ -69,54 +69,49 @@
           type="text"
           :placeholder="searchPlaceholder"
           class="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none transition focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
-          :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-200 bg-gray-50'"
+          :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-300 bg-white'"
         />
       </div>
       <select
         v-if="activeTab === 'vehiculos'"
         v-model="filtroEstado"
         class="px-4 py-2.5 rounded-xl border text-sm font-medium min-w-[160px]"
-        :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-200' : 'border-gray-200 bg-white text-gray-700'"
+        :class="isDark ? 'border-gray-700 bg-gray-800 text-gray-200' : 'border-gray-300 bg-white text-gray-700'"
       >
         <option value="">Todos los estados</option>
         <option v-for="e in estadosFiltro" :key="e.value" :value="e.value">{{ e.label }}</option>
       </select>
     </div>
 
-    <p
-      v-if="store.error && activeTab === 'vehiculos'"
-      class="mb-4 text-sm font-medium rounded-xl border px-4 py-3"
-      :class="isDark ? 'text-red-300 bg-red-950/30 border-red-900/50' : 'text-red-700 bg-red-50 border-red-200'"
-    >
-      <i class="pi pi-exclamation-circle mr-1"></i>{{ store.error }}
-    </p>
 
     <!-- Tabla -->
     <div
       class="rounded-2xl border shadow-sm overflow-hidden"
-      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'"
     >
-      <div v-if="isLoadingTab" class="flex items-center justify-center py-20 gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+      <div v-if="isLoadingTab" class="flex items-center justify-center py-20 gap-2" :class="isDark ? 'text-gray-400' : 'text-slate-500'">
         <i class="pi pi-spin pi-spinner"></i>
         <span class="text-sm">{{ loadingLabel }}</span>
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm table-fixed catalogo-table" :class="activeTab === 'vehiculos' ? 'min-w-[1160px]' : 'min-w-[860px]'">
           <thead>
-            <tr :style="isDark ? 'background:#111827; border-bottom:1px solid #1f2937;' : 'background:#fafafa; border-bottom:1px solid #f3f4f6;'">
+            <tr :style="isDark ? 'background:#111827; border-bottom:1px solid #1f2937;' : 'background:#f1f5f9; border-bottom:1px solid #cbd5e1;'">
               <th
                 v-for="col in columnasActivas"
                 :key="col.key"
-                class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest"
-                :class="isDark ? 'text-gray-500' : 'text-gray-400'"
+                class="text-left px-4 py-3.5 text-xs font-bold uppercase tracking-wide whitespace-nowrap border-r last:border-r-0"
+                :class="isDark ? 'text-gray-400' : 'text-slate-500'"
+                :style="{ width: col.width, borderRightColor: isDark ? '#1f2937' : '#e2e8f0' }"
               >
                 {{ col.label }}
               </th>
               <th
                 v-if="authStore.isAdmin"
-                class="px-5 py-3.5 text-xs font-bold uppercase tracking-widest text-right"
-                :class="isDark ? 'text-gray-500' : 'text-gray-400'"
+                class="px-5 py-3.5 text-xs font-bold uppercase tracking-widest text-right whitespace-nowrap"
+                :class="isDark ? 'text-gray-400' : 'text-slate-500'"
+                style="width: 96px;"
               >
                 Acciones
               </th>
@@ -127,13 +122,14 @@
               v-for="(item, index) in itemsFiltrados"
               :key="`${activeTab}-${item.id}-${index}`"
               class="border-b transition-colors"
-              :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-50 hover:bg-gray-50/80'"
+              :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-200 hover:bg-slate-50'"
             >
               <td
                 v-for="col in columnasActivas"
                 :key="`${item.id}-${col.key}`"
-                class="px-5 py-4"
+                class="px-4 py-4 align-middle border-r last:border-r-0"
                 :class="isDark ? 'text-gray-300' : 'text-gray-700'"
+                :style="{ width: col.width, borderRightColor: isDark ? '#1f2937' : '#e2e8f0' }"
               >
                 <div v-if="col.key === 'vehiculo' && activeTab === 'vehiculos'" class="flex items-center gap-3">
                   <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#922b21;">
@@ -141,18 +137,41 @@
                   </div>
                   <div>
                     <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ nombreVehiculo(item) }}</p>
-                    <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+                    <p class="text-xs" :class="isDark ? 'text-gray-400' : 'text-slate-500'">
                       {{ [item.color, item.anio].filter(Boolean).join(' · ') || '—' }}
                     </p>
                   </div>
                 </div>
-                <span
-                  v-else-if="col.key === 'estado' && activeTab === 'vehiculos'"
-                  class="text-xs font-bold px-2.5 py-1 rounded-full"
-                  :style="estadoVehiculoStyle(item.estado, isDark)"
-                >
-                  {{ labelEstadoVehiculo(item.estado) }}
-                </span>
+                <div v-else-if="col.key === 'estado' && activeTab === 'vehiculos'" class="estado-picker">
+                  <button
+                    type="button"
+                    class="estado-trigger"
+                    :style="estadoVehiculoStyle(item.estado, isDark)"
+                    :disabled="estadoActualizandoId === item.id"
+                    @click.stop="toggleEstadoMenu(item.id, $event)"
+                  >
+                    <span>{{ labelEstadoTabla(item.estado) }}</span>
+                    <i class="pi pi-chevron-down estado-chevron"></i>
+                  </button>
+                  <div
+                    v-if="estadoMenuAbiertoId === item.id"
+                    class="estado-menu"
+                    :class="isDark ? 'estado-menu-dark' : 'estado-menu-light'"
+                    :style="estadoMenuStyle"
+                  >
+                    <button
+                      v-for="estado in estadosCambioDirecto"
+                      :key="estado.value"
+                      type="button"
+                      class="estado-option"
+                      :class="item.estado === estado.value ? 'estado-option-selected' : ''"
+                      :style="estadoVehiculoStyle(estado.value, isDark)"
+                      @click="cambiarEstadoVehiculo(item, estado.value)"
+                    >
+                      {{ estado.label }}
+                    </button>
+                  </div>
+                </div>
                 <span v-else :class="col.key === 'nombre' || col.key === 'modelo' ? 'font-semibold' : ''">
                   {{ renderCelda(item, col.key) }}
                 </span>
@@ -188,13 +207,13 @@
             <tr v-if="itemsFiltrados.length === 0">
               <td :colspan="columnasActivas.length + (authStore.isAdmin ? 1 : 0)" class="px-5 py-16 text-center">
                 <i :class="[iconoTabActivo, 'text-4xl mb-3 block', isDark ? 'text-gray-700' : 'text-gray-200']"></i>
-                <p class="font-medium" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ emptyLabel }}</p>
+                <p class="font-medium" :class="isDark ? 'text-gray-400' : 'text-slate-500'">{{ emptyLabel }}</p>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div class="px-5 py-3 border-t text-xs" :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-50 text-gray-400'">
+      <div class="px-5 py-3 border-t text-xs" :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'">
         Mostrando {{ itemsFiltrados.length }} de {{ conteoTab(activeTab) }} {{ contadorLabel(itemsFiltrados.length) }}
       </div>
     </div>
@@ -217,7 +236,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import Swal from 'sweetalert2'
 import api from '@/services/api'
 import VehiculosModal from '@/components/vehiculos/VehiculosModal.vue'
@@ -227,7 +246,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useAppTheme } from '@/composables/useAppTheme'
 import {
   nombreVehiculo,
-  labelEstadoVehiculo,
   estadoVehiculoStyle,
   ESTADOS_VEHICULO_TODOS,
 } from '@/utils/vehiculoFormatters'
@@ -246,8 +264,12 @@ const modoEdicion = ref(false)
 const vehiculoSeleccionado = ref(null)
 const modelos = ref([])
 const cargandoModelos = ref(false)
+const estadoActualizandoId = ref(null)
+const estadoMenuAbiertoId = ref(null)
+const estadoMenuPos = ref({ top: 0, left: 0, width: 0 })
 
 const estadosFiltro = ESTADOS_VEHICULO_TODOS
+const estadosCambioDirecto = ESTADOS_VEHICULO_TODOS
 const vehiculos = computed(() => store.vehiculos)
 const marcas = computed(() => store.marcas)
 const categorias = computed(() => store.categorias)
@@ -256,8 +278,8 @@ const propietarios = computed(() => store.propietarios)
 const tabs = [
   { value: 'vehiculos', label: 'Vehículos', icon: 'pi pi-car', color: '#c0392b' },
   { value: 'marcas', label: 'Marcas', icon: 'pi pi-bookmark', color: '#f0a500' },
-  { value: 'categorias', label: 'Categorías', icon: 'pi pi-tags', color: '#2563eb' },
   { value: 'modelos', label: 'Modelos', icon: 'pi pi-sitemap', color: '#7c3aed' },
+  { value: 'categorias', label: 'Categorías', icon: 'pi pi-tags', color: '#2563eb' },
   { value: 'propietarios', label: 'Propietarios', icon: 'pi pi-users', color: '#059669' },
 ]
 
@@ -276,32 +298,32 @@ function estiloIconoTab(tab, activo) {
 
 const columnasPorTab = {
   vehiculos: [
-    { key: 'vehiculo', label: 'Vehículo' },
-    { key: 'placa', label: 'Placa' },
-    { key: 'categoria_nombre', label: 'Categoría' },
-    { key: 'propietario_nombre', label: 'Propietario' },
-    { key: 'estado', label: 'Estado' },
+    { key: 'vehiculo', label: 'Vehículo', width: '255px' },
+    { key: 'placa', label: 'Placa', width: '120px' },
+    { key: 'capacidad_pasajeros', label: 'Pasajeros', width: '110px' },
+    { key: 'categoria_nombre', label: 'Categoría', width: '160px' },
+    { key: 'propietario_nombre', label: 'Propietario', width: '230px' },
+    { key: 'estado', label: 'Estado', width: '170px' },
   ],
   marcas: [
-    { key: 'nombre', label: 'Nombre' },
-    { key: 'modelos_count', label: 'Cantidad de modelos' },
-    { key: 'created_at', label: 'Fecha de creación' },
+    { key: 'nombre', label: 'Nombre', width: '58%' },
+    { key: 'modelos_count', label: 'Modelos', width: '30%' },
   ],
   categorias: [
-    { key: 'nombre', label: 'Nombre' },
-    { key: 'descripcion', label: 'Descripción' },
-    { key: 'vehiculos_count', label: 'Cantidad de vehículos' },
+    { key: 'nombre', label: 'Nombre', width: '35%' },
+    { key: 'descripcion', label: 'Tarifa', width: '35%' },
+    { key: 'vehiculos_count', label: 'Vehículos', width: '18%' },
   ],
   modelos: [
-    { key: 'modelo', label: 'Modelo' },
-    { key: 'marca_nombre', label: 'Marca' },
-    { key: 'vehiculos_count', label: 'Cantidad de vehículos' },
+    { key: 'modelo', label: 'Modelo', width: '35%' },
+    { key: 'marca_nombre', label: 'Marca', width: '35%' },
+    { key: 'vehiculos_count', label: 'Vehículos', width: '18%' },
   ],
   propietarios: [
-    { key: 'nombre', label: 'Nombre' },
-    { key: 'telefono', label: 'Teléfono' },
-    { key: 'tipo_propietario', label: 'Tipo' },
-    { key: 'vehiculos_count', label: 'Cantidad de vehículos' },
+    { key: 'nombre', label: 'Nombre', width: '36%' },
+    { key: 'telefono', label: 'Teléfono', width: '18%' },
+    { key: 'tipo_propietario', label: 'Tipo', width: '16%' },
+    { key: 'vehiculos_count', label: 'Vehículos', width: '18%' },
   ],
 }
 
@@ -317,7 +339,20 @@ onMounted(() => {
   store.fetchVehiculos()
   store.fetchCatalogos()
   cargarModelos()
+  window.addEventListener('click', cerrarMenuEstado)
+  window.addEventListener('scroll', cerrarMenuEstado, true)
+  window.addEventListener('resize', cerrarMenuEstado)
+  window.addEventListener('blur', cerrarMenuEstado)
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('click', cerrarMenuEstado)
+  window.removeEventListener('scroll', cerrarMenuEstado, true)
+  window.removeEventListener('resize', cerrarMenuEstado)
+  window.removeEventListener('blur', cerrarMenuEstado)
+})
+
+watch([activeTab, search, filtroEstado], cerrarMenuEstado)
 
 function extraerLista(payload) {
   if (Array.isArray(payload)) return payload
@@ -366,7 +401,7 @@ function conteoTab(tab) {
 
 function textoBusqueda(item) {
   if (activeTab.value === 'vehiculos') {
-    return [nombreVehiculo(item), item.placa, item.color, item.categoria?.nombre, item.propietario?.nombre, item.estado]
+    return [nombreVehiculo(item), item.placa, item.color, item.categoria?.nombre, nombrePropietarioVehiculo(item), item.estado]
   }
   if (activeTab.value === 'marcas') {
     return [item.nombre, String(item.modelos_count ?? '')]
@@ -415,6 +450,7 @@ const nuevoLabel = computed(() => {
 })
 
 function cambiarTab(tab) {
+  cerrarMenuEstado()
   if (activeTab.value === tab) return
   activeTab.value = tab
   search.value = ''
@@ -434,13 +470,14 @@ function formatFecha(fecha) {
 function renderCelda(item, key) {
   const map = {
     placa: item.placa,
+    capacidad_pasajeros: item.capacidad_pasajeros,
     categoria_nombre: item.categoria?.nombre,
-    propietario_nombre: item.propietario?.nombre,
+    propietario_nombre: nombrePropietarioVehiculo(item),
     nombre: item.nombre,
     modelo: item.nombre,
     marca_nombre: item.marca?.nombre,
-    modelos_count: item.modelos_count ?? 0,
-    vehiculos_count: item.vehiculos_count ?? 0,
+    modelos_count: item.modelos_count ?? contarModelosPorMarca(item.id),
+    vehiculos_count: item.vehiculos_count ?? contarVehiculosRelacionados(item),
     created_at: item.created_at ? formatFecha(item.created_at) : null,
     descripcion: descripcionCategoria(item),
     telefono: item.telefono,
@@ -448,6 +485,37 @@ function renderCelda(item, key) {
   }
   const val = map[key]
   return val === undefined || val === null || val === '' ? '—' : val
+}
+
+function nombrePropietarioVehiculo(item) {
+  if (item.propietario?.nombre) return item.propietario.nombre
+  return propietarios.value.find((p) => p.id == item.propietario_id)?.nombre
+}
+
+function contarModelosPorMarca(marcaId) {
+  return modelos.value.filter((modelo) => modelo.marca_id == marcaId || modelo.marca?.id == marcaId).length
+}
+
+function existePropietarioPropio(exceptId = null) {
+  return propietarios.value.some((propietario) => {
+    const esPropio = String(propietario.tipo_propietario || '').toUpperCase() === 'PROPIO'
+    const esMismo = exceptId != null && propietario.id == exceptId
+    return esPropio && !esMismo
+  })
+}
+
+function contarVehiculosRelacionados(item) {
+  const id = item.id
+  if (activeTab.value === 'categorias') {
+    return vehiculos.value.filter((vehiculo) => vehiculo.categoria_id == id || vehiculo.categoria?.id == id).length
+  }
+  if (activeTab.value === 'modelos') {
+    return vehiculos.value.filter((vehiculo) => vehiculo.modelo_id == id || vehiculo.modelo?.id == id).length
+  }
+  if (activeTab.value === 'propietarios') {
+    return vehiculos.value.filter((vehiculo) => vehiculo.propietario_id == id || vehiculo.propietario?.id == id).length
+  }
+  return item.vehiculos_count ?? 0
 }
 
 function contadorLabel(total) {
@@ -461,6 +529,72 @@ function contadorLabel(total) {
   return labels[activeTab.value] || 'registros'
 }
 
+const estadoMenuStyle = computed(() => ({
+  top: `${estadoMenuPos.value.top}px`,
+  left: `${estadoMenuPos.value.left}px`,
+  width: `${estadoMenuPos.value.width}px`,
+}))
+
+function toggleEstadoMenu(id, event) {
+  if (estadoActualizandoId.value === id) return
+  if (estadoMenuAbiertoId.value === id) {
+    estadoMenuAbiertoId.value = null
+    return
+  }
+
+  const rect = event.currentTarget.getBoundingClientRect()
+  const menuWidth = Math.max(rect.width, 170)
+  const margin = 12
+  estadoMenuPos.value = {
+    top: rect.bottom + 6,
+    left: Math.max(margin, Math.min(rect.left, window.innerWidth - menuWidth - margin)),
+    width: menuWidth,
+  }
+  estadoMenuAbiertoId.value = id
+}
+function cerrarMenuEstado() {
+  if (estadoMenuAbiertoId.value !== null) estadoMenuAbiertoId.value = null
+}
+
+function labelEstadoTabla(estado) {
+  return estadosCambioDirecto.find((opcion) => opcion.value === estado)?.label || estado || 'Sin estado'
+}
+function payloadVehiculoConEstado(item, estado) {
+  return {
+    id: item.id,
+    anio: item.anio,
+    color: item.color,
+    placa: item.placa,
+    capacidad_pasajeros: item.capacidad_pasajeros,
+    estado,
+    propietario_id: item.propietario_id ?? item.propietario?.id,
+    categoria_id: item.categoria_id ?? item.categoria?.id,
+    modelo_id: item.modelo_id ?? item.modelo?.id,
+    observaciones: item.observaciones ?? '',
+  }
+}
+
+async function cambiarEstadoVehiculo(item, nuevoEstado) {
+  if (!nuevoEstado || nuevoEstado === item.estado) return
+
+  estadoActualizandoId.value = item.id
+  try {
+    await store.actualizar(payloadVehiculoConEstado(item, nuevoEstado))
+    estadoMenuAbiertoId.value = null
+  } catch (e) {
+    estadoMenuAbiertoId.value = null
+    await Swal.fire({
+      icon: 'error',
+      title: 'No se pudo cambiar el estado',
+      text: mensajeErrorApi(e, 'El estado no se pudo actualizar con la información actual del vehículo.'),
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  } finally {
+    estadoActualizandoId.value = null
+  }
+}
 function abrirModalCrear() {
   modoEdicion.value = false
   vehiculoSeleccionado.value = null
@@ -595,9 +729,12 @@ async function accionEditar(item) {
       return
     }
     if (activeTab.value === 'propietarios') {
-      const tipos = ['PROPIO', 'TERCERO', 'FAMILIAR']
+      const tipoActual = String(item.tipo_propietario || '').toUpperCase()
+      const tipos = existePropietarioPropio(item.id) && tipoActual !== 'PROPIO'
+        ? ['TERCERO', 'FAMILIAR']
+        : ['PROPIO', 'TERCERO', 'FAMILIAR']
       const tiposHtml = tipos
-        .map((t) => `<option value="${t}" ${t === item.tipo_propietario ? 'selected' : ''}>${t}</option>`)
+        .map((t) => `<option value="${t}" ${t === tipoActual ? 'selected' : ''}>${t}</option>`)
         .join('')
       const { value, isConfirmed } = await Swal.fire({
       title: 'Editar propietario',
@@ -628,6 +765,10 @@ async function accionEditar(item) {
           Swal.showValidationMessage('Selecciona un tipo')
           return false
         }
+        if (tipo_propietario === 'PROPIO' && existePropietarioPropio(item.id)) {
+          Swal.showValidationMessage('Ya existe un propietario propio registrado')
+          return false
+        }
         return { nombre, telefono, tipo_propietario }
       },
     })
@@ -639,7 +780,7 @@ async function accionEditar(item) {
     await Swal.fire({
       icon: 'error',
       title: 'No se pudo guardar',
-      text: e.response?.data?.message || 'Ocurrió un error al actualizar el registro.',
+      text: mensajeErrorApi(e, 'Ocurrió un error al actualizar el registro.'),
       confirmButtonColor: '#c0392b',
       background: isDark.value ? '#1f2937' : '#fff',
       color: isDark.value ? '#f3f4f6' : '#111827',
@@ -701,6 +842,14 @@ async function accionEliminar(item) {
   }
 }
 
+function mensajeErrorApi(e, fallback) {
+  const errors = e.response?.data?.errors
+  if (errors && typeof errors === 'object') {
+    const first = Object.values(errors).flat().find(Boolean)
+    if (first) return String(first)
+  }
+  return e.response?.data?.message || fallback
+}
 function accionNuevo() {
   if (activeTab.value === 'vehiculos') {
     abrirModalCrear()
@@ -765,6 +914,68 @@ async function guardarVehiculo(form) {
 </script>
 
 <style scoped>
+.estado-picker {
+  position: relative;
+  width: 100%;
+}
+.estado-trigger {
+  width: 100%;
+  min-height: 2.25rem;
+  border-radius: 9999px;
+  padding: 0.35rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  outline: none;
+  cursor: pointer;
+}
+.estado-trigger:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.estado-chevron {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+.estado-menu {
+  position: fixed;
+  z-index: 9999;
+  max-width: calc(100vw - 24px);
+  border: 1px solid;
+  border-radius: 0.75rem;
+  padding: 0.35rem;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+}
+.estado-menu-light {
+  background: #fff;
+  border-color: #cbd5e1;
+}
+.estado-menu-dark {
+  background: #111827;
+  border-color: #374151;
+}
+.estado-option {
+  width: 100%;
+  margin-bottom: 0.3rem;
+  border-radius: 9999px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: left;
+}
+.estado-option:last-child {
+  margin-bottom: 0;
+}
+.estado-option-selected {
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+.catalogo-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
 .catalogo-tab-active {
   background: #922b21;
   color: #fff;
@@ -785,3 +996,8 @@ async function guardarVehiculo(form) {
   color: #f3f4f6;
 }
 </style>
+
+
+
+
+

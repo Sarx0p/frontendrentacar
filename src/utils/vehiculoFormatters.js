@@ -1,14 +1,11 @@
 export const ESTADOS_VEHICULO_NUEVO = [
   { value: 'DISPONIBLE', label: 'Disponible' },
-  { value: 'INACTIVO', label: 'Inactivo' },
   { value: 'MANTENIMIENTO', label: 'Mantenimiento' },
-  { value: 'FUERA DE SERVICIO', label: 'Fuera de servicio' },
 ]
 
 export const ESTADOS_VEHICULO_TODOS = [
   ...ESTADOS_VEHICULO_NUEVO,
-  { value: 'RESERVADO', label: 'Reservado' },
-  { value: 'RENTADO', label: 'Rentado' },
+  { value: 'FUERA DE SERVICIO', label: 'Fuera de servicio' },
 ]
 
 export function nombreVehiculo(v) {
@@ -25,7 +22,6 @@ export function labelEstadoVehiculo(estado) {
     RENTADO: 'Rentado',
     MANTENIMIENTO: 'Mantenimiento',
     'FUERA DE SERVICIO': 'Fuera de servicio',
-    INACTIVO: 'Inactivo',
   }
   return map[estado] || estado
 }
@@ -38,9 +34,8 @@ export function estadoVehiculoStyle(estado, isDark = false) {
       RENTADO: 'background:#7f1d1d; color:#fca5a5; border:1px solid #991b1b;',
       MANTENIMIENTO: 'background:#713f12; color:#fde68a; border:1px solid #854d0e;',
       'FUERA DE SERVICIO': 'background:#374151; color:#d1d5db; border:1px solid #4b5563;',
-      INACTIVO: 'background:#374151; color:#9ca3af; border:1px solid #4b5563;',
     }
-    return m[estado] || m.INACTIVO
+    return m[estado] || m['FUERA DE SERVICIO']
   }
   const m = {
     DISPONIBLE: 'background:#dcfce7; color:#166534;',
@@ -48,7 +43,6 @@ export function estadoVehiculoStyle(estado, isDark = false) {
     RENTADO: 'background:#fee2e2; color:#991b1b;',
     MANTENIMIENTO: 'background:#fef9c3; color:#854d0e;',
     'FUERA DE SERVICIO': 'background:#f3f4f6; color:#4b5563;',
-    INACTIVO: 'background:#f3f4f6; color:#6b7280;',
   }
-  return m[estado] || m.INACTIVO
+  return m[estado] || m['FUERA DE SERVICIO']
 }

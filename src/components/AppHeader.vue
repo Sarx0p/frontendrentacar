@@ -76,8 +76,9 @@ const userName = computed(() => {
 })
 
 const userRole = computed(() => {
-  if (!user.value) return 'Administrador'
-  return user.value.roles?.[0] || 'Administrador'
+  if (!user.value) return 'Usuario'
+  const role = user.value.roles?.[0]
+  return typeof role === 'string' ? role : role?.name || 'Usuario'
 })
 
 const userInitials = computed(() => {
