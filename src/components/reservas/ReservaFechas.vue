@@ -5,7 +5,7 @@
   >
     <label class="field-label">Disponibilidad del vehículo</label>
     <p class="text-xs mb-4" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-      Selecciona el rango de fechas de la reserva.
+      Selecciona el rango de fechas para la reserva.
     </p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -19,7 +19,7 @@
             :min="minFechaInicio || hoy"
             class="field-input"
             :class="errorInicio ? 'error' : ''"
-            @input="$emit('update:fechaInicio', $event.target.value); $emit('change')"
+            @input="$emit('update:fechaInicio', $event.target.value); $emit('update:tipoReserva', 'ANTISIPADA'); $emit('change')"
           />
         </div>
         <p v-if="errorInicio" class="field-error">{{ errorInicio }}</p>
@@ -31,7 +31,7 @@
           <input
             :value="fechaFin"
             type="date"
-            :min="fechaInicio || minFechaInicio || hoy"
+            :min="fechaInicio ? sumarUnDia(fechaInicio) : minFechaInicio || hoy"
             class="field-input"
             :class="errorFin ? 'error' : ''"
             @input="$emit('update:fechaFin', $event.target.value); $emit('change')"
@@ -41,44 +41,17 @@
       </div>
     </div>
 
-    <div class="mt-4">
-      <label class="text-xs font-semibold mb-2 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Tipo de reserva</label>
-      <div class="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          @click="$emit('update:tipoReserva', 'INMEDIATA')"
-          class="flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl border-2 transition-all"
-          :style="tipoReserva === 'INMEDIATA'
-            ? 'border-color:#922b21; background:#fef2f2;'
-            : isDark ? 'border-color:#374151; background:#1f2937;' : 'border-color:#e5e7eb; background:white;'"
-        >
-          <div
-            class="w-8 h-8 rounded-full flex items-center justify-center"
-            :style="tipoReserva === 'INMEDIATA' ? 'background:#922b21;' : isDark ? 'background:#374151;' : 'background:#f3f4f6;'"
-          >
-            <i class="pi pi-bolt text-sm" :style="tipoReserva === 'INMEDIATA' ? 'color:white' : isDark ? 'color:#9ca3af' : 'color:#9ca3af'"></i>
-          </div>
-          <span class="text-xs font-bold" :style="tipoReserva === 'INMEDIATA' ? 'color:#922b21' : isDark ? 'color:#9ca3af' : 'color:#6b7280'">Inmediata</span>
-          <span class="text-[10px] text-center" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Inicia hoy</span>
-        </button>
-
-        <button
-          type="button"
-          @click="$emit('update:tipoReserva', 'ANTISIPADA')"
-          class="flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl border-2 transition-all"
-          :style="tipoReserva === 'ANTISIPADA'
-            ? 'border-color:#922b21; background:#fef2f2;'
-            : isDark ? 'border-color:#374151; background:#1f2937;' : 'border-color:#e5e7eb; background:white;'"
-        >
-          <div
-            class="w-8 h-8 rounded-full flex items-center justify-center"
-            :style="tipoReserva === 'ANTISIPADA' ? 'background:#922b21;' : isDark ? 'background:#374151;' : 'background:#f3f4f6;'"
-          >
-            <i class="pi pi-calendar-plus text-sm" :style="tipoReserva === 'ANTISIPADA' ? 'color:white' : isDark ? 'color:#9ca3af' : 'color:#9ca3af'"></i>
-          </div>
-          <span class="text-xs font-bold" :style="tipoReserva === 'ANTISIPADA' ? 'color:#922b21' : isDark ? 'color:#9ca3af' : 'color:#6b7280'">Anticipada</span>
-          <span class="text-[10px] text-center" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Fecha futura</span>
-        </button>
+    <div
+      class="mt-4 p-3 rounded-xl flex items-start gap-3 border-l-4"
+      :class="isDark ? 'bg-gray-800/60 text-gray-300' : 'bg-gray-50 text-gray-600'"
+      style="border-left-color:#922b21;"
+    >
+      <i class="pi pi-calendar-plus text-base dias-banner-icon mt-0.5"></i>
+      <div>
+        <p class="text-sm font-bold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">Reserva</p>
+        <p class="text-xs mt-0.5">
+          Para una renta directa se usará el flujo de Contratos; aquí solo se registran reservas futuras.
+        </p>
       </div>
     </div>
 
@@ -91,7 +64,7 @@
       <i class="pi pi-clock text-lg dias-banner-icon"></i>
       <div>
         <p class="text-sm font-bold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">{{ diasReserva }} día{{ diasReserva !== 1 ? 's' : '' }} de renta</p>
-        <p class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ formatFecha(fechaInicio) }} → {{ formatFecha(fechaFin) }}</p>
+        <p class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ formatFecha(fechaInicio) }} -> {{ formatFecha(fechaFin) }}</p>
       </div>
     </div>
   </section>
@@ -99,7 +72,7 @@
 
 <script setup>
 import { useAppTheme } from '@/composables/useAppTheme'
-import { formatFecha } from '@/utils/reservaFormatters'
+import { formatFecha, sumarDiasISO } from '@/utils/reservaFormatters'
 
 defineProps({
   fechaInicio:  { type: String, default: '' },
@@ -109,12 +82,16 @@ defineProps({
   errorInicio:  { type: String, default: '' },
   errorFin:     { type: String, default: '' },
   diasReserva:  { type: Number, default: 0 },
-  tipoReserva:  { type: String, default: '' },
+  tipoReserva:  { type: String, default: 'ANTISIPADA' },
 })
 
 defineEmits(['update:fechaInicio', 'update:fechaFin', 'update:tipoReserva', 'change'])
 
 const { isDark } = useAppTheme()
+
+function sumarUnDia(fecha) {
+  return sumarDiasISO(fecha, 1)
+}
 </script>
 
 <style scoped>
@@ -127,7 +104,7 @@ const { isDark } = useAppTheme()
 
 .form-section-light .field-label { color:#4b5563; }
 .form-section-light .input-icon { color:#9ca3af; }
-.form-section-light .field-input { border:1px solid #e5e7eb; background:#f9fafb; color:#1f2937; }
+.form-section-light .field-input { border:1px solid #d1d5db; background:#fff; color:#1f2937; }
 .form-section-light .field-input:focus { background:#fff; border-color:#922b21; }
 .form-section-light .field-input.error { border-color:#f87171; background:#fef2f2; }
 
@@ -138,3 +115,4 @@ const { isDark } = useAppTheme()
 .form-section-dark .field-input.error { border-color:#f87171; background:#450a0a; }
 .form-section-dark .field-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.85); }
 </style>
+

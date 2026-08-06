@@ -12,9 +12,11 @@ export const useContratosStore = defineStore('contratos', () => {
     error.value   = null
     try {
       const res = await api.get('/admin/contratos', { params })
-      contratos.value = res.data.data.data
+      const payload = res.data?.data
+      contratos.value = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : [])
     } catch {
       error.value = 'Error al cargar contratos.'
+      contratos.value = []
     } finally {
       loading.value = false
     }
@@ -29,11 +31,14 @@ export const useContratosStore = defineStore('contratos', () => {
     loading.value = true
     error.value   = null
     try {
-      const res = await api.post('/admin/contratos', form)
+      const endpoint = form.reserva_id ? '/admin/contratos' : '/admin/contratos/directo'
+      const res = await api.post(endpoint, form)
       contratos.value.unshift(res.data.data)
       return res.data.data
     } catch (e) {
-      error.value = e.response?.data?.message || 'Error al generar el contrato.'
+      const errs = e.response?.data?.errors
+      const firstErr = errs && typeof errs === 'object' ? Object.values(errs).flat()[0] : null
+      error.value = firstErr || e.response?.data?.message || 'Error al generar el contrato.'
       throw e
     } finally {
       loading.value = false

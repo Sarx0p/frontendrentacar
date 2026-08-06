@@ -67,7 +67,7 @@ export function calcularDias(fechaEntrega, fechaDevolucion) {
   if (!fechaEntrega || !fechaDevolucion) return 0
   const d1 = new Date(fechaEntrega.slice(0, 10) + 'T00:00:00')
   const d2 = new Date(fechaDevolucion.slice(0, 10) + 'T00:00:00')
-  return Math.max(1, Math.round((d2 - d1) / 86400000) + 1)
+  return Math.max(1, Math.round((d2 - d1) / 86400000))
 }
 
 export function labelEstadoContrato(e) {

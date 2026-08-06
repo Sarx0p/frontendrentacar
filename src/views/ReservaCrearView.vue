@@ -129,7 +129,7 @@ let debounceTimer = null;
 
 const fechaInicio = ref("");
 const fechaFin = ref("");
-const tipoReserva = ref("");
+const tipoReserva = ref("ANTISIPADA");
 const errorFechaInicio = ref("");
 const errorFechaFin = ref("");
 
@@ -143,40 +143,18 @@ const creando = ref(false);
 
 const hoy = computed(() => fechaHoyLocal());
 const manana = computed(() => sumarDiasISO(hoy.value, 1));
-const minFechaInicio = computed(() =>
-  tipoReserva.value === "ANTISIPADA" ? manana.value : hoy.value,
-);
+const minFechaInicio = computed(() => manana.value);
 
 watch(fechaInicio, (val) => {
-  if (!val) {
-    tipoReserva.value = "";
-    return;
-  }
-  tipoReserva.value = val >= manana.value ? "ANTISIPADA" : "INMEDIATA";
-});
-
-watch(tipoReserva, (tipo) => {
-  if (tipo !== "ANTISIPADA" || !fechaInicio.value) return;
-  if (fechaInicio.value < manana.value) {
-    errorFechaInicio.value =
-      "Para reserva anticipada, la fecha de inicio debe ser al menos mañana.";
-    fechaInicio.value = "";
-    fechaFin.value = "";
-    vehiculosDisponibles.value = [];
-    vehiculoSeleccionado.value = null;
-    vehiculosConsultados.value = false;
-  }
+  if (!val) return;
+  tipoReserva.value = "ANTISIPADA";
 });
 
 const diasReserva = computed(() =>
   diasEntreFechasISO(fechaInicio.value, fechaFin.value),
 );
 
-const tipoReservaLabel = computed(() => {
-  if (tipoReserva.value === "INMEDIATA") return "Renta directa";
-  if (tipoReserva.value === "ANTISIPADA") return "Anticipada";
-  return "—";
-});
+const tipoReservaLabel = computed(() => "Reserva");
 
 const precioEstimado = computed(() => {
   const precio = vehiculoSeleccionado.value?.categoria?.precio_dia;
@@ -287,21 +265,12 @@ function validarFechas() {
     errorFechaFin.value = "Requerido";
     return false;
   }
-  if (tipoReserva.value === "ANTISIPADA" && fechaInicio.value < manana.value) {
-    errorFechaInicio.value =
-      "Para reserva anticipada, la fecha de inicio debe ser al menos mañana.";
+  if (fechaInicio.value < manana.value) {
+    errorFechaInicio.value = "La reserva debe iniciar al menos mañana.";
     return false;
   }
-  if (tipoReserva.value === "INMEDIATA" && fechaInicio.value < hoy.value) {
-    errorFechaInicio.value = "No puede ser anterior a hoy.";
-    return false;
-  }
-  if (fechaInicio.value < hoy.value) {
-    errorFechaInicio.value = "No puede ser anterior a hoy.";
-    return false;
-  }
-  if (fechaFin.value < fechaInicio.value) {
-    errorFechaFin.value = "Debe ser igual o posterior a la fecha de inicio.";
+  if (fechaFin.value <= fechaInicio.value) {
+    errorFechaFin.value = "Debe ser posterior a la fecha de inicio.";
     return false;
   }
   return true;
@@ -349,12 +318,7 @@ async function confirmarReserva() {
     return;
   }
   if (!validarFechas()) return;
-  // Alinear tipo con las fechas por si el usuario lo cambió manualmente
-  tipoReserva.value = fechaInicio.value >= manana.value ? "ANTISIPADA" : "INMEDIATA";
-  if (!tipoReserva.value) {
-    errorGlobal.value = "Selecciona el tipo de reserva.";
-    return;
-  }
+  tipoReserva.value = "ANTISIPADA";
   if (!vehiculoSeleccionado.value) {
     errorGlobal.value = "Selecciona un vehículo.";
     return;
@@ -368,7 +332,6 @@ async function confirmarReserva() {
       vehiculo_id: vehiculoSeleccionado.value.id,
       fecha_inicio: fechaInicio.value,
       fecha_fin: fechaFin.value,
-      tipo_reserva: tipoReserva.value,
     });
     await Swal.fire({
       icon: "success",

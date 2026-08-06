@@ -249,13 +249,15 @@ const reservas = computed(() => store.reservas)
 onMounted(() => aplicarFiltros())
 
 const reservasFiltradas = computed(() =>
-  [...reservas.value].sort((a, b) => a.id - b.id)
+  [...reservas.value]
+    .filter((r) => r.estado !== 'CANCELADA')
+    .sort((a, b) => a.id - b.id)
 )
 
 async function aplicarFiltros() {
-  const params = { excluir_canceladas: 1 }
+  const params = {}
   if (filtroEstado.value) params.estado = filtroEstado.value
-  if (search.value.trim()) params.buscar = search.value.trim()
+  if (search.value.trim()) params.search = search.value.trim()
   await store.fetchReservas(params)
 }
 
@@ -315,8 +317,6 @@ async function guardarReserva(form) {
     await store.actualizar(reservaSeleccionada.value.id, {
       fecha_inicio: form.fecha_inicio,
       fecha_fin:    form.fecha_fin,
-      tipo_reserva: form.tipo_reserva,
-      estado:       form.estado,
     })
     await aplicarFiltros()
     await Swal.fire({
@@ -359,8 +359,8 @@ function labelEstado(estado) {
 }
 
 function labelTipo(tipo) {
-  const map = { INMEDIATA: 'Inmediata', ANTISIPADA: 'Anticipada' }
-  return map[tipo] || tipo
+  const map = { INMEDIATA: 'Renta directa', ANTISIPADA: 'Reserva', ANTICIPADA: 'Reserva' }
+  return map[tipo] || 'Reserva'
 }
 
 function estadoStyle(estado) {
@@ -375,9 +375,10 @@ function estadoStyle(estado) {
 function tipoStyle(tipo) {
   const styles = {
     INMEDIATA:  'background:#dbeafe; color:#1e40af;',
-    ANTISIPADA: 'background:#f3e8ff; color:#6b21a8;',
+    ANTISIPADA: 'background:#dcfce7; color:#166534;',
+    ANTICIPADA: 'background:#dcfce7; color:#166534;',
   }
-  return styles[tipo] || 'background:#f3f4f6; color:#6b7280;'
+  return styles[tipo] || styles.ANTISIPADA
 }
 </script>
 

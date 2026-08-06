@@ -70,11 +70,10 @@
                 <input
                   v-model="form.fecha_inicio"
                   type="date"
-                  :min="hoy"
+                  :min="manana"
                   class="field-input w-full"
                   :class="errors.fecha_inicio ? 'error' : ''"
-                  @change="actualizarTipo"
-                />
+                  />
                 <p v-if="errors.fecha_inicio" class="field-error">{{ errors.fecha_inicio }}</p>
               </div>
               <div>
@@ -82,7 +81,7 @@
                 <input
                   v-model="form.fecha_fin"
                   type="date"
-                  :min="form.fecha_inicio || hoy"
+                  :min="form.fecha_inicio ? sumarDiasISO(form.fecha_inicio, 1) : manana"
                   class="field-input w-full"
                   :class="errors.fecha_fin ? 'error' : ''"
                 />
@@ -90,22 +89,9 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="field-label">Tipo de reserva</label>
-                <select v-model="form.tipo_reserva" class="field-input w-full">
-                  <option value="INMEDIATA">Inmediata</option>
-                  <option value="ANTISIPADA">Anticipada</option>
-                </select>
-              </div>
-              <div>
-                <label class="field-label">Estado</label>
-                <select v-model="form.estado" class="field-input w-full">
-                  <option value="PENDIENTE">Pendiente</option>
-                  <option value="CONFIRMADA">Confirmada</option>
-                </select>
-              </div>
-            </div>
+            <p class="text-xs rounded-lg p-3 border" :class="isDark ? 'text-gray-300 bg-gray-800/60 border-gray-700' : 'text-gray-600 bg-gray-50 border-gray-200'">
+              Solo se pueden ajustar las fechas. El estado cambia desde los flujos de contrato o cancelaci?n.
+            </p>
 
             <div class="flex gap-3 pt-2">
               <button
@@ -152,8 +138,7 @@ const { isDark } = useAppTheme()
 const form = ref({
   fecha_inicio: '',
   fecha_fin: '',
-  tipo_reserva: 'INMEDIATA',
-  estado: 'PENDIENTE',
+
 })
 
 const errors = ref({})
@@ -170,8 +155,7 @@ watch(
     form.value = {
       fecha_inicio: toInputDate(r.fecha_inicio),
       fecha_fin:    toInputDate(r.fecha_fin),
-      tipo_reserva: r.tipo_reserva || 'INMEDIATA',
-      estado:       r.estado === 'CONFIRMADA' ? 'CONFIRMADA' : 'PENDIENTE',
+
     }
     errors.value = {}
   },
@@ -184,11 +168,6 @@ function toInputDate(fecha) {
   return String(fecha).slice(0, 10)
 }
 
-function actualizarTipo() {
-  if (!form.value.fecha_inicio) return
-  form.value.tipo_reserva = form.value.fecha_inicio <= hoy.value ? 'INMEDIATA' : 'ANTISIPADA'
-}
-
 function validar() {
   errors.value = {}
   if (!form.value.fecha_inicio) errors.value.fecha_inicio = 'Requerido'
@@ -196,19 +175,12 @@ function validar() {
   if (
     props.reserva?.estado === 'PENDIENTE'
     && form.value.fecha_inicio
-    && form.value.fecha_inicio < hoy.value
-  ) {
-    errors.value.fecha_inicio = 'No puede ser anterior a hoy'
-  }
-  if (form.value.fecha_inicio && form.value.fecha_fin && form.value.fecha_fin < form.value.fecha_inicio) {
-    errors.value.fecha_fin = 'Debe ser posterior al inicio'
-  }
-  if (
-    form.value.tipo_reserva === 'ANTISIPADA'
-    && form.value.fecha_inicio
     && form.value.fecha_inicio < manana.value
   ) {
-    errors.value.fecha_inicio = 'Para reserva anticipada, la fecha de inicio debe ser al menos mañana'
+    errors.value.fecha_inicio = 'La reserva debe iniciar al menos ma?ana'
+  }
+  if (form.value.fecha_inicio && form.value.fecha_fin && form.value.fecha_fin <= form.value.fecha_inicio) {
+    errors.value.fecha_fin = 'Debe ser posterior al inicio'
   }
   return Object.keys(errors.value).length === 0
 }
@@ -218,8 +190,6 @@ function handleGuardar() {
   emit('guardar', {
     fecha_inicio: form.value.fecha_inicio,
     fecha_fin:    form.value.fecha_fin,
-    tipo_reserva: form.value.tipo_reserva,
-    estado:       form.value.estado,
   })
 }
 </script>

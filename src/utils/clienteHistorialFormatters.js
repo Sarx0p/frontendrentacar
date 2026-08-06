@@ -85,7 +85,7 @@ export function labelEstadoReserva(estado) {
 export function labelTipoReserva(tipo) {
   const map = {
     INMEDIATA: 'Renta directa',
-    ANTICIPADA: 'Anticipada',
+    ANTICIPADA: 'Reserva',
   }
   return map[tipo] || tipo || EMPTY
 }

@@ -8,10 +8,13 @@
       </button>
       <div class="flex-1 min-w-0">
         <p class="wizard-kicker">Generación digital</p>
-        <h1 class="wizard-title">{{ reservaId ? 'Contrato desde reserva' : 'Nuevo contrato' }}</h1>
+        <h1 class="wizard-title">{{ reservaId ? 'Contrato desde reserva' : 'Nueva renta directa' }}</h1>
       </div>
       <div v-if="reservaOrigen" class="wizard-badge-reserva">
         Reserva #{{ reservaOrigen.id }}
+      </div>
+      <div v-else class="wizard-badge-reserva wizard-badge-reserva--directa">
+        Renta directa
       </div>
       <div v-if="contratoGenerado" class="wizard-badge-ok">
         <i class="pi pi-check"></i> {{ contratoGenerado.numero_contrato }}
@@ -54,10 +57,12 @@
               :sin-reserva="sinReservaDisponible"
               :reservas="reservasCliente"
               :reserva-seleccionada="reservaOrigen"
+              :renta-directa-confirmada="rentaDirectaConfirmada"
               @cliente-seleccionado="onClienteSeleccionado"
               @cliente-limpiado="onClienteLimpiado"
               @reserva-elegir="aplicarReserva"
               @reserva-limpiar="onReservaLimpiar"
+              @reserva-omitir="onReservaOmitir"
             />
             <ContratoFechasVehiculoSection
               v-else-if="paso === 2"
@@ -69,6 +74,7 @@
               :vehiculos="vehiculos"
               :cargando="cargandoVehiculos"
               :consultados="vehiculosConsultados"
+              :modo-directo="!esDesdeReserva"
             />
             <ContratoPreciosInspeccionSection
               v-else
@@ -146,6 +152,7 @@ import { useContratosStore } from '@/stores/contratos'
 import { useReservasStore } from '@/stores/reservas'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { calcularDias, documentosVigentes } from '@/utils/contratoFormatters'
+import { fechaHoyLocal } from '@/utils/reservaFormatters'
 
 const router = useRouter()
 const route = useRoute()
@@ -159,6 +166,7 @@ const reservasCliente = ref([])
 const cargandoReservasCliente = ref(false)
 const sinReservaDisponible = ref(false)
 const cargandoReserva = ref(false)
+const rentaDirectaConfirmada = ref(false)
 
 const clienteRef = ref(null)
 const paso = ref(1)
@@ -189,13 +197,13 @@ const vehiculoSel = computed(() => {
 const precioDia = computed(() => Number(vehiculoSel.value?.categoria?.precio_dia || 0))
 const totalEstimado = computed(() => Math.max(0, dias.value * precioDia.value - descuento.value))
 const docsOk = computed(() => documentosVigentes(cliente.value).ok)
+const esDesdeReserva = computed(() => !!reservaId.value || !!reservaOrigen.value)
 
 const paso1Ok = computed(() =>
   !!cliente.value &&
   docsOk.value &&
-  !!reservaOrigen.value &&
-  !sinReservaDisponible.value &&
-  !cargandoReservasCliente.value,
+  !cargandoReservasCliente.value &&
+  (esDesdeReserva.value ? !!reservaOrigen.value : (sinReservaDisponible.value || rentaDirectaConfirmada.value || !reservasCliente.value.length)),
 )
 const paso2Ok = computed(() => !!vehiculoId.value && !!fechaEntrega.value && !!fechaDevolucion.value)
 const puedeGenerar = computed(() => paso1Ok.value && paso2Ok.value && dias.value > 0)
@@ -231,6 +239,7 @@ function limpiarDatosReserva() {
   reservaId.value = null
   reservasCliente.value = []
   sinReservaDisponible.value = false
+  rentaDirectaConfirmada.value = false
   fechaEntrega.value = ''
   fechaDevolucion.value = ''
   vehiculoId.value = ''
@@ -246,6 +255,7 @@ function onClienteLimpiado() {
 function onReservaLimpiar() {
   reservaOrigen.value = null
   reservaId.value = null
+  rentaDirectaConfirmada.value = false
   fechaEntrega.value = ''
   fechaDevolucion.value = ''
   vehiculoId.value = ''
@@ -255,28 +265,31 @@ function onReservaLimpiar() {
 
 async function onClienteSeleccionado(c) {
   if (route.query.reserva_id) return
-  await cargarReservasCliente(c.id)
+  fechaEntrega.value = fechaHoyLocal()
+  fechaDevolucion.value = ''
+  vehiculoId.value = ''
+  vehiculos.value = []
+  vehiculosConsultados.value = false
+  await cargarReservasCliente(c)
 }
 
-async function cargarReservasCliente(clienteId) {
+async function cargarReservasCliente(clienteSeleccionado) {
   cargandoReservasCliente.value = true
   sinReservaDisponible.value = false
+  rentaDirectaConfirmada.value = false
   reservasCliente.value = []
   reservaOrigen.value = null
   reservaId.value = null
   error.value = ''
 
   try {
-    const list = await reservasStore.fetchReservasActivasCliente(clienteId)
+    const list = await reservasStore.fetchReservasActivasCliente(clienteSeleccionado)
     reservasCliente.value = list
 
     if (!list.length) {
       sinReservaDisponible.value = true
+      fechaEntrega.value = fechaHoyLocal()
       return
-    }
-
-    if (list.length === 1) {
-      await aplicarReserva(list[0])
     }
   } catch (e) {
     error.value = e.response?.data?.message || 'No se pudieron consultar las reservas del cliente.'
@@ -289,11 +302,24 @@ async function aplicarReserva(reserva) {
   if (!reserva || reserva.contrato) return
   reservaOrigen.value = reserva
   reservaId.value = reserva.id
+  rentaDirectaConfirmada.value = false
   fechaEntrega.value = fechaSolo(reserva.fecha_inicio)
   fechaDevolucion.value = fechaSolo(reserva.fecha_fin)
   vehiculoId.value = reserva.vehiculo_id
   sinReservaDisponible.value = false
   await consultarVehiculos()
+}
+
+function onReservaOmitir() {
+  reservaOrigen.value = null
+  reservaId.value = null
+  rentaDirectaConfirmada.value = true
+  fechaEntrega.value = fechaHoyLocal()
+  fechaDevolucion.value = ''
+  vehiculoId.value = ''
+  vehiculos.value = []
+  vehiculosConsultados.value = false
+  error.value = ''
 }
 
 async function consultarVehiculos() {
@@ -307,11 +333,18 @@ async function consultarVehiculos() {
   const vehiculoReservado = reservaOrigen.value?.vehiculo_id || vehiculoId.value
   if (!reservaId.value) vehiculoId.value = ''
   try {
-    vehiculos.value = await reservasStore.fetchVehiculosDisponibles(
-      fechaEntrega.value,
-      fechaDevolucion.value,
-      reservaId.value || undefined,
-    )
+    if (reservaId.value) {
+      vehiculos.value = await reservasStore.fetchVehiculosDisponibles(
+        fechaEntrega.value,
+        fechaDevolucion.value,
+        reservaId.value || undefined,
+      )
+    } else {
+      vehiculos.value = await reservasStore.fetchVehiculosDisponibles(
+        fechaEntrega.value,
+        fechaDevolucion.value,
+      )
+    }
     if (reservaId.value && vehiculoReservado) {
       const yaIncluido = vehiculos.value.some((v) => v.id === vehiculoReservado)
       if (!yaIncluido && reservaOrigen.value?.vehiculo) {
@@ -381,14 +414,18 @@ async function generarContrato() {
     const payload = {
       cliente_id:                cliente.value.id,
       vehiculo_id:               vehiculoId.value,
-      fecha_hora_entrega:        `${fechaEntrega.value} ${horaEntrega.value}:00`,
-      fecha_hora_devolucion:     `${fechaDevolucion.value} ${horaDevolucion.value}:00`,
       precio_por_dia:            precioDia.value,
       monto_descuento:           descuento.value,
       nivel_combustible_entrega: nivelCombustible.value,
       observaciones_entrega:     observacionesEntrega.value,
     }
-    if (reservaId.value) payload.reserva_id = reservaId.value
+    if (reservaId.value) {
+      payload.reserva_id = reservaId.value
+      payload.fecha_hora_entrega = `${fechaEntrega.value} ${horaEntrega.value}:00`
+      payload.fecha_hora_devolucion = `${fechaDevolucion.value} ${horaDevolucion.value}:00`
+    } else {
+      payload.dias_acordados = dias.value
+    }
     const contrato = await contratosStore.crear(payload)
     contratoGenerado.value = contrato
     await Swal.fire({ icon: 'success', title: 'Contrato generado', text: `N° ${contrato.numero_contrato}`, confirmButtonColor: '#922b21' })
@@ -436,6 +473,9 @@ function volver() {
   font-size: 0.7rem; font-weight: 800; padding: 0.35rem 0.75rem;
   border-radius: 999px; background: rgba(146,43,33,0.1); color: #922b21;
   border: 1px solid rgba(146,43,33,0.25);
+}
+.wizard-badge-reserva--directa {
+  background: rgba(22,163,74,0.1); color: #166534; border-color: rgba(22,163,74,0.28);
 }
 
 .wizard-stepper {

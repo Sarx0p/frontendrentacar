@@ -1,33 +1,35 @@
-<template>
+﻿<template>
   <section class="form-section rounded-2xl border shadow-sm p-5 sm:p-6 space-y-4" :class="shellClass">
-    <label class="field-label">Fechas, horarios y vehículo</label>
+    <label class="field-label">{{ modoDirecto ? 'Vehículo y duración' : 'Fechas, horarios y vehículo' }}</label>
     <p class="text-xs mb-2 -mt-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-      Horarios permitidos: 6:00–7:00 AM y 6:00–7:00 PM. Los vehículos se consultan al elegir fechas.
+      {{ modoDirecto
+        ? 'La renta directa inicia hoy. Selecciona la fecha de devolución para calcular los días acordados.'
+        : 'Horarios permitidos: 6:00-7:00 AM y 6:00-7:00 PM. Los vehículos se consultan al elegir fechas.' }}
     </p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div>
-        <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Entrega — fecha</label>
+      <div v-if="!modoDirecto">
+        <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Entrega - fecha</label>
         <div class="relative">
           <i class="pi pi-calendar input-icon"></i>
           <input :value="fechaEntrega" type="date" :min="hoy" class="field-input" @input="$emit('update:fechaEntrega', $event.target.value)" />
         </div>
       </div>
-      <div>
-        <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Entrega — hora</label>
+      <div v-if="!modoDirecto">
+        <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Entrega - hora</label>
         <select :value="horaEntrega" class="field-input field-input--plain" @change="$emit('update:horaEntrega', $event.target.value)">
           <option v-for="op in HORAS_PERMITIDAS_OPCIONES" :key="'e' + op.value" :value="op.value">{{ op.label }}</option>
         </select>
       </div>
-      <div>
-        <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Devolución — fecha</label>
+      <div :class="modoDirecto ? 'sm:col-span-2' : ''">
+        <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Devolución - fecha</label>
         <div class="relative">
           <i class="pi pi-calendar input-icon"></i>
-          <input :value="fechaDevolucion" type="date" :min="fechaEntrega || hoy" class="field-input" @input="$emit('update:fechaDevolucion', $event.target.value)" />
+          <input :value="fechaDevolucion" type="date" :min="minFechaDevolucion" class="field-input" @input="$emit('update:fechaDevolucion', $event.target.value)" />
         </div>
       </div>
-      <div>
-        <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Devolución — hora</label>
+      <div v-if="!modoDirecto">
+        <label class="text-xs font-semibold mb-1 block" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Devolución - hora</label>
         <select :value="horaDevolucion" class="field-input field-input--plain" @change="$emit('update:horaDevolucion', $event.target.value)">
           <option v-for="op in HORAS_PERMITIDAS_OPCIONES" :key="'d' + op.value" :value="op.value">{{ op.label }}</option>
         </select>
@@ -79,7 +81,7 @@ import { computed } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { HORAS_PERMITIDAS_OPCIONES, nombreVehiculo, formatPrecio } from '@/utils/contratoFormatters'
 
-defineProps({
+const props = defineProps({
   fechaEntrega:    { type: String, default: '' },
   horaEntrega:     { type: String, default: '06:00' },
   fechaDevolucion: { type: String, default: '' },
@@ -88,12 +90,19 @@ defineProps({
   vehiculos:       { type: Array, default: () => [] },
   cargando:        { type: Boolean, default: false },
   consultados:     { type: Boolean, default: false },
+  modoDirecto:     { type: Boolean, default: false },
 })
 
 defineEmits(['update:fechaEntrega', 'update:horaEntrega', 'update:fechaDevolucion', 'update:horaDevolucion', 'update:vehiculoId'])
 
 const { isDark } = useAppTheme()
 const hoy = new Date().toISOString().split('T')[0]
+const minFechaDevolucion = computed(() => {
+  const base = props.fechaEntrega || hoy
+  const d = new Date(`${base}T00:00:00`)
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().split('T')[0]
+})
 const shellClass = computed(() => isDark.value ? 'form-section-dark bg-gray-900 border-gray-800' : 'form-section-light bg-white border-gray-100')
 </script>
 
@@ -104,7 +113,7 @@ const shellClass = computed(() => isDark.value ? 'form-section-dark bg-gray-900 
 .field-input--plain { padding-left:1rem; }
 .form-section-light .field-label { color:#4b5563; }
 .form-section-light .input-icon { color:#9ca3af; }
-.form-section-light .field-input { border:1px solid #e5e7eb; background:#f9fafb; color:#1f2937; }
+.form-section-light .field-input { border:1px solid #d1d5db; background:#fff; color:#1f2937; }
 .form-section-dark .field-label { color:#9ca3af; }
 .form-section-dark .input-icon { color:#6b7280; }
 .form-section-dark .field-input { border:1px solid #4b5563; background:#1f2937; color:#f3f4f6; }
