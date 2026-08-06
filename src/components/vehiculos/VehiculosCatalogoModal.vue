@@ -234,7 +234,8 @@ async function cargarMarcas() {
 async function cargarPropietariosExistentes() {
   try {
     const res = await api.get('/admin/propietarios')
-    propietariosExistentes.value = res.data.data ?? []
+    const payload = res.data?.data
+    propietariosExistentes.value = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : [])
   } catch {
     propietariosExistentes.value = []
   }
@@ -264,7 +265,7 @@ function soloDigitos(value) {
 
 function quitarPrefijoPais(digitos, pais = paisTelefono.value) {
   const prefijo = soloDigitos(pais.prefijo)
-  return digitos.startsWith(prefijo) ? digitos.slice(prefijo.length) : dígitos
+  return digitos.startsWith(prefijo) ? digitos.slice(prefijo.length) : digitos
 }
 
 function formatearTelefono(digitos, pais = paisTelefono.value) {
@@ -396,6 +397,4 @@ async function handleGuardar() {
 .modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
 </style>
-
-
 

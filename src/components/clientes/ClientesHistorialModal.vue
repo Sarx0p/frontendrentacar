@@ -195,7 +195,7 @@
                       <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
                         <i class="pi pi-car hist-spec-icon"></i>
                         <span class="hist-spec-label">Vehículo</span>
-                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(c.reserva?.vehiculo) }}</span>
+                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(c.vehiculo || c.reserva?.vehiculo) }}</span>
                       </div>
                       <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
                         <i class="pi pi-sign-in hist-spec-icon"></i>
@@ -266,7 +266,7 @@
                       <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
                         <i class="pi pi-car hist-spec-icon"></i>
                         <span class="hist-spec-label">Vehículo</span>
-                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(item.contrato?.reserva?.vehiculo) }}</span>
+                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(item.vehiculo || item.contrato?.vehiculo || item.contrato?.reserva?.vehiculo) }}</span>
                       </div>
                       <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
                         <i class="pi pi-user hist-spec-icon"></i>
@@ -383,7 +383,11 @@ watch(
     tabActiva.value = 'reservas'
     try {
       const data = await store.fetchHistorial(props.cliente.id)
-      clienteInfo.value = data.cliente
+      clienteInfo.value = data.cliente || props.cliente
+      if (data.disponible === false) {
+        error.value = 'El historial todavía no está disponible en backend.'
+        return
+      }
       reservas.value = data.reservas ?? []
       contratos.value = data.contratos ?? []
       incidentes.value = data.incidentes ?? []

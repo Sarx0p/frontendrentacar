@@ -1,12 +1,14 @@
 import { formatFecha, fechaSoloISO } from '@/utils/reservaFormatters'
 
+const EMPTY = '—'
+
 export function labelTipoHistorial(tipo) {
   const map = {
     'DEUDA PENDIENTE': 'Deuda pendiente',
     'DANIO VEHICULO': 'Daño vehículo',
     OTRO: 'Otro',
   }
-  return map[tipo] || tipo || '—'
+  return map[tipo] || tipo || EMPTY
 }
 
 export function labelEstadoHistorial(estado) {
@@ -15,18 +17,18 @@ export function labelEstadoHistorial(estado) {
     RESUELTO: 'Resuelto',
     ARCHIVADO: 'Archivado',
   }
-  return map[estado] || estado || '—'
+  return map[estado] || estado || EMPTY
 }
 
 export function estadoHistorialStyle(estado, isDark = false) {
   const light = {
-    VIGENTE:   'background:#fef3c7;color:#92400e;',
-    RESUELTO:  'background:#dcfce7;color:#166534;',
+    VIGENTE: 'background:#fef3c7;color:#92400e;',
+    RESUELTO: 'background:#dcfce7;color:#166534;',
     ARCHIVADO: 'background:#f3f4f6;color:#4b5563;',
   }
   const dark = {
-    VIGENTE:   'background:rgba(146,43,33,0.25);color:#f0a500;border:1px solid rgba(240,165,0,0.3);',
-    RESUELTO:  'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
+    VIGENTE: 'background:rgba(146,43,33,0.25);color:#f0a500;border:1px solid rgba(240,165,0,0.3);',
+    RESUELTO: 'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
     ARCHIVADO: 'background:rgba(55,65,81,0.5);color:#9ca3af;border:1px solid #374151;',
   }
   const styles = isDark ? dark : light
@@ -34,16 +36,17 @@ export function estadoHistorialStyle(estado, isDark = false) {
 }
 
 export function nombreVehiculoHistorial(vehiculo) {
-  if (!vehiculo) return '—'
+  if (!vehiculo) return EMPTY
   const marca = vehiculo.modelo?.marca?.nombre
   const modelo = vehiculo.modelo?.nombre
   const nombre = [marca, modelo].filter(Boolean).join(' ')
-  return nombre ? `${nombre} (${vehiculo.placa})` : vehiculo.placa || '—'
+  if (nombre && vehiculo.placa) return `${nombre} (${vehiculo.placa})`
+  return nombre || vehiculo.placa || EMPTY
 }
 
 export function nombreUsuarioHistorial(user) {
-  if (!user) return '—'
-  return [user.nombre, user.apellido].filter(Boolean).join(' ') || '—'
+  if (!user) return EMPTY
+  return [user.nombre, user.apellido].filter(Boolean).join(' ') || EMPTY
 }
 
 export function formatMoneyHistorial(val) {
@@ -55,14 +58,12 @@ export function formatFechaSoloHistorial(fecha) {
 }
 
 export function formatFechaHoraHistorial(fecha) {
-  if (!fecha) return '—'
+  if (!fecha) return EMPTY
   const iso = fechaSoloISO(fecha)
   const tieneHora = String(fecha).includes('T') && !String(fecha).endsWith('T00:00:00.000000Z') && !String(fecha).match(/T00:00:00/)
-  if (iso && !tieneHora) {
-    return formatFecha(fecha)
-  }
+  if (iso && !tieneHora) return formatFecha(fecha)
   const d = new Date(fecha)
-  if (Number.isNaN(d.getTime())) return '—'
+  if (Number.isNaN(d.getTime())) return EMPTY
   return d.toLocaleString('es-SV', {
     day: '2-digit',
     month: 'short',
@@ -78,15 +79,15 @@ export function labelEstadoReserva(estado) {
     CONFIRMADA: 'Confirmada',
     CANCELADA: 'Cancelada',
   }
-  return map[estado] || estado || '—'
+  return map[estado] || estado || EMPTY
 }
 
 export function labelTipoReserva(tipo) {
   const map = {
-    INMEDIATA: 'Inmediata',
+    INMEDIATA: 'Renta directa',
     ANTICIPADA: 'Anticipada',
   }
-  return map[tipo] || tipo || '—'
+  return map[tipo] || tipo || EMPTY
 }
 
 export function labelEstadoContrato(estado) {
@@ -97,19 +98,19 @@ export function labelEstadoContrato(estado) {
     FINALIZADO: 'Finalizado',
     ANULADO: 'Anulado',
   }
-  return map[estado] || estado || '—'
+  return map[estado] || estado || EMPTY
 }
 
 export function estadoReservaStyle(estado, isDark = false) {
   const light = {
-    PENDIENTE:  'background:#fef3c7;color:#92400e;',
+    PENDIENTE: 'background:#fef3c7;color:#92400e;',
     CONFIRMADA: 'background:#dcfce7;color:#166534;',
-    CANCELADA:  'background:#fee2e2;color:#991b1b;',
+    CANCELADA: 'background:#fee2e2;color:#991b1b;',
   }
   const dark = {
-    PENDIENTE:  'background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);',
+    PENDIENTE: 'background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);',
     CONFIRMADA: 'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
-    CANCELADA:  'background:rgba(127,29,29,0.35);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);',
+    CANCELADA: 'background:rgba(127,29,29,0.35);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);',
   }
   const styles = isDark ? dark : light
   return styles[estado] || (isDark ? 'background:#374151;color:#d1d5db;' : 'background:#f3f4f6;color:#4b5563;')
@@ -117,20 +118,19 @@ export function estadoReservaStyle(estado, isDark = false) {
 
 export function estadoContratoStyle(estado, isDark = false) {
   const light = {
-    PENDIENTE:  'background:#fef3c7;color:#92400e;',
-    ACTIVO:     'background:#dcfce7;color:#166534;',
-    VENCIDO:    'background:#ffedd5;color:#c2410c;',
+    PENDIENTE: 'background:#fef3c7;color:#92400e;',
+    ACTIVO: 'background:#dcfce7;color:#166534;',
+    VENCIDO: 'background:#ffedd5;color:#c2410c;',
     FINALIZADO: 'background:#dbeafe;color:#1d4ed8;',
-    ANULADO:    'background:#fee2e2;color:#991b1b;',
+    ANULADO: 'background:#fee2e2;color:#991b1b;',
   }
   const dark = {
-    PENDIENTE:  'background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);',
-    ACTIVO:     'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
-    VENCIDO:    'background:rgba(194,65,12,0.2);color:#fdba74;border:1px solid rgba(249,115,22,0.3);',
+    PENDIENTE: 'background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);',
+    ACTIVO: 'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
+    VENCIDO: 'background:rgba(194,65,12,0.2);color:#fdba74;border:1px solid rgba(249,115,22,0.3);',
     FINALIZADO: 'background:rgba(29,78,216,0.2);color:#93c5fd;border:1px solid rgba(59,130,246,0.3);',
-    ANULADO:    'background:rgba(127,29,29,0.35);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);',
+    ANULADO: 'background:rgba(127,29,29,0.35);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);',
   }
   const styles = isDark ? dark : light
   return styles[estado] || (isDark ? 'background:#374151;color:#d1d5db;' : 'background:#f3f4f6;color:#4b5563;')
 }
-

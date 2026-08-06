@@ -386,13 +386,13 @@ const coloresFormulario = computed(() => {
 })
 
 const propietarioPropio = computed(() =>
-  propietarios.value.find((p) => p.tipo_propietario === 'PROPIO') || null,
+  propietarios.value.find((p) => String(p.tipo_propietario || '').toUpperCase() === 'PROPIO') || null,
 )
 
 const propietariosDisponibles = computed(() => {
   const term = busquedaPropietario.value.trim().toLowerCase()
   return propietarios.value.filter((p) => {
-    const tipo = p.tipo_propietario
+    const tipo = String(p.tipo_propietario || '').toUpperCase()
     const coincideTipo = tipoPropietario.value === 'PROPIO'
       ? tipo === 'PROPIO'
       : tipo !== 'PROPIO'
@@ -532,7 +532,7 @@ function aplicarVehiculoAlForm(vehiculo) {
     observaciones: vehiculo.observaciones || '',
   })
   const propietario = propietarios.value.find((p) => p.id == form.propietario_id) || vehiculo.propietario
-  tipoPropietario.value = propietario?.tipo_propietario === 'PROPIO' ? 'PROPIO' : 'TERCERO'
+  tipoPropietario.value = String(propietario?.tipo_propietario || '').toUpperCase() === 'PROPIO' ? 'PROPIO' : 'TERCERO'
   busquedaPropietario.value = ''
   if (vehiculo.modelo) {
     modelos.value = [{ ...vehiculo.modelo }]

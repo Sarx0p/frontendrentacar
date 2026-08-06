@@ -18,7 +18,7 @@
 
     <div
       class="rounded-2xl border shadow-sm p-4 mb-5 flex gap-3"
-      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'"
     >
       <div class="relative flex-1">
         <i
@@ -28,7 +28,7 @@
         <input
           v-model="search"
           type="text"
-          placeholder="Buscar por nombre, teléfono..."
+          placeholder="Buscar por nombre, DUI o teléfono..."
           class="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none transition focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
           :class="isDark
             ? 'border-gray-700 bg-gray-800 text-gray-100 placeholder:text-gray-500'
@@ -39,7 +39,7 @@
 
     <div
       class="rounded-2xl border shadow-sm overflow-hidden"
-      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+      :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'"
     >
       <div v-if="store.loading" class="flex items-center justify-center py-20 gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
         <i class="pi pi-spin pi-spinner"></i>
@@ -49,7 +49,7 @@
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
-            <tr :style="isDark ? 'background:#111827; border-bottom:1px solid #1f2937;' : 'background:#fafafa; border-bottom:1px solid #f3f4f6;'">
+            <tr :style="isDark ? 'background:#111827; border-bottom:1px solid #1f2937;' : 'background:#f3f6fa; border-bottom:1px solid #dbe3ed;'">
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Cliente</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">DUI</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Licencia</th>
@@ -63,7 +63,7 @@
               v-for="cliente in clientesFiltrados"
               :key="cliente.id"
               class="border-b transition-colors"
-              :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-50 hover:bg-gray-50/80'"
+              :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-200 hover:bg-gray-50/80'"
             >
               <td class="px-5 py-4">
                 <div class="flex items-center gap-3">
@@ -86,7 +86,7 @@
               </td>
 
               <td class="px-5 py-4" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
-                {{ cliente.municipio }}, {{ cliente.departamento }}
+                {{ ubicacionCliente(cliente) }}
               </td>
 
               <td class="px-5 py-4">
@@ -138,7 +138,7 @@
       </div>
       <div
         class="px-5 py-3 border-t text-xs"
-        :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-50 text-gray-400'"
+        :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'"
       >
         {{ clientesFiltrados.length }} cliente{{ clientesFiltrados.length !== 1 ? 's' : '' }}
       </div>
@@ -148,6 +148,9 @@
       :visible="modalAbierto"
       :modo-edicion="modoEdicion"
       :cliente="clienteSeleccionado"
+      :guardando="guardandoCliente"
+      :server-errors="erroresFormulario"
+      :submit-error="errorFormulario"
       @guardar="guardarCliente"
       @cerrar="modalAbierto = false"
     />
@@ -179,6 +182,9 @@ const historialAbierto    = ref(false)
 const modoEdicion         = ref(false)
 const clienteSeleccionado = ref(null)
 const clienteHistorial    = ref(null)
+const guardandoCliente    = ref(false)
+const erroresFormulario   = ref({})
+const errorFormulario     = ref('')
 
 const clientes = computed(() => store.clientes)
 
@@ -197,12 +203,16 @@ const clientesFiltrados = computed(() => {
 function abrirModalCrear() {
   modoEdicion.value = false
   clienteSeleccionado.value = null
+  erroresFormulario.value = {}
+  errorFormulario.value = ''
   modalAbierto.value = true
 }
 
 function abrirModalEditar(cliente) {
   modoEdicion.value = true
   clienteSeleccionado.value = { ...cliente }
+  erroresFormulario.value = {}
+  errorFormulario.value = ''
   modalAbierto.value = true
 }
 
@@ -212,6 +222,9 @@ function abrirHistorial(cliente) {
 }
 
 async function guardarCliente(form) {
+  guardandoCliente.value = true
+  erroresFormulario.value = {}
+  errorFormulario.value = ''
   try {
     if (modoEdicion.value) {
       await store.actualizar(form)
@@ -228,14 +241,12 @@ async function guardarCliente(form) {
     }
     modalAbierto.value = false
   } catch (e) {
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error al registrar cliente',
-      text: e.response?.data?.message || store.error || 'No se pudo guardar el cliente.',
-      confirmButtonColor: '#c0392b',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    const backendErrors = e.response?.data?.errors || {}
+    erroresFormulario.value = backendErrors
+    const firstError = Object.values(backendErrors).flat()[0]
+    errorFormulario.value = firstError ? '' : (e.response?.data?.message || store.error || 'No se pudo guardar el cliente.')
+  } finally {
+    guardandoCliente.value = false
   }
 }
 
@@ -253,5 +264,11 @@ function initials(nombre) {
 function licenciaVigente(vencimiento) {
   const iso = fechaSoloISO(vencimiento)
   return iso ? iso >= fechaHoyLocal() : false
+}
+
+function ubicacionCliente(cliente) {
+  const municipio = cliente.municipio_nombre || cliente.municipio?.nombre || cliente.municipio
+  const departamento = cliente.departamento_nombre || cliente.municipio?.departamento?.nombre || cliente.departamento
+  return [municipio, departamento].filter(Boolean).join(', ') || '—'
 }
 </script>

@@ -36,7 +36,7 @@
           @buscar="onBuscarCliente"
           @seleccionar="seleccionarCliente"
           @limpiar="limpiarCliente"
-          @agregar-nuevo="modalClienteAbierto = true"
+          @agregar-nuevo="abrirModalCliente"
         />
 
         <ReservaFechas
@@ -89,6 +89,9 @@
       :visible="modalClienteAbierto"
       :modo-edicion="false"
       :cliente="null"
+      :guardando="guardandoCliente"
+      :server-errors="erroresCliente"
+      :submit-error="errorCliente"
       @guardar="onClienteCreado"
       @cerrar="modalClienteAbierto = false"
     />
@@ -119,6 +122,9 @@ const busquedaCliente = ref("");
 const resultadosClientes = ref([]);
 const buscandoClientes = ref(false);
 const modalClienteAbierto = ref(false);
+const guardandoCliente = ref(false);
+const erroresCliente = ref({});
+const errorCliente = ref('');
 let debounceTimer = null;
 
 const fechaInicio = ref("");
@@ -167,7 +173,7 @@ const diasReserva = computed(() =>
 );
 
 const tipoReservaLabel = computed(() => {
-  if (tipoReserva.value === "INMEDIATA") return "Inmediata";
+  if (tipoReserva.value === "INMEDIATA") return "Renta directa";
   if (tipoReserva.value === "ANTISIPADA") return "Anticipada";
   return "—";
 });
@@ -221,7 +227,16 @@ function limpiarCliente() {
   vehiculosConsultados.value = false;
 }
 
+function abrirModalCliente() {
+  erroresCliente.value = {};
+  errorCliente.value = '';
+  modalClienteAbierto.value = true;
+}
+
 async function onClienteCreado(form) {
+  guardandoCliente.value = true;
+  erroresCliente.value = {};
+  errorCliente.value = '';
   try {
     const creado = await clientesStore.crear(form);
     seleccionarCliente(creado);
@@ -235,14 +250,12 @@ async function onClienteCreado(form) {
       color: isDark.value ? "#f3f4f6" : "#111827",
     });
   } catch (e) {
-    await Swal.fire({
-      icon: "error",
-      title: "Error al registrar cliente",
-      text: e.response?.data?.message || clientesStore.error || "No se pudo registrar el cliente.",
-      confirmButtonColor: "#c0392b",
-      background: isDark.value ? "#1f2937" : "#fff",
-      color: isDark.value ? "#f3f4f6" : "#111827",
-    });
+    const backendErrors = e.response?.data?.errors || {};
+    erroresCliente.value = backendErrors;
+    const firstError = Object.values(backendErrors).flat()[0];
+    errorCliente.value = firstError ? '' : (e.response?.data?.message || clientesStore.error || 'No se pudo registrar el cliente.');
+  } finally {
+    guardandoCliente.value = false;
   }
 }
 
