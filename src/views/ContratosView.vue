@@ -256,12 +256,26 @@ function actualizarContratoEnLista(actualizado) {
 async function abrirPago(c) {
   cargandoPago.value = c.id
   try {
-    contratoPago.value = await store.fetchContrato(c.id)
+    const contrato = await store.fetchContrato(c.id)
+    contratoPago.value = await completarContratoConPagos(contrato)
     modalPago.value = true
   } catch (e) {
     Swal.fire({ icon: 'error', title: 'Error', text: e.response?.data?.message || 'No se pudo cargar el contrato.', confirmButtonColor: '#922b21' })
   } finally {
     cargandoPago.value = null
+  }
+}
+
+async function completarContratoConPagos(contrato) {
+  if (!contrato?.numero_contrato) return contrato
+  await pagosStore.fetchPagos({ search: contrato.numero_contrato, per_page: 100 })
+  const pagosContrato = pagosStore.pagos.filter((p) => Number(p.contrato_id || p.contrato?.id) === Number(contrato.id))
+  return {
+    ...contrato,
+    pagos: pagosContrato,
+    monto_pagado: pagosContrato
+      .filter((p) => p.estado_transaccion === 'CONFIRMADO')
+      .reduce((s, p) => s + Number(p.monto || 0), 0),
   }
 }
 
@@ -285,12 +299,23 @@ function cerrarPdf() {
 async function registrarPago(form) {
   guardandoPago.value = true
   try {
-    await pagosStore.registrar(contratoPago.value.id, form)
-    const actualizado = await store.fetchContrato(contratoPago.value.id)
+    const pagos = Array.isArray(form.pagos) ? form.pagos : [form]
+    for (const pago of pagos) {
+      await pagosStore.registrar(contratoPago.value.id, pago)
+    }
+    const contratoActualizado = await store.fetchContrato(contratoPago.value.id)
+    const actualizado = await completarContratoConPagos(contratoActualizado)
     actualizarContratoEnLista(actualizado)
     modalPago.value = false
     contratoPago.value = null
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Pago registrado', showConfirmButton: false, timer: 2500 })
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado',
+      showConfirmButton: false,
+      timer: 2500,
+    })
   } catch (e) {
     Swal.fire({ icon: 'error', title: 'Error', text: e.response?.data?.message || pagosStore.error, confirmButtonColor: '#922b21' })
   } finally {

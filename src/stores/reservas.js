@@ -48,9 +48,9 @@ export const useReservasStore = defineStore("reservas", () => {
   async function fetchVehiculosDisponibles(fechaInicio, fechaFin, reservaId = null) {
     if (!fechaInicio || !fechaFin) return [];
     try {
-      const params = { fecha_inicio: fechaInicio, fecha_fin: fechaFin };
+      const params = { fecha_inicio: fechaInicio, fecha_fin: fechaFin, estado: "DISPONIBLE" };
       if (reservaId) params.reserva_id = reservaId;
-      const res = await api.get("/admin/vehiculos/disponibles", { params });
+      const res = await api.get("/admin/vehiculos", { params });
       return extractList(res.data);
     } catch (e) {
       if (e.response?.status === 404) return [];

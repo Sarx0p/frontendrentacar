@@ -23,7 +23,7 @@
         >
           <option value="">Seleccionar contrato...</option>
           <option v-for="c in contratosAbiertos" :key="c.id" :value="c.id">
-            {{ c.numero_contrato }} — {{ c.reserva?.cliente?.nombre }} — Saldo ${{ formatPrecio(saldoDe(c)) }}
+            {{ c.numero_contrato }} — {{ nombreCliente(c) }} — {{ saldoLabel(c) }}
           </option>
         </select>
       </div>
@@ -81,7 +81,7 @@
               <td class="px-5 py-4 text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-600'">{{ fmt(p.fecha_pago) }}</td>
               <td class="px-5 py-4 font-mono font-bold" style="color:#922b21;">{{ p.contrato?.numero_contrato || '—' }}</td>
               <td class="px-5 py-4">
-                <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ p.contrato?.reserva?.cliente?.nombre || '—' }}</p>
+                <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ nombreClientePago(p) }}</p>
               </td>
               <td class="px-5 py-4 font-bold tabular-nums" style="color:#166534;">${{ formatPrecio(p.monto) }}</td>
               <td class="px-5 py-4">
@@ -115,7 +115,7 @@ import PagoRegistrarModal from '@/components/pagos/PagoRegistrarModal.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { usePagosStore } from '@/stores/pagos'
 import { useAppTheme } from '@/composables/useAppTheme'
-import { formatPrecio, saldoPendienteContrato, montoExtrasContrato } from '@/utils/contratoFormatters'
+import { formatPrecio, saldoPendienteContrato, montoExtrasContrato, totalFinalContrato } from '@/utils/contratoFormatters'
 
 const route = useRoute()
 const { isDark } = useAppTheme()
@@ -128,7 +128,7 @@ const modalAbierto = ref(false)
 const guardando = ref(false)
 
 const contratosAbiertos = computed(() =>
-  contratosStore.contratos.filter((c) => saldoPendienteContrato(c) > 0 && c.estado_contrato !== 'ANULADO')
+  contratosStore.contratos.filter((c) => c.estado_pago !== 'PAGADO' && c.estado_contrato !== 'ANULADO')
 )
 
 const saldoContrato = computed(() => saldoPendienteContrato(contratoSel.value))
@@ -136,6 +136,14 @@ const montoExtrasSel = computed(() => montoExtrasContrato(contratoSel.value))
 
 function saldoDe(c) {
   return saldoPendienteContrato(c)
+}
+
+function saldoLabel(c) {
+  if (c.saldo_pendiente != null || Array.isArray(c.pagos)) {
+    return `Saldo $${formatPrecio(saldoDe(c))}`
+  }
+  if (c.estado_pago === 'PARCIAL') return 'Saldo pendiente'
+  return `Total $${formatPrecio(totalFinalContrato(c))}`
 }
 
 const totalCobrado = computed(() => pagosStore.pagos.reduce((s, p) => s + Number(p.monto || 0), 0))
@@ -152,19 +160,43 @@ onMounted(async () => {
 
 async function cargarContrato() {
   if (!contratoId.value) { contratoSel.value = null; return }
-  contratoSel.value = await contratosStore.fetchContrato(contratoId.value)
+  const contrato = await contratosStore.fetchContrato(contratoId.value)
+  contratoSel.value = await completarContratoConPagos(contrato)
+}
+
+async function completarContratoConPagos(contrato) {
+  if (!contrato?.numero_contrato) return contrato
+  await pagosStore.fetchPagos({ search: contrato.numero_contrato, per_page: 100 })
+  const pagosContrato = pagosStore.pagos.filter((p) => Number(p.contrato_id || p.contrato?.id) === Number(contrato.id))
+  return {
+    ...contrato,
+    pagos: pagosContrato,
+    monto_pagado: pagosContrato
+      .filter((p) => p.estado_transaccion === 'CONFIRMADO')
+      .reduce((s, p) => s + Number(p.monto || 0), 0),
+  }
 }
 
 async function registrarPago(form) {
   guardando.value = true
   try {
-    await pagosStore.registrar(contratoSel.value.id, form)
+    const pagos = Array.isArray(form.pagos) ? form.pagos : [form]
+    for (const pago of pagos) {
+      await pagosStore.registrar(contratoSel.value.id, pago)
+    }
     await cargarContrato()
     pagosStore.fetchPagos()
     modalAbierto.value = false
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Pago registrado', showConfirmButton: false, timer: 2500 })
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado',
+      showConfirmButton: false,
+      timer: 2500,
+    })
   } catch (e) {
-    Swal.fire({ icon: 'error', title: 'Error', text: e.response?.data?.message, confirmButtonColor: '#922b21' })
+    Swal.fire({ icon: 'error', title: 'Error', text: e.response?.data?.message || pagosStore.error, confirmButtonColor: '#922b21' })
   } finally {
     guardando.value = false
   }
@@ -175,10 +207,20 @@ function fmt(v) {
   return new Date(v).toLocaleString('es-SV', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+function nombreCliente(contrato) {
+  return contrato?.cliente?.nombre || contrato?.reserva?.cliente?.nombre || 'Cliente no disponible'
+}
+
+function nombreClientePago(pago) {
+  const contratoCompleto = contratosStore.contratos.find((c) => c.id === pago.contrato_id || c.id === pago.contrato?.id)
+  return nombreCliente(contratoCompleto)
+}
+
 function metodoStyle(m) {
   const map = {
     EFECTIVO: 'background:#dcfce7; color:#166534;',
     TRANSFERENCIA: 'background:#dbeafe; color:#1e40af;',
+    DEPOSITO: 'background:#f3e8ff; color:#6b21a8;',
   }
   return map[m] || 'background:#f3f4f6; color:#6b7280;'
 }
