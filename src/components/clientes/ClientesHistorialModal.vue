@@ -40,9 +40,9 @@
 
           <div class="hist-body flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden" :class="isDark ? 'hist-body--dark' : 'hist-body--light'">
             <!-- Nav lateral -->
-            <nav class="hist-nav flex-shrink-0 p-3 md:p-4 md:w-[240px] border-b md:border-b-0 md:border-r" :class="isDark ? 'border-gray-800 bg-gray-900/80' : 'border-gray-100 bg-gray-50/80'">
+            <nav class="hist-nav flex-shrink-0 md:flex-shrink md:min-h-0 md:overflow-y-auto p-3 md:p-4 md:w-[240px] border-b md:border-b-0 md:border-r" :class="isDark ? 'border-gray-800 bg-gray-900/80' : 'border-gray-100 bg-gray-50/80'">
               <p class="hidden md:block text-[10px] font-bold uppercase tracking-widest mb-3 px-0.5" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Explorar historial</p>
-              <div class="flex md:flex-col gap-2.5 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
+              <div class="hist-tabs-row flex md:flex-col gap-2.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
                 <button
                   v-for="t in tabs"
                   :key="t.id"
@@ -656,6 +656,32 @@ watch(
 
 .hist-body--light { background: #fafafa; }
 .hist-body--dark { background: #111827; }
+
+.hist-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(146, 43, 33, 0.4) transparent;
+}
+.hist-nav::-webkit-scrollbar { width: 7px; height: 7px; }
+.hist-nav::-webkit-scrollbar-track { background: transparent; }
+.hist-nav::-webkit-scrollbar-thumb { background: rgba(146, 43, 33, 0.4); border-radius: 999px; }
+.hist-nav::-webkit-scrollbar-thumb:hover { background: rgba(146, 43, 33, 0.6); }
+.hist-body--dark .hist-nav {
+  scrollbar-color: rgba(240, 165, 0, 0.4) transparent;
+}
+.hist-body--dark .hist-nav::-webkit-scrollbar-thumb { background: rgba(240, 165, 0, 0.4); }
+.hist-body--dark .hist-nav::-webkit-scrollbar-thumb:hover { background: rgba(240, 165, 0, 0.6); }
+
+.hist-tabs-row {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(146, 43, 33, 0.4) transparent;
+}
+.hist-tabs-row::-webkit-scrollbar { height: 7px; }
+.hist-tabs-row::-webkit-scrollbar-track { background: transparent; }
+.hist-tabs-row::-webkit-scrollbar-thumb { background: rgba(146, 43, 33, 0.4); border-radius: 999px; }
+.hist-body--dark .hist-tabs-row {
+  scrollbar-color: rgba(240, 165, 0, 0.4) transparent;
+}
+.hist-body--dark .hist-tabs-row::-webkit-scrollbar-thumb { background: rgba(240, 165, 0, 0.4); }
 
 .hist-tab {
   display: flex;
