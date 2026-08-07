@@ -28,9 +28,9 @@
         :class="{
           'wizard-step--active': paso === s.id,
           'wizard-step--done': s.id < paso || (s.id === paso && s.completo),
-          'wizard-step--clickable': s.id <= pasoMaximo,
+          'wizard-step--clickable': s.id <= pasoMaximo && !esDesdeReserva,
         }"
-        :disabled="s.id > pasoMaximo"
+        :disabled="s.id > pasoMaximo || (esDesdeReserva && s.id !== paso)"
         @click="irPaso(s.id)"
       >
         <span class="wizard-step-num">
@@ -58,6 +58,7 @@
               @cliente-limpiado="onClienteLimpiado"
               @reserva-elegir="aplicarReserva"
               @reserva-limpiar="onReservaLimpiar"
+              @agregar-nuevo="modalClienteAbierto = true"
             />
             <ContratoFechasVehiculoSection
               v-else-if="paso === 2"
@@ -70,14 +71,32 @@
               :cargando="cargandoVehiculos"
               :consultados="vehiculosConsultados"
             />
-            <ContratoPreciosInspeccionSection
-              v-else
-              v-model:descuento="descuento"
-              v-model:nivel-combustible="nivelCombustible"
-              v-model:observaciones-entrega="observacionesEntrega"
-              :dias="dias"
-              :precio-dia="precioDia"
-            />
+            <div v-else>
+              <div v-if="esDesdeReserva" class="wizard-heredado">
+                <p class="wizard-heredado-title"><i class="pi pi-check-circle"></i> Datos heredados de la reserva</p>
+                <div class="wizard-heredado-grid">
+                  <div>
+                    <span class="wizard-heredado-label">Cliente</span>
+                    <span class="wizard-heredado-value">{{ cliente?.nombre || '—' }}</span>
+                  </div>
+                  <div>
+                    <span class="wizard-heredado-label">Vehículo</span>
+                    <span class="wizard-heredado-value">{{ vehiculoSel ? nombreVehiculo(vehiculoSel) + ' · ' + vehiculoSel.placa : '—' }}</span>
+                  </div>
+                  <div>
+                    <span class="wizard-heredado-label">Periodo</span>
+                    <span class="wizard-heredado-value">{{ formatFecha(fechaEntrega) }} → {{ formatFecha(fechaDevolucion) }}</span>
+                  </div>
+                </div>
+              </div>
+              <ContratoPreciosInspeccionSection
+                v-model:descuento="descuento"
+                v-model:nivel-combustible="nivelCombustible"
+                v-model:observaciones-entrega="observacionesEntrega"
+                :dias="dias"
+                :precio-dia="precioDia"
+              />
+            </div>
           </div>
         </Transition>
 
@@ -85,7 +104,7 @@
 
         <!-- Navegación -->
         <div class="wizard-nav">
-          <button v-if="paso > 1" type="button" class="wizard-btn wizard-btn--ghost" @click="paso--">
+          <button v-if="paso > 1 && !esDesdeReserva" type="button" class="wizard-btn wizard-btn--ghost" @click="paso--">
             <i class="pi pi-arrow-left"></i> Anterior
           </button>
           <div v-else></div>
@@ -130,6 +149,14 @@
 
     <ContratoPdfPreview :visible="mostrarPdf" :contrato="contratoGenerado" @cerrar="mostrarPdf = false" />
 
+    <ClientesModal
+      :visible="modalClienteAbierto"
+      :modo-edicion="false"
+      :cliente="null"
+      @guardar="onClienteCreado"
+      @cerrar="modalClienteAbierto = false"
+    />
+
   </div>
 </template>
 
@@ -142,16 +169,20 @@ import ContratoFechasVehiculoSection from '@/components/contratos/ContratoFechas
 import ContratoPreciosInspeccionSection from '@/components/contratos/ContratoPreciosInspeccionSection.vue'
 import ContratoResumen from '@/components/contratos/ContratoResumen.vue'
 import ContratoPdfPreview from '@/components/contratos/ContratoPdfPreview.vue'
+import ClientesModal from '@/components/clientes/ClientesModal.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { useReservasStore } from '@/stores/reservas'
+import { useClientesStore } from '@/stores/clientes'
 import { useAppTheme } from '@/composables/useAppTheme'
-import { calcularDias, documentosVigentes } from '@/utils/contratoFormatters'
+import { calcularDias, documentosVigentes, nombreVehiculo } from '@/utils/contratoFormatters'
+import { formatFecha } from '@/utils/reservaFormatters'
 
 const router = useRouter()
 const route = useRoute()
 const { isDark } = useAppTheme()
 const contratosStore = useContratosStore()
 const reservasStore = useReservasStore()
+const clientesStore = useClientesStore()
 
 const reservaId = ref(route.query.reserva_id ? Number(route.query.reserva_id) : null)
 const reservaOrigen = ref(null)
@@ -159,6 +190,7 @@ const reservasCliente = ref([])
 const cargandoReservasCliente = ref(false)
 const sinReservaDisponible = ref(false)
 const cargandoReserva = ref(false)
+const modalClienteAbierto = ref(false)
 
 const clienteRef = ref(null)
 const paso = ref(1)
@@ -198,7 +230,10 @@ const paso1Ok = computed(() =>
   !cargandoReservasCliente.value,
 )
 const paso2Ok = computed(() => !!vehiculoId.value && !!fechaEntrega.value && !!fechaDevolucion.value)
-const puedeGenerar = computed(() => paso1Ok.value && paso2Ok.value && dias.value > 0)
+const paso3Ok = computed(() => !!observacionesEntrega.value.trim())
+const puedeGenerar = computed(() => paso1Ok.value && paso2Ok.value && paso3Ok.value && dias.value > 0)
+
+const esDesdeReserva = computed(() => !!reservaId.value)
 
 const pasoMaximo = computed(() => {
   if (paso2Ok.value) return 3
@@ -219,6 +254,7 @@ const puedeAvanzar = computed(() => {
 })
 
 function irPaso(n) {
+  if (esDesdeReserva.value) return
   if (n <= pasoMaximo.value) paso.value = n
 }
 
@@ -256,6 +292,32 @@ function onReservaLimpiar() {
 async function onClienteSeleccionado(c) {
   if (route.query.reserva_id) return
   await cargarReservasCliente(c.id)
+}
+
+async function onClienteCreado(form) {
+  try {
+    const creado = await clientesStore.crear(form)
+    modalClienteAbierto.value = false
+    cliente.value = creado
+    await Swal.fire({
+      icon: 'success',
+      title: 'Cliente registrado',
+      text: `${creado.nombre} se agregó correctamente.`,
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+    await onClienteSeleccionado(creado)
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error al registrar cliente',
+      text: e.response?.data?.message || clientesStore.error || 'No se pudo registrar el cliente.',
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  }
 }
 
 async function cargarReservasCliente(clienteId) {
@@ -355,7 +417,7 @@ async function cargarDesdeReserva() {
     fechaDevolucion.value = fechaSolo(reserva.fecha_fin)
     vehiculoId.value = reserva.vehiculo_id
     await consultarVehiculos()
-    paso.value = reserva.cliente ? 2 : 1
+    paso.value = 3
   } catch (e) {
     error.value = e.response?.data?.message || 'No se pudo cargar la reserva.'
   } finally {
@@ -482,6 +544,22 @@ function volver() {
   color: #c0392b; padding: 0.65rem 1rem; border-radius: 0.75rem;
   background: rgba(192,57,43,0.08); border: 1px solid rgba(192,57,43,0.2);
 }
+
+.wizard-heredado {
+  margin-bottom: 1rem; padding: 1rem 1.25rem; border-radius: 1rem;
+  background: rgba(22,101,52,0.06); border: 1px solid rgba(22,101,52,0.2);
+}
+.wizard-root--dark .wizard-heredado { background: rgba(22,101,52,0.12); border-color: rgba(34,197,94,0.25); }
+.wizard-heredado-title {
+  display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.06em; color: #166534; margin-bottom: 0.75rem;
+}
+.wizard-root--dark .wizard-heredado-title { color: #86efac; }
+.wizard-heredado-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; }
+.wizard-heredado-label { display: block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+.wizard-heredado-value { display: block; font-size: 0.875rem; font-weight: 700; margin-top: 0.15rem; }
+.wizard-root--light .wizard-heredado-value { color: #111827; }
+.wizard-root--dark .wizard-heredado-value { color: #f3f4f6; }
 
 .wizard-nav {
   display: flex; justify-content: space-between; align-items: center;

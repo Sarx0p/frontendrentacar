@@ -230,6 +230,7 @@ import ReservasCanceladasModal from '@/components/reservas/ReservasCanceladasMod
 import { useReservasStore } from '@/stores/reservas'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { formatFecha } from '@/utils/reservaFormatters'
+import { labelTipoReserva } from '@/utils/clienteHistorialFormatters'
 
 const { isDark } = useAppTheme()
 const store = useReservasStore()
@@ -359,8 +360,7 @@ function labelEstado(estado) {
 }
 
 function labelTipo(tipo) {
-  const map = { INMEDIATA: 'Inmediata', ANTISIPADA: 'Anticipada' }
-  return map[tipo] || tipo
+  return labelTipoReserva(tipo)
 }
 
 function estadoStyle(estado) {

@@ -86,12 +86,12 @@
             >
               <td class="px-5 py-4 font-mono font-bold text-sm" style="color:#922b21;">{{ c.numero_contrato }}</td>
               <td class="px-5 py-4">
-                <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ c.reserva?.cliente?.nombre || '—' }}</p>
-                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ c.reserva?.cliente?.dui }}</p>
+                <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ (c.cliente || c.reserva?.cliente)?.nombre || '—' }}</p>
+                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ (c.cliente || c.reserva?.cliente)?.dui }}</p>
               </td>
               <td class="px-5 py-4">
-                <p class="font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-700'">{{ nombreVehiculo(c.reserva?.vehiculo) }}</p>
-                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ c.reserva?.vehiculo?.placa }}</p>
+                <p class="font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-700'">{{ nombreVehiculo(c.vehiculo || c.reserva?.vehiculo) }}</p>
+                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ (c.vehiculo || c.reserva?.vehiculo)?.placa }}</p>
               </td>
               <td class="px-5 py-4" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
                 <p>{{ fmtFecha(c.fecha_hora_entrega) }}</p>
@@ -211,8 +211,8 @@ const contratosFiltrados = computed(() => {
   if (q) {
     list = list.filter((c) =>
       c.numero_contrato?.toLowerCase().includes(q) ||
-      c.reserva?.cliente?.nombre?.toLowerCase().includes(q) ||
-      c.reserva?.cliente?.dui?.includes(q)
+      (c.cliente || c.reserva?.cliente)?.nombre?.toLowerCase().includes(q) ||
+      (c.cliente || c.reserva?.cliente)?.dui?.includes(q)
     )
   }
   if (filtroEstado.value) list = list.filter((c) => c.estado_contrato === filtroEstado.value)

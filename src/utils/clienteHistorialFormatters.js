@@ -2,8 +2,9 @@ import { formatFecha, fechaSoloISO } from '@/utils/reservaFormatters'
 
 export function labelTipoHistorial(tipo) {
   const map = {
-    'DEUDA PENDIENTE': 'Deuda pendiente',
-    'DANIO VEHICULO': 'Daño vehículo',
+    DANIO: 'Daño',
+    ACCIDENTE: 'Accidente',
+    'FALLA MECANICA': 'Falla mecánica',
     OTRO: 'Otro',
   }
   return map[tipo] || tipo || '—'
@@ -11,26 +12,39 @@ export function labelTipoHistorial(tipo) {
 
 export function labelEstadoHistorial(estado) {
   const map = {
-    VIGENTE: 'Vigente',
-    RESUELTO: 'Resuelto',
-    ARCHIVADO: 'Archivado',
+    REPORTADA: 'Reportada',
+    'EN REVISION': 'En revisión',
+    RESUELTA: 'Resuelta',
+    ANULADA: 'Anulada',
   }
   return map[estado] || estado || '—'
 }
 
 export function estadoHistorialStyle(estado, isDark = false) {
   const light = {
-    VIGENTE:   'background:#fef3c7;color:#92400e;',
-    RESUELTO:  'background:#dcfce7;color:#166534;',
-    ARCHIVADO: 'background:#f3f4f6;color:#4b5563;',
+    REPORTADA:      'background:#fef3c7;color:#92400e;',
+    'EN REVISION':  'background:#dbeafe;color:#1d4ed8;',
+    RESUELTA:       'background:#dcfce7;color:#166534;',
+    ANULADA:        'background:#f3f4f6;color:#6b7280;',
   }
   const dark = {
-    VIGENTE:   'background:rgba(146,43,33,0.25);color:#f0a500;border:1px solid rgba(240,165,0,0.3);',
-    RESUELTO:  'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
-    ARCHIVADO: 'background:rgba(55,65,81,0.5);color:#9ca3af;border:1px solid #374151;',
+    REPORTADA:      'background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);',
+    'EN REVISION':  'background:rgba(29,78,216,0.2);color:#93c5fd;border:1px solid rgba(59,130,246,0.3);',
+    RESUELTA:       'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
+    ANULADA:        'background:rgba(55,65,81,0.5);color:#9ca3af;border:1px solid #374151;',
   }
   const styles = isDark ? dark : light
   return styles[estado] || (isDark ? 'background:#374151;color:#d1d5db;' : 'background:#f3f4f6;color:#4b5563;')
+}
+
+export function labelResponsableIncidencia(tipo) {
+  const map = {
+    CLIENTE: 'Cliente',
+    NEGOCIO: 'Negocio',
+    TERCERO: 'Tercero',
+    'NO DETERMINADO': 'No determinado',
+  }
+  return map[tipo] || tipo || '—'
 }
 
 export function nombreVehiculoHistorial(vehiculo) {
@@ -83,8 +97,8 @@ export function labelEstadoReserva(estado) {
 
 export function labelTipoReserva(tipo) {
   const map = {
-    INMEDIATA: 'Inmediata',
-    ANTICIPADA: 'Anticipada',
+    INMEDIATA: 'Renta directa',
+    ANTISIPADA: 'Reserva anticipada',
   }
   return map[tipo] || tipo || '—'
 }
@@ -134,3 +148,73 @@ export function estadoContratoStyle(estado, isDark = false) {
   return styles[estado] || (isDark ? 'background:#374151;color:#d1d5db;' : 'background:#f3f4f6;color:#4b5563;')
 }
 
+export function labelMetodoPago(metodo) {
+  const map = {
+    EFECTIVO: 'Efectivo',
+    TRANSFERENCIA: 'Transferencia',
+    DEPOSITO: 'Depósito',
+  }
+  return map[metodo] || metodo || '—'
+}
+
+export function labelEstadoTransaccion(estado) {
+  const map = {
+    PENDIENTE: 'Pendiente',
+    CONFIRMADO: 'Confirmado',
+    FALLIDO: 'Fallido',
+    ANULADO: 'Anulado',
+  }
+  return map[estado] || estado || '—'
+}
+
+export function estadoTransaccionStyle(estado, isDark = false) {
+  const light = {
+    PENDIENTE:  'background:#fef3c7;color:#92400e;',
+    CONFIRMADO: 'background:#dcfce7;color:#166534;',
+    FALLIDO:    'background:#fee2e2;color:#991b1b;',
+    ANULADO:    'background:#f3f4f6;color:#6b7280;',
+  }
+  const dark = {
+    PENDIENTE:  'background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);',
+    CONFIRMADO: 'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
+    FALLIDO:    'background:rgba(127,29,29,0.35);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);',
+    ANULADO:    'background:rgba(55,65,81,0.5);color:#9ca3af;border:1px solid #374151;',
+  }
+  const styles = isDark ? dark : light
+  return styles[estado] || (isDark ? 'background:#374151;color:#d1d5db;' : 'background:#f3f4f6;color:#4b5563;')
+}
+
+export function labelTipoCargo(tipo) {
+  const map = {
+    COMBUSTIBLE: 'Combustible',
+    RETRASO: 'Retraso',
+    'DIA EXTRA': 'Día extra',
+    DANIO: 'Daño',
+    OTRO: 'Otro',
+  }
+  return map[tipo] || tipo || '—'
+}
+
+export function labelEstadoCargo(estado) {
+  const map = {
+    PENDIENTE: 'Pendiente',
+    APLICADO: 'Aplicado',
+    ANULADO: 'Anulado',
+  }
+  return map[estado] || estado || '—'
+}
+
+export function estadoCargoStyle(estado, isDark = false) {
+  const light = {
+    PENDIENTE: 'background:#fef3c7;color:#92400e;',
+    APLICADO:  'background:#dcfce7;color:#166534;',
+    ANULADO:   'background:#f3f4f6;color:#6b7280;',
+  }
+  const dark = {
+    PENDIENTE: 'background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);',
+    APLICADO:  'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
+    ANULADO:   'background:rgba(55,65,81,0.5);color:#9ca3af;border:1px solid #374151;',
+  }
+  const styles = isDark ? dark : light
+  return styles[estado] || (isDark ? 'background:#374151;color:#d1d5db;' : 'background:#f3f4f6;color:#4b5563;')
+}

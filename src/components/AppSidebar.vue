@@ -79,6 +79,13 @@
           @click="navegar('pagos')"
         />
         <SidebarItem
+          icon="pi-flag"
+          label="Cierres de renta"
+          :collapsed="collapsed"
+          :active="activeRoute === 'cierres'"
+          @click="navegar('cierres')"
+        />
+        <SidebarItem
           icon="pi-wrench"
           label="Mantenimiento"
           :collapsed="collapsed"

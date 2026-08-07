@@ -108,6 +108,7 @@ import { useClientesStore } from "@/stores/clientes";
 import { useReservasStore } from "@/stores/reservas";
 import { useAppTheme } from "@/composables/useAppTheme";
 import { fechaHoyLocal, sumarDiasISO, diasEntreFechasISO } from "@/utils/reservaFormatters";
+import { labelTipoReserva } from "@/utils/clienteHistorialFormatters";
 
 const router = useRouter();
 const { isDark } = useAppTheme();
@@ -167,9 +168,8 @@ const diasReserva = computed(() =>
 );
 
 const tipoReservaLabel = computed(() => {
-  if (tipoReserva.value === "INMEDIATA") return "Inmediata";
-  if (tipoReserva.value === "ANTISIPADA") return "Anticipada";
-  return "—";
+  if (!tipoReserva.value) return "—";
+  return labelTipoReserva(tipoReserva.value);
 });
 
 const precioEstimado = computed(() => {

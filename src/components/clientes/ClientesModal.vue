@@ -108,17 +108,32 @@
                 <label class="field-label">Departamento</label>
                 <div class="relative">
                   <i class="pi pi-map-marker input-icon"></i>
-                  <input v-model="form.departamento" type="text" placeholder="" class="field-input" :class="errors.departamento ? 'error' : ''" />
+                  <select
+                    v-model="departamentoId"
+                    class="field-input"
+                    :class="errors.municipio_id ? 'error' : ''"
+                    @change="onDepartamentoChange"
+                  >
+                    <option value="">Seleccionar</option>
+                    <option v-for="d in departamentos" :key="d.id" :value="d.id">{{ d.nombre }}</option>
+                  </select>
                 </div>
-                <p v-if="errors.departamento" class="field-error">{{ errors.departamento }}</p>
               </div>
               <div class="flex-1">
                 <label class="field-label">Municipio</label>
                 <div class="relative">
                   <i class="pi pi-map input-icon"></i>
-                  <input v-model="form.municipio" type="text" placeholder="" class="field-input" :class="errors.municipio ? 'error' : ''" />
+                  <select
+                    v-model="form.municipio_id"
+                    class="field-input"
+                    :class="errors.municipio_id ? 'error' : ''"
+                    :disabled="!departamentoId || cargandoMunicipios"
+                  >
+                    <option value="">{{ cargandoMunicipios ? 'Cargando...' : 'Seleccionar' }}</option>
+                    <option v-for="m in municipios" :key="m.id" :value="m.id">{{ m.nombre }}</option>
+                  </select>
                 </div>
-                <p v-if="errors.municipio" class="field-error">{{ errors.municipio }}</p>
+                <p v-if="errors.municipio_id" class="field-error">{{ errors.municipio_id }}</p>
               </div>
             </div>
 
@@ -161,6 +176,7 @@
 <script setup>
 import { ref, reactive, watch } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
+import api from '@/services/api'
 
 const { isDark } = useAppTheme()
 
@@ -175,22 +191,58 @@ const emit = defineEmits(['guardar', 'cerrar'])
 const loading     = ref(false)
 const globalError = ref('')
 
+const departamentos = ref([])
+const municipios = ref([])
+const departamentoId = ref('')
+const cargandoMunicipios = ref(false)
+
 const form = reactive({
   id: null, nombre: '', dui: '', nacimiento_dui: '',
   numero_licencia: '', vencimiento_licencia: '',
-  telefono: '', departamento: '', municipio: '',
+  telefono: '', municipio_id: '',
 })
 
 const errors = reactive({
   nombre: '', dui: '', nacimiento_dui: '',
   numero_licencia: '', vencimiento_licencia: '',
-  telefono: '', departamento: '', municipio: '',
+  telefono: '', municipio_id: '',
 })
 
-watch(() => props.visible, (val) => {
+async function cargarDepartamentos() {
+  if (departamentos.value.length) return
+  try {
+    const res = await api.get('/admin/departamentos')
+    departamentos.value = res.data.data ?? []
+  } catch {
+    departamentos.value = []
+  }
+}
+
+async function cargarMunicipios(depId, municipioSeleccionado = '') {
+  municipios.value = []
+  if (!depId) return
+  cargandoMunicipios.value = true
+  try {
+    const res = await api.get(`/admin/departamentos/${depId}/municipios`)
+    municipios.value = res.data.data ?? []
+    if (municipioSeleccionado) form.municipio_id = municipioSeleccionado
+  } catch {
+    municipios.value = []
+  } finally {
+    cargandoMunicipios.value = false
+  }
+}
+
+function onDepartamentoChange() {
+  form.municipio_id = ''
+  cargarMunicipios(departamentoId.value)
+}
+
+watch(() => props.visible, async (val) => {
   if (!val) return
   globalError.value = ''
   Object.keys(errors).forEach(k => errors[k] = '')
+  await cargarDepartamentos()
 
   if (props.modoEdicion && props.cliente) {
     Object.assign(form, {
@@ -201,15 +253,19 @@ watch(() => props.visible, (val) => {
       numero_licencia:      props.cliente.numero_licencia      || '',
       vencimiento_licencia: props.cliente.vencimiento_licencia || '',
       telefono:             props.cliente.telefono             || '',
-      departamento:         props.cliente.departamento         || '',
-      municipio:            props.cliente.municipio            || '',
+      municipio_id:         props.cliente.municipio?.id        || '',
     })
+    const depId = props.cliente.municipio?.departamento_id || ''
+    departamentoId.value = depId
+    if (depId) await cargarMunicipios(depId, form.municipio_id)
   } else {
     Object.assign(form, {
       id: null, nombre: '', dui: '', nacimiento_dui: '',
       numero_licencia: '', vencimiento_licencia: '',
-      telefono: '', departamento: '', municipio: '',
+      telefono: '', municipio_id: '',
     })
+    departamentoId.value = ''
+    municipios.value = []
   }
 })
 
@@ -222,8 +278,7 @@ function validar() {
   if (!form.numero_licencia)      { errors.numero_licencia      = 'Requerido'; ok = false }
   if (!form.vencimiento_licencia) { errors.vencimiento_licencia = 'Requerido'; ok = false }
   if (!form.telefono)             { errors.telefono             = 'Requerido'; ok = false }
-  if (!form.departamento)         { errors.departamento         = 'Requerido'; ok = false }
-  if (!form.municipio)            { errors.municipio            = 'Requerido'; ok = false }
+  if (!form.municipio_id)         { errors.municipio_id         = 'Selecciona departamento y municipio'; ok = false }
   return ok
 }
 

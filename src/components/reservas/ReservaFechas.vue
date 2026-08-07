@@ -58,7 +58,7 @@
           >
             <i class="pi pi-bolt text-sm" :style="tipoReserva === 'INMEDIATA' ? 'color:white' : isDark ? 'color:#9ca3af' : 'color:#9ca3af'"></i>
           </div>
-          <span class="text-xs font-bold" :style="tipoReserva === 'INMEDIATA' ? 'color:#922b21' : isDark ? 'color:#9ca3af' : 'color:#6b7280'">Inmediata</span>
+          <span class="text-xs font-bold" :style="tipoReserva === 'INMEDIATA' ? 'color:#922b21' : isDark ? 'color:#9ca3af' : 'color:#6b7280'">Renta directa</span>
           <span class="text-[10px] text-center" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Inicia hoy</span>
         </button>
 
@@ -76,7 +76,7 @@
           >
             <i class="pi pi-calendar-plus text-sm" :style="tipoReserva === 'ANTISIPADA' ? 'color:white' : isDark ? 'color:#9ca3af' : 'color:#9ca3af'"></i>
           </div>
-          <span class="text-xs font-bold" :style="tipoReserva === 'ANTISIPADA' ? 'color:#922b21' : isDark ? 'color:#9ca3af' : 'color:#6b7280'">Anticipada</span>
+          <span class="text-xs font-bold" :style="tipoReserva === 'ANTISIPADA' ? 'color:#922b21' : isDark ? 'color:#9ca3af' : 'color:#6b7280'">Reserva anticipada</span>
           <span class="text-[10px] text-center" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Fecha futura</span>
         </button>
       </div>

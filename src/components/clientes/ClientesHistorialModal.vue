@@ -40,9 +40,9 @@
 
           <div class="hist-body flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden" :class="isDark ? 'hist-body--dark' : 'hist-body--light'">
             <!-- Nav lateral -->
-            <nav class="hist-nav flex-shrink-0 p-3 md:p-4 md:w-[240px] border-b md:border-b-0 md:border-r" :class="isDark ? 'border-gray-800 bg-gray-900/80' : 'border-gray-100 bg-gray-50/80'">
+            <nav class="hist-nav flex-shrink-0 md:flex-shrink md:min-h-0 md:overflow-y-auto p-3 md:p-4 md:w-[240px] border-b md:border-b-0 md:border-r" :class="isDark ? 'border-gray-800 bg-gray-900/80' : 'border-gray-100 bg-gray-50/80'">
               <p class="hidden md:block text-[10px] font-bold uppercase tracking-widest mb-3 px-0.5" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Explorar historial</p>
-              <div class="flex md:flex-col gap-2.5 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
+              <div class="hist-tabs-row flex md:flex-col gap-2.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
                 <button
                   v-for="t in tabs"
                   :key="t.id"
@@ -76,8 +76,12 @@
                   <strong :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ contratos.length }}</strong>
                 </div>
                 <div class="hist-stat">
-                  <span :class="isDark ? 'text-gray-500' : 'text-gray-400'">Incidentes</span>
-                  <strong :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ incidentes.length }}</strong>
+                  <span :class="isDark ? 'text-gray-500' : 'text-gray-400'">Total pagos</span>
+                  <strong :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ pagos.length }}</strong>
+                </div>
+                <div class="hist-stat">
+                  <span :class="isDark ? 'text-gray-500' : 'text-gray-400'">Total cargos</span>
+                  <strong :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ cargos.length }}</strong>
                 </div>
               </div>
             </nav>
@@ -195,7 +199,7 @@
                       <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
                         <i class="pi pi-car hist-spec-icon"></i>
                         <span class="hist-spec-label">Vehículo</span>
-                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(c.reserva?.vehiculo) }}</span>
+                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(c.vehiculo) }}</span>
                       </div>
                       <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
                         <i class="pi pi-sign-in hist-spec-icon"></i>
@@ -226,36 +230,36 @@
                 </div>
               </div>
 
-              <!-- Incidentes -->
-              <div v-else-if="tabActiva === 'incidentes'">
+              <!-- Pagos -->
+              <div v-else-if="tabActiva === 'pagos'">
                 <div class="hist-section-head">
                   <div>
                     <h3 class="hist-content-title" :class="isDark ? 'text-gray-100' : 'text-gray-900'">
-                      <i class="pi pi-exclamation-triangle" style="color:#c0392b;"></i> Incidentes y deudas
+                      <i class="pi pi-dollar" style="color:#c0392b;"></i> Pagos
                     </h3>
-                    <p class="hist-section-sub" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Registros de daños y montos pendientes</p>
+                    <p class="hist-section-sub" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Transacciones registradas sobre sus contratos</p>
                   </div>
                   <span class="hist-section-badge" :class="isDark ? 'hist-section-badge--dark' : ''">
-                    {{ incidentes.length }} registro{{ incidentes.length !== 1 ? 's' : '' }}
+                    {{ pagos.length }} registro{{ pagos.length !== 1 ? 's' : '' }}
                   </span>
                 </div>
-                <div v-if="!incidentes.length" class="hist-empty">
-                  <i class="pi pi-check-circle"></i>
-                  <p>Sin incidentes ni deudas registradas.</p>
+                <div v-if="!pagos.length" class="hist-empty">
+                  <i class="pi pi-dollar"></i>
+                  <p>Este cliente no tiene pagos registrados.</p>
                 </div>
                 <div v-else class="hist-list">
                   <article
-                    v-for="item in incidentes"
-                    :key="'i-' + item.id"
-                    class="hist-record hist-record--incidentes"
+                    v-for="item in pagos"
+                    :key="item.id"
+                    class="hist-record hist-record--contratos"
                     :class="isDark ? 'hist-record--dark' : 'hist-record--light'"
                   >
-                    <div class="hist-record-banner hist-record-banner--warn">
+                    <div class="hist-record-banner">
                       <div class="hist-record-banner-left">
-                        <span class="hist-pill" :style="estadoHistorialStyle(item.estado, isDark)">{{ labelEstadoHistorial(item.estado) }}</span>
-                        <span class="hist-pill hist-pill--brand" :class="isDark ? 'hist-pill--brand-dark' : ''">{{ labelTipoHistorial(item.tipo_registro) }}</span>
+                        <span class="hist-pill" :style="item.estadoStyle">{{ item.estadoLabel }}</span>
+                        <span class="hist-pill hist-pill--muted" :class="isDark ? 'hist-pill--muted-dark' : ''">{{ item.metodoLabel }}</span>
                       </div>
-                      <span class="hist-record-date">{{ formatFechaHoraHistorial(item.fecha_registro) }}</span>
+                      <span class="hist-record-date">{{ formatFechaHoraHistorial(item.fecha) }}</span>
                     </div>
                     <div class="hist-spec-grid">
                       <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
@@ -266,20 +270,177 @@
                       <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
                         <i class="pi pi-car hist-spec-icon"></i>
                         <span class="hist-spec-label">Vehículo</span>
-                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(item.contrato?.reserva?.vehiculo) }}</span>
+                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(item.contrato?.vehiculo) }}</span>
+                      </div>
+                    </div>
+                    <div class="hist-record-total hist-record-total--ok">
+                      <span class="hist-record-total-label">Monto pagado</span>
+                      <span class="hist-record-total-value">{{ formatMoneyHistorial(item.monto) }}</span>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              <!-- Cargos -->
+              <div v-else-if="tabActiva === 'cargos'">
+                <div class="hist-section-head">
+                  <div>
+                    <h3 class="hist-content-title" :class="isDark ? 'text-gray-100' : 'text-gray-900'">
+                      <i class="pi pi-wallet" style="color:#c0392b;"></i> Cargos
+                    </h3>
+                    <p class="hist-section-sub" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Cargos adicionales aplicados a sus contratos</p>
+                  </div>
+                  <span class="hist-section-badge" :class="isDark ? 'hist-section-badge--dark' : ''">
+                    {{ cargos.length }} registro{{ cargos.length !== 1 ? 's' : '' }}
+                  </span>
+                </div>
+                <div v-if="!cargos.length" class="hist-empty">
+                  <i class="pi pi-check-circle"></i>
+                  <p>Sin cargos registrados.</p>
+                </div>
+                <div v-else class="hist-list">
+                  <article
+                    v-for="item in cargos"
+                    :key="item.id"
+                    class="hist-record hist-record--incidentes"
+                    :class="isDark ? 'hist-record--dark' : 'hist-record--light'"
+                  >
+                    <div class="hist-record-banner hist-record-banner--warn">
+                      <div class="hist-record-banner-left">
+                        <span class="hist-pill" :style="item.estadoStyle">{{ item.estadoLabel }}</span>
+                        <span class="hist-pill hist-pill--brand" :class="isDark ? 'hist-pill--brand-dark' : ''">{{ item.tipoLabel }}</span>
+                      </div>
+                      <span class="hist-record-date">{{ formatFechaHoraHistorial(item.fecha) }}</span>
+                    </div>
+                    <div class="hist-spec-grid">
+                      <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
+                        <i class="pi pi-file hist-spec-icon"></i>
+                        <span class="hist-spec-label">Contrato</span>
+                        <span class="hist-spec-value">{{ item.contrato?.numero_contrato || '—' }}</span>
+                      </div>
+                      <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
+                        <i class="pi pi-car hist-spec-icon"></i>
+                        <span class="hist-spec-label">Vehículo</span>
+                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(item.contrato?.vehiculo) }}</span>
+                      </div>
+                    </div>
+                    <div class="hist-record-total hist-record-total--debt">
+                      <span class="hist-record-total-label">Monto</span>
+                      <span class="hist-record-total-value">{{ formatMoneyHistorial(item.monto) }}</span>
+                    </div>
+                    <div v-if="item.descripcion" class="hist-record-note" :class="isDark ? 'hist-record-note--dark' : ''">
+                      <i class="pi pi-comment"></i>
+                      <p>{{ item.descripcion }}</p>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              <!-- Incidencias (daños al vehículo) -->
+              <div v-else-if="tabActiva === 'incidencias'">
+                <div class="hist-section-head">
+                  <div>
+                    <h3 class="hist-content-title" :class="isDark ? 'text-gray-100' : 'text-gray-900'">
+                      <i class="pi pi-exclamation-triangle" style="color:#c0392b;"></i> Incidencias
+                    </h3>
+                    <p class="hist-section-sub" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Daños reportados sobre el vehículo</p>
+                  </div>
+                  <span class="hist-section-badge" :class="isDark ? 'hist-section-badge--dark' : ''">
+                    {{ incidenciasDano.length }} registro{{ incidenciasDano.length !== 1 ? 's' : '' }}
+                  </span>
+                </div>
+                <div v-if="!incidenciasDano.length" class="hist-empty">
+                  <i class="pi pi-check-circle"></i>
+                  <p>Sin incidencias registradas.</p>
+                </div>
+                <div v-else class="hist-list">
+                  <article
+                    v-for="item in incidenciasDano"
+                    :key="'i-' + item.id"
+                    class="hist-record hist-record--incidentes"
+                    :class="isDark ? 'hist-record--dark' : 'hist-record--light'"
+                  >
+                    <div class="hist-record-banner hist-record-banner--warn">
+                      <div class="hist-record-banner-left">
+                        <span class="hist-pill" :style="estadoHistorialStyle(item.estado_incidencia, isDark)">{{ labelEstadoHistorial(item.estado_incidencia) }}</span>
+                        <span class="hist-pill hist-pill--brand" :class="isDark ? 'hist-pill--brand-dark' : ''">{{ labelTipoHistorial(item.tipo_incidencia) }}</span>
+                        <span class="hist-pill hist-pill--muted" :class="isDark ? 'hist-pill--muted-dark' : ''">{{ labelResponsableIncidencia(item.responsable_tipo) }}</span>
+                      </div>
+                      <span class="hist-record-date">{{ formatFechaSoloHistorial(item.fecha) }}</span>
+                    </div>
+                    <div class="hist-spec-grid">
+                      <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
+                        <i class="pi pi-file hist-spec-icon"></i>
+                        <span class="hist-spec-label">Contrato</span>
+                        <span class="hist-spec-value">{{ item.contrato?.numero_contrato || '—' }}</span>
+                      </div>
+                      <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
+                        <i class="pi pi-car hist-spec-icon"></i>
+                        <span class="hist-spec-label">Vehículo</span>
+                        <span class="hist-spec-value">{{ nombreVehiculoHistorial(item.contrato?.vehiculo) }}</span>
                       </div>
                       <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
                         <i class="pi pi-user hist-spec-icon"></i>
                         <span class="hist-spec-label">Registrado por</span>
-                        <span class="hist-spec-value">{{ nombreUsuarioHistorial(item.user) }}</span>
+                        <span class="hist-spec-value">{{ nombreUsuarioHistorial(item.usuario) }}</span>
                       </div>
                     </div>
                     <div
-                      class="hist-record-total"
-                      :class="Number(item.monto_pendiente) > 0 ? 'hist-record-total--debt' : 'hist-record-total--ok'"
+                      v-if="Number(item.costo) > 0"
+                      class="hist-record-total hist-record-total--debt"
                     >
-                      <span class="hist-record-total-label">Monto pendiente</span>
-                      <span class="hist-record-total-value">{{ formatMoneyHistorial(item.monto_pendiente) }}</span>
+                      <span class="hist-record-total-label">Costo</span>
+                      <span class="hist-record-total-value">{{ formatMoneyHistorial(item.costo) }}</span>
+                    </div>
+                    <div v-if="item.descripcion" class="hist-record-note" :class="isDark ? 'hist-record-note--dark' : ''">
+                      <i class="pi pi-comment"></i>
+                      <p>{{ item.descripcion }}</p>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              <!-- Notas -->
+              <div v-else-if="tabActiva === 'notas'">
+                <div class="hist-section-head">
+                  <div>
+                    <h3 class="hist-content-title" :class="isDark ? 'text-gray-100' : 'text-gray-900'">
+                      <i class="pi pi-comment" style="color:#c0392b;"></i> Notas
+                    </h3>
+                    <p class="hist-section-sub" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Otras observaciones registradas sobre el cliente</p>
+                  </div>
+                  <span class="hist-section-badge" :class="isDark ? 'hist-section-badge--dark' : ''">
+                    {{ notas.length }} registro{{ notas.length !== 1 ? 's' : '' }}
+                  </span>
+                </div>
+                <div v-if="!notas.length" class="hist-empty">
+                  <i class="pi pi-comment"></i>
+                  <p>Sin notas registradas.</p>
+                </div>
+                <div v-else class="hist-list">
+                  <article
+                    v-for="item in notas"
+                    :key="'n-' + item.id"
+                    class="hist-record hist-record--incidentes"
+                    :class="isDark ? 'hist-record--dark' : 'hist-record--light'"
+                  >
+                    <div class="hist-record-banner hist-record-banner--warn">
+                      <div class="hist-record-banner-left">
+                        <span class="hist-pill" :style="estadoHistorialStyle(item.estado_incidencia, isDark)">{{ labelEstadoHistorial(item.estado_incidencia) }}</span>
+                      </div>
+                      <span class="hist-record-date">{{ formatFechaSoloHistorial(item.fecha) }}</span>
+                    </div>
+                    <div class="hist-spec-grid">
+                      <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
+                        <i class="pi pi-file hist-spec-icon"></i>
+                        <span class="hist-spec-label">Contrato</span>
+                        <span class="hist-spec-value">{{ item.contrato?.numero_contrato || '—' }}</span>
+                      </div>
+                      <div class="hist-spec-box" :class="isDark ? 'hist-spec-box--dark' : ''">
+                        <i class="pi pi-user hist-spec-icon"></i>
+                        <span class="hist-spec-label">Registrado por</span>
+                        <span class="hist-spec-value">{{ nombreUsuarioHistorial(item.usuario) }}</span>
+                      </div>
                     </div>
                     <div v-if="item.descripcion" class="hist-record-note" :class="isDark ? 'hist-record-note--dark' : ''">
                       <i class="pi pi-comment"></i>
@@ -320,6 +481,13 @@ import {
   formatMoneyHistorial,
   formatFechaHoraHistorial,
   formatFechaSoloHistorial,
+  labelMetodoPago,
+  labelEstadoTransaccion,
+  estadoTransaccionStyle,
+  labelTipoCargo,
+  labelEstadoCargo,
+  estadoCargoStyle,
+  labelResponsableIncidencia,
 } from '@/utils/clienteHistorialFormatters'
 import { diasEntreFechasISO } from '@/utils/reservaFormatters'
 
@@ -341,10 +509,43 @@ const reservas = ref([])
 const contratos = ref([])
 const incidentes = ref([])
 
+const pagos = computed(() =>
+  contratos.value.flatMap((c) =>
+    (c.pagos || []).map((p) => ({
+      id: `pg-${p.id}`,
+      monto: Number(p.monto || 0),
+      metodoLabel: labelMetodoPago(p.metodo_pago),
+      estadoLabel: labelEstadoTransaccion(p.estado_transaccion),
+      estadoStyle: estadoTransaccionStyle(p.estado_transaccion, isDark.value),
+      fecha: p.fecha_pago,
+      contrato: c,
+    })),
+  ),
+)
+const cargos = computed(() =>
+  contratos.value.flatMap((c) =>
+    (c.cargos_adicionales || c.cargosAdicionales || []).map((cg) => ({
+      id: `cg-${cg.id}`,
+      monto: Number(cg.monto || 0),
+      tipoLabel: labelTipoCargo(cg.tipo_cargo),
+      estadoLabel: labelEstadoCargo(cg.estado_cargo),
+      estadoStyle: estadoCargoStyle(cg.estado_cargo, isDark.value),
+      fecha: cg.fecha_registro,
+      descripcion: cg.descripcion,
+      contrato: c,
+    })),
+  ),
+)
+const incidenciasDano = computed(() => incidentes.value.filter((i) => i.tipo_incidencia !== 'OTRO'))
+const notas = computed(() => incidentes.value.filter((i) => i.tipo_incidencia === 'OTRO'))
+
 const tabs = computed(() => [
   { id: 'reservas', label: 'Reservas', desc: 'Citas programadas', icon: 'pi-calendar', count: reservas.value.length },
   { id: 'contratos', label: 'Contratos', desc: 'Rentas formalizadas', icon: 'pi-file-edit', count: contratos.value.length },
-  { id: 'incidentes', label: 'Incidentes', desc: 'Deudas y daños', icon: 'pi-exclamation-triangle', count: incidentes.value.length },
+  { id: 'pagos', label: 'Pagos', desc: 'Transacciones registradas', icon: 'pi-dollar', count: pagos.value.length },
+  { id: 'cargos', label: 'Cargos', desc: 'Cargos adicionales del contrato', icon: 'pi-wallet', count: cargos.value.length },
+  { id: 'incidencias', label: 'Incidencias', desc: 'Daños al vehículo', icon: 'pi-exclamation-triangle', count: incidenciasDano.value.length },
+  { id: 'notas', label: 'Notas', desc: 'Otras observaciones', icon: 'pi-comment', count: notas.value.length },
 ])
 
 const colores = ['#c0392b', '#f0a500', '#2563eb', '#16a34a', '#7c3aed', '#0891b2']
@@ -366,7 +567,10 @@ function diasEntreReserva(inicio, fin) {
 function seleccionarTabInicial() {
   if (reservas.value.length) tabActiva.value = 'reservas'
   else if (contratos.value.length) tabActiva.value = 'contratos'
-  else if (incidentes.value.length) tabActiva.value = 'incidentes'
+  else if (pagos.value.length) tabActiva.value = 'pagos'
+  else if (cargos.value.length) tabActiva.value = 'cargos'
+  else if (incidenciasDano.value.length) tabActiva.value = 'incidencias'
+  else if (notas.value.length) tabActiva.value = 'notas'
   else tabActiva.value = 'reservas'
 }
 
@@ -452,6 +656,32 @@ watch(
 
 .hist-body--light { background: #fafafa; }
 .hist-body--dark { background: #111827; }
+
+.hist-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(146, 43, 33, 0.4) transparent;
+}
+.hist-nav::-webkit-scrollbar { width: 7px; height: 7px; }
+.hist-nav::-webkit-scrollbar-track { background: transparent; }
+.hist-nav::-webkit-scrollbar-thumb { background: rgba(146, 43, 33, 0.4); border-radius: 999px; }
+.hist-nav::-webkit-scrollbar-thumb:hover { background: rgba(146, 43, 33, 0.6); }
+.hist-body--dark .hist-nav {
+  scrollbar-color: rgba(240, 165, 0, 0.4) transparent;
+}
+.hist-body--dark .hist-nav::-webkit-scrollbar-thumb { background: rgba(240, 165, 0, 0.4); }
+.hist-body--dark .hist-nav::-webkit-scrollbar-thumb:hover { background: rgba(240, 165, 0, 0.6); }
+
+.hist-tabs-row {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(146, 43, 33, 0.4) transparent;
+}
+.hist-tabs-row::-webkit-scrollbar { height: 7px; }
+.hist-tabs-row::-webkit-scrollbar-track { background: transparent; }
+.hist-tabs-row::-webkit-scrollbar-thumb { background: rgba(146, 43, 33, 0.4); border-radius: 999px; }
+.hist-body--dark .hist-tabs-row {
+  scrollbar-color: rgba(240, 165, 0, 0.4) transparent;
+}
+.hist-body--dark .hist-tabs-row::-webkit-scrollbar-thumb { background: rgba(240, 165, 0, 0.4); }
 
 .hist-tab {
   display: flex;
@@ -543,10 +773,25 @@ watch(
   color: #c2410c;
   border-color: #fed7aa;
 }
-.hist-tab--type-incidentes .hist-tab-icon {
+.hist-tab--type-pagos .hist-tab-icon {
+  background: #f0fdf4;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+.hist-tab--type-cargos .hist-tab-icon {
   background: #fefce8;
   color: #a16207;
   border-color: #fde68a;
+}
+.hist-tab--type-incidencias .hist-tab-icon {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.hist-tab--type-notas .hist-tab-icon {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
 }
 .hist-tab--dark.hist-tab--type-reservas:not(.hist-tab--active) .hist-tab-icon {
   background: rgba(192, 57, 43, 0.15);
@@ -558,10 +803,25 @@ watch(
   color: #fb923c;
   border-color: rgba(234, 88, 12, 0.25);
 }
-.hist-tab--dark.hist-tab--type-incidentes:not(.hist-tab--active) .hist-tab-icon {
+.hist-tab--dark.hist-tab--type-pagos:not(.hist-tab--active) .hist-tab-icon {
+  background: rgba(22, 163, 74, 0.12);
+  color: #4ade80;
+  border-color: rgba(22, 163, 74, 0.25);
+}
+.hist-tab--dark.hist-tab--type-cargos:not(.hist-tab--active) .hist-tab-icon {
   background: rgba(240, 165, 0, 0.12);
   color: #f0a500;
   border-color: rgba(240, 165, 0, 0.25);
+}
+.hist-tab--dark.hist-tab--type-incidencias:not(.hist-tab--active) .hist-tab-icon {
+  background: rgba(192, 57, 43, 0.15);
+  color: #f87171;
+  border-color: rgba(192, 57, 43, 0.3);
+}
+.hist-tab--dark.hist-tab--type-notas:not(.hist-tab--active) .hist-tab-icon {
+  background: rgba(37, 99, 235, 0.12);
+  color: #60a5fa;
+  border-color: rgba(37, 99, 235, 0.25);
 }
 
 .hist-tab-body {
