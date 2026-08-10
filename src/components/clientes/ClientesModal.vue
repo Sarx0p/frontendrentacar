@@ -103,37 +103,54 @@
             </div>
 
 
-            <div class="flex gap-3">
-              <div class="flex-1">
-                <label class="field-label">Departamento</label>
-                <div class="relative">
-                  <i class="pi pi-map-marker input-icon"></i>
-                  <select
-                    v-model="departamentoId"
-                    class="field-input"
-                    :class="errors.municipio_id ? 'error' : ''"
-                    @change="onDepartamentoChange"
-                  >
-                    <option value="">Seleccionar</option>
-                    <option v-for="d in departamentos" :key="d.id" :value="d.id">{{ d.nombre }}</option>
-                  </select>
-                </div>
+            <div>
+              <label class="field-label">Departamento</label>
+              <div class="relative">
+                <i class="pi pi-map-marker input-icon"></i>
+                <select
+                  v-model="departamentoId"
+                  class="field-input"
+                  :class="errors.distrito_id ? 'error' : ''"
+                  @change="onDepartamentoChange"
+                >
+                  <option value="">Seleccionar</option>
+                  <option v-for="d in departamentos" :key="d.id" :value="d.id">{{ d.nombre }}</option>
+                </select>
               </div>
+            </div>
+
+            <div class="flex gap-3">
               <div class="flex-1">
                 <label class="field-label">Municipio</label>
                 <div class="relative">
                   <i class="pi pi-map input-icon"></i>
                   <select
-                    v-model="form.municipio_id"
+                    v-model="municipioId"
                     class="field-input"
-                    :class="errors.municipio_id ? 'error' : ''"
+                    :class="errors.distrito_id ? 'error' : ''"
                     :disabled="!departamentoId || cargandoMunicipios"
+                    @change="onMunicipioChange"
                   >
                     <option value="">{{ cargandoMunicipios ? 'Cargando...' : 'Seleccionar' }}</option>
                     <option v-for="m in municipios" :key="m.id" :value="m.id">{{ m.nombre }}</option>
                   </select>
                 </div>
-                <p v-if="errors.municipio_id" class="field-error">{{ errors.municipio_id }}</p>
+              </div>
+              <div class="flex-1">
+                <label class="field-label">Distrito</label>
+                <div class="relative">
+                  <i class="pi pi-map input-icon"></i>
+                  <select
+                    v-model="form.distrito_id"
+                    class="field-input"
+                    :class="errors.distrito_id ? 'error' : ''"
+                    :disabled="!municipioId || cargandoDistritos"
+                  >
+                    <option value="">{{ cargandoDistritos ? 'Cargando...' : 'Seleccionar' }}</option>
+                    <option v-for="d in distritos" :key="d.id" :value="d.id">{{ d.nombre }}</option>
+                  </select>
+                </div>
+                <p v-if="errors.distrito_id" class="field-error">{{ errors.distrito_id }}</p>
               </div>
             </div>
 
@@ -193,19 +210,22 @@ const globalError = ref('')
 
 const departamentos = ref([])
 const municipios = ref([])
+const distritos = ref([])
 const departamentoId = ref('')
+const municipioId = ref('')
 const cargandoMunicipios = ref(false)
+const cargandoDistritos = ref(false)
 
 const form = reactive({
   id: null, nombre: '', dui: '', nacimiento_dui: '',
   numero_licencia: '', vencimiento_licencia: '',
-  telefono: '', municipio_id: '',
+  telefono: '', distrito_id: '',
 })
 
 const errors = reactive({
   nombre: '', dui: '', nacimiento_dui: '',
   numero_licencia: '', vencimiento_licencia: '',
-  telefono: '', municipio_id: '',
+  telefono: '', distrito_id: '',
 })
 
 async function cargarDepartamentos() {
@@ -225,7 +245,7 @@ async function cargarMunicipios(depId, municipioSeleccionado = '') {
   try {
     const res = await api.get(`/admin/departamentos/${depId}/municipios`)
     municipios.value = res.data.data ?? []
-    if (municipioSeleccionado) form.municipio_id = municipioSeleccionado
+    if (municipioSeleccionado) municipioId.value = municipioSeleccionado
   } catch {
     municipios.value = []
   } finally {
@@ -233,9 +253,31 @@ async function cargarMunicipios(depId, municipioSeleccionado = '') {
   }
 }
 
+async function cargarDistritos(munId, distritoSeleccionado = '') {
+  distritos.value = []
+  if (!munId) return
+  cargandoDistritos.value = true
+  try {
+    const res = await api.get(`/admin/municipios/${munId}/distritos`)
+    distritos.value = res.data.data ?? []
+    if (distritoSeleccionado) form.distrito_id = distritoSeleccionado
+  } catch {
+    distritos.value = []
+  } finally {
+    cargandoDistritos.value = false
+  }
+}
+
 function onDepartamentoChange() {
-  form.municipio_id = ''
+  municipioId.value = ''
+  form.distrito_id = ''
+  distritos.value = []
   cargarMunicipios(departamentoId.value)
+}
+
+function onMunicipioChange() {
+  form.distrito_id = ''
+  cargarDistritos(municipioId.value)
 }
 
 watch(() => props.visible, async (val) => {
@@ -253,19 +295,24 @@ watch(() => props.visible, async (val) => {
       numero_licencia:      props.cliente.numero_licencia      || '',
       vencimiento_licencia: props.cliente.vencimiento_licencia || '',
       telefono:             props.cliente.telefono             || '',
-      municipio_id:         props.cliente.municipio?.id        || '',
+      distrito_id:          props.cliente.distrito?.id         || '',
     })
-    const depId = props.cliente.municipio?.departamento_id || ''
+    const munId = props.cliente.distrito?.municipio_id || ''
+    const depId = props.cliente.distrito?.municipio?.departamento_id || ''
     departamentoId.value = depId
-    if (depId) await cargarMunicipios(depId, form.municipio_id)
+    if (depId) await cargarMunicipios(depId, munId)
+    municipioId.value = munId
+    if (munId) await cargarDistritos(munId, form.distrito_id)
   } else {
     Object.assign(form, {
       id: null, nombre: '', dui: '', nacimiento_dui: '',
       numero_licencia: '', vencimiento_licencia: '',
-      telefono: '', municipio_id: '',
+      telefono: '', distrito_id: '',
     })
     departamentoId.value = ''
+    municipioId.value = ''
     municipios.value = []
+    distritos.value = []
   }
 })
 
@@ -278,7 +325,7 @@ function validar() {
   if (!form.numero_licencia)      { errors.numero_licencia      = 'Requerido'; ok = false }
   if (!form.vencimiento_licencia) { errors.vencimiento_licencia = 'Requerido'; ok = false }
   if (!form.telefono)             { errors.telefono             = 'Requerido'; ok = false }
-  if (!form.municipio_id)         { errors.municipio_id         = 'Selecciona departamento y municipio'; ok = false }
+  if (!form.distrito_id)          { errors.distrito_id          = 'Selecciona departamento, municipio y distrito'; ok = false }
   return ok
 }
 

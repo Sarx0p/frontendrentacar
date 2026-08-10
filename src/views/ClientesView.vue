@@ -255,8 +255,8 @@ function licenciaVigente(vencimiento) {
   return iso ? iso >= fechaHoyLocal() : false
 }
 function ubicacionCliente(cliente) {
-  const municipio = cliente.municipio?.nombre
-  const departamento = cliente.municipio?.departamento?.nombre
-  return [municipio, departamento].filter(Boolean).join(', ') || '—'
+  const distrito = cliente.distrito?.nombre
+  const departamento = cliente.distrito?.municipio?.departamento?.nombre
+  return [distrito, departamento].filter(Boolean).join(', ') || '—'
 }
 </script>
