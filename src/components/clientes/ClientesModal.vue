@@ -205,6 +205,12 @@ const props = defineProps({
 
 const emit = defineEmits(['guardar', 'cerrar'])
 
+function toInputDate(fecha) {
+  if (!fecha) return ''
+  if (typeof fecha === 'string' && fecha.includes('T')) return fecha.split('T')[0]
+  return String(fecha).slice(0, 10)
+}
+
 const loading     = ref(false)
 const globalError = ref('')
 
@@ -291,9 +297,9 @@ watch(() => props.visible, async (val) => {
       id:                   props.cliente.id,
       nombre:               props.cliente.nombre               || '',
       dui:                  props.cliente.dui                  || '',
-      nacimiento_dui:       props.cliente.nacimiento_dui       || '',
+      nacimiento_dui:       toInputDate(props.cliente.nacimiento_dui),
       numero_licencia:      props.cliente.numero_licencia      || '',
-      vencimiento_licencia: props.cliente.vencimiento_licencia || '',
+      vencimiento_licencia: toInputDate(props.cliente.vencimiento_licencia),
       telefono:             props.cliente.telefono             || '',
       distrito_id:          props.cliente.distrito?.id         || '',
     })
