@@ -46,17 +46,34 @@ export const useContratosStore = defineStore('contratos', () => {
   }
 
   async function cerrarRenta(contratoId, form) {
-    const res = await api.post(`/admin/contratos/${contratoId}/cierre`, form)
+    const res = await api.post('/admin/cierres-renta', {
+      contrato_id: contratoId,
+      ...form,
+    })
     const idx = contratos.value.findIndex((c) => c.id === Number(contratoId))
-    if (idx !== -1 && res.data.data?.contrato) {
-      contratos.value[idx] = res.data.data.contrato
+    if (idx !== -1) {
+      contratos.value[idx] = {
+        ...contratos.value[idx],
+        estado_contrato: 'FINALIZADO',
+        cierre_renta: res.data.data,
+      }
     }
     return res.data.data
   }
 
   async function syncCargos(contratoId, cargos) {
-    const res = await api.post(`/admin/contratos/${contratoId}/cargos`, { cargos })
-    return res.data.data
+    const registrados = []
+    for (const cargo of cargos) {
+      const res = await api.post('/admin/cargos-adicionales', {
+        contrato_id: contratoId,
+        tipo_cargo: cargo.tipo_cargo || 'OTRO',
+        descripcion: cargo.concepto || cargo.descripcion || null,
+        monto: Number(cargo.monto || 0),
+        fecha_registro: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      })
+      registrados.push(res.data.data)
+    }
+    return registrados
   }
 
   return { contratos, loading, error, fetchContratos, fetchContrato, crear, cerrarRenta, syncCargos }

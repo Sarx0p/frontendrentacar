@@ -88,6 +88,7 @@
         </Transition>
 
         <p v-if="error" class="wizard-error">{{ error }}</p>
+        <p v-if="mensajeContratoActivo" class="wizard-error">{{ mensajeContratoActivo }}</p>
 
         <!-- Navegación -->
         <div class="wizard-nav">
@@ -134,7 +135,7 @@
       />
     </div>
 
-    <ContratoPdfPreview :visible="mostrarPdf" :contrato="contratoGenerado" @cerrar="mostrarPdf = false" />
+    <ContratoPdfPreview :visible="mostrarPdf" :contrato="contratoGenerado" @cerrar="cerrarPreviewContrato" />
 
   </div>
 </template>
@@ -187,6 +188,18 @@ const error = ref('')
 const contratoGenerado = ref(null)
 const mostrarPdf = ref(false)
 
+const contratoActivoCliente = computed(() => {
+  if (!cliente.value?.id) return null
+  return contratosStore.contratos.find((contrato) => {
+    const clienteId = contrato.cliente_id || contrato.cliente?.id || contrato.reserva?.cliente_id || contrato.reserva?.cliente?.id
+    return Number(clienteId) === Number(cliente.value.id) && contrato.estado_contrato === 'ACTIVO'
+  }) || null
+})
+const mensajeContratoActivo = computed(() => {
+  if (!contratoActivoCliente.value) return ''
+  return `Este cliente ya tiene un contrato activo (${contratoActivoCliente.value.numero_contrato}). Debe cerrarse antes de generar otro contrato.`
+})
+
 const dias = computed(() => calcularDias(fechaEntrega.value, fechaDevolucion.value))
 const vehiculoSel = computed(() => {
   const fromList = vehiculos.value.find((v) => v.id === vehiculoId.value)
@@ -202,6 +215,7 @@ const esDesdeReserva = computed(() => !!reservaId.value || !!reservaOrigen.value
 const paso1Ok = computed(() =>
   !!cliente.value &&
   docsOk.value &&
+  !contratoActivoCliente.value &&
   !cargandoReservasCliente.value &&
   (esDesdeReserva.value ? !!reservaOrigen.value : (sinReservaDisponible.value || rentaDirectaConfirmada.value || !reservasCliente.value.length)),
 )
@@ -265,6 +279,7 @@ function onReservaLimpiar() {
 
 async function onClienteSeleccionado(c) {
   if (route.query.reserva_id) return
+  await contratosStore.fetchContratos({ estado: 'ACTIVO' })
   fechaEntrega.value = fechaHoyLocal()
   fechaDevolucion.value = ''
   vehiculoId.value = ''
@@ -377,6 +392,7 @@ async function cargarDesdeReserva() {
       error.value = 'Esta reserva ya tiene un contrato asociado.'
       return
     }
+    await contratosStore.fetchContratos({ estado: 'ACTIVO' })
     if (reserva.estado === 'CANCELADA') {
       error.value = 'No se puede generar contrato desde una reserva cancelada.'
       return
@@ -397,6 +413,7 @@ async function cargarDesdeReserva() {
 }
 
 onMounted(() => {
+  contratosStore.fetchContratos({ estado: 'ACTIVO' })
   if (reservaId.value) cargarDesdeReserva()
 })
 
@@ -408,6 +425,10 @@ watch([fechaEntrega, fechaDevolucion], () => {
 
 async function generarContrato() {
   if (!puedeGenerar.value) return
+  if (contratoActivoCliente.value) {
+    error.value = mensajeContratoActivo.value
+    return
+  }
   generando.value = true
   error.value = ''
   try {
@@ -441,6 +462,13 @@ async function generarContrato() {
 
 function volver() {
   router.push({ name: 'contratos' })
+}
+
+function cerrarPreviewContrato() {
+  mostrarPdf.value = false
+  if (contratoGenerado.value) {
+    router.push({ name: 'contratos' })
+  }
 }
 </script>
 

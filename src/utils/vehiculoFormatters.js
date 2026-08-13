@@ -4,7 +4,10 @@ export const ESTADOS_VEHICULO_NUEVO = [
 ]
 
 export const ESTADOS_VEHICULO_TODOS = [
-  ...ESTADOS_VEHICULO_NUEVO,
+  { value: 'DISPONIBLE', label: 'Disponible' },
+  { value: 'RESERVADO', label: 'Reservado' },
+  { value: 'RENTADO', label: 'Rentado' },
+  { value: 'MANTENIMIENTO', label: 'Mantenimiento' },
   { value: 'FUERA DE SERVICIO', label: 'Fuera de servicio' },
 ]
 

@@ -249,26 +249,6 @@
                   </div>
 
                   <div class="veh-field">
-                    <label>Estado inicial</label>
-                    <div class="grid grid-cols-2 gap-2">
-                      <button
-                        v-for="e in estadosForm"
-                        :key="e.value"
-                        type="button"
-                        class="veh-estado-btn"
-                        :class="{ 'veh-estado-btn--active': form.estado === e.value }"
-                        @click="form.estado = e.value"
-                      >
-                        <span class="veh-estado-check" :class="{ 'veh-estado-check--on': form.estado === e.value }">
-                          <i v-if="form.estado === e.value" class="pi pi-check"></i>
-                        </span>
-                        <span>{{ e.label }}</span>
-                      </button>
-                    </div>
-                    <p v-if="errors.estado" class="veh-error">{{ errors.estado }}</p>
-                  </div>
-
-                  <div class="veh-field">
                     <label>Observaciones</label>
                     <textarea
                       v-model="form.observaciones"
@@ -333,7 +313,7 @@ import { ref, reactive, watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useVehiculosStore } from '@/stores/vehiculos'
 import { useAppTheme } from '@/composables/useAppTheme'
-import { ESTADOS_VEHICULO_NUEVO, ESTADOS_VEHICULO_TODOS, labelEstadoVehiculo } from '@/utils/vehiculoFormatters'
+import { labelEstadoVehiculo } from '@/utils/vehiculoFormatters'
 
 const props = defineProps({
   visible: Boolean,
@@ -429,8 +409,6 @@ const errors = reactive({
   observaciones: '',
 })
 
-const estadosForm = computed(() => (props.modoEdicion ? ESTADOS_VEHICULO_TODOS : ESTADOS_VEHICULO_NUEVO))
-
 const previewNombre = computed(() => {
   const mod = modelosDisponibles.value.find((m) => m.id == form.modelo_id)
   const mar = marcas.value.find((m) => m.id == marcaId.value)
@@ -488,11 +466,10 @@ function validarPaso1() {
 }
 
 function validarPaso2() {
-  errors.categoria_id = errors.propietario_id = errors.estado = errors.observaciones = ''
+  errors.categoria_id = errors.propietario_id = errors.observaciones = ''
   let ok = true
   if (!form.categoria_id) { errors.categoria_id = 'Selecciona una categoría'; ok = false }
   if (!form.propietario_id) { errors.propietario_id = 'Selecciona un propietario'; ok = false }
-  if (!form.estado) { errors.estado = 'Requerido'; ok = false }
   if (form.observaciones && form.observaciones.length > 400) { errors.observaciones = 'Máximo 400 caracteres'; ok = false }
   return ok
 }
@@ -594,7 +571,7 @@ function handleGuardar() {
   }
   loading.value = true
   globalError.value = ''
-  emit('guardar', {
+  const payload = {
     id: form.id,
     placa: form.placa.trim(),
     color: form.color.trim(),
@@ -603,9 +580,10 @@ function handleGuardar() {
     modelo_id: Number(form.modelo_id),
     categoria_id: Number(form.categoria_id),
     propietario_id: Number(form.propietario_id),
-    estado: form.estado,
     observaciones: form.observaciones?.trim() || null,
-  })
+  }
+  if (!props.modoEdicion) payload.estado = 'DISPONIBLE'
+  emit('guardar', payload)
   loading.value = false
 }
 </script>
@@ -896,56 +874,6 @@ function handleGuardar() {
   color: #6b7280;
 }
 .veh-form-area--dark .veh-help { color: #9ca3af; }
-
-.veh-estado-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.75rem;
-  border: 2px solid #e5e7eb;
-  background: #fff;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #4b5563;
-  transition: all 0.15s;
-}
-.veh-form-area--dark .veh-estado-btn {
-  background: #1f2937;
-  border-color: #374151;
-  color: #d1d5db;
-}
-.veh-estado-check {
-  width: 1.125rem;
-  height: 1.125rem;
-  border-radius: 9999px;
-  border: 2px solid #d1d5db;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 0.55rem;
-  transition: all 0.15s;
-}
-.veh-form-area--dark .veh-estado-check {
-  border-color: #4b5563;
-}
-.veh-estado-check--on {
-  background: #f0a500;
-  border-color: #f0a500;
-  color: #fff;
-}
-.veh-estado-btn--active {
-  border-color: #922b21;
-  background: #922b21;
-  color: #fff;
-}
-.veh-estado-btn--active .veh-estado-check {
-  background: #f0a500;
-  border-color: #f0a500;
-  color: #fff;
-}
 
 .veh-alert {
   display: flex;

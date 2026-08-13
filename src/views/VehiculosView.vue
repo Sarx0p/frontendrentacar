@@ -142,35 +142,10 @@
                     </p>
                   </div>
                 </div>
-                <div v-else-if="col.key === 'estado' && activeTab === 'vehiculos'" class="estado-picker">
-                  <button
-                    type="button"
-                    class="estado-trigger"
-                    :style="estadoVehiculoStyle(item.estado, isDark)"
-                    :disabled="estadoActualizandoId === item.id"
-                    @click.stop="toggleEstadoMenu(item.id, $event)"
-                  >
-                    <span>{{ labelEstadoTabla(item.estado) }}</span>
-                    <i class="pi pi-chevron-down estado-chevron"></i>
-                  </button>
-                  <div
-                    v-if="estadoMenuAbiertoId === item.id"
-                    class="estado-menu"
-                    :class="isDark ? 'estado-menu-dark' : 'estado-menu-light'"
-                    :style="estadoMenuStyle"
-                  >
-                    <button
-                      v-for="estado in estadosCambioDirecto"
-                      :key="estado.value"
-                      type="button"
-                      class="estado-option"
-                      :class="item.estado === estado.value ? 'estado-option-selected' : ''"
-                      :style="estadoVehiculoStyle(estado.value, isDark)"
-                      @click="cambiarEstadoVehiculo(item, estado.value)"
-                    >
-                      {{ estado.label }}
-                    </button>
-                  </div>
+                <div v-else-if="col.key === 'estado' && activeTab === 'vehiculos'">
+                  <span class="estado-badge" :style="estadoVehiculoStyle(item.estado, isDark)">
+                    {{ labelEstadoTabla(item.estado) }}
+                  </span>
                 </div>
                 <span v-else :class="col.key === 'nombre' || col.key === 'modelo' ? 'font-semibold' : ''">
                   {{ renderCelda(item, col.key) }}
@@ -190,14 +165,14 @@
                     <i class="pi pi-pencil text-xs"></i>
                   </button>
                   <button
-                    v-if="['categorias', 'propietarios'].includes(activeTab)"
+                    v-if="['vehiculos', 'categorias', 'propietarios'].includes(activeTab) && !vehiculoFueraServicio(item)"
                     type="button"
                     @click="accionEliminar(item)"
                     class="w-8 h-8 rounded-lg inline-flex items-center justify-center border transition-all hover:shadow-sm"
                     :class="isDark
                       ? 'border-red-800 bg-red-950/40 text-red-300 hover:bg-red-950/70 hover:border-red-700'
                       : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'"
-                    :title="`Eliminar ${tabActiva.label.slice(0, -1).toLowerCase()}`"
+                    :title="activeTab === 'vehiculos' ? 'Enviar fuera de servicio' : `Eliminar ${tabActiva.label.slice(0, -1).toLowerCase()}`"
                   >
                     <i class="pi pi-trash text-xs"></i>
                   </button>
@@ -236,7 +211,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Swal from 'sweetalert2'
 import api from '@/services/api'
 import VehiculosModal from '@/components/vehiculos/VehiculosModal.vue'
@@ -264,12 +239,15 @@ const modoEdicion = ref(false)
 const vehiculoSeleccionado = ref(null)
 const modelos = ref([])
 const cargandoModelos = ref(false)
-const estadoActualizandoId = ref(null)
-const estadoMenuAbiertoId = ref(null)
-const estadoMenuPos = ref({ top: 0, left: 0, width: 0 })
 
 const estadosFiltro = ESTADOS_VEHICULO_TODOS
-const estadosCambioDirecto = ESTADOS_VEHICULO_TODOS
+const ordenEstadosVehiculo = {
+  DISPONIBLE: 1,
+  RESERVADO: 2,
+  RENTADO: 2.5,
+  MANTENIMIENTO: 3,
+  'FUERA DE SERVICIO': 4,
+}
 const vehiculos = computed(() => store.vehiculos)
 const marcas = computed(() => store.marcas)
 const categorias = computed(() => store.categorias)
@@ -339,20 +317,7 @@ onMounted(() => {
   store.fetchVehiculos()
   store.fetchCatalogos()
   cargarModelos()
-  window.addEventListener('click', cerrarMenuEstado)
-  window.addEventListener('scroll', cerrarMenuEstado, true)
-  window.addEventListener('resize', cerrarMenuEstado)
-  window.addEventListener('blur', cerrarMenuEstado)
 })
-
-onBeforeUnmount(() => {
-  window.removeEventListener('click', cerrarMenuEstado)
-  window.removeEventListener('scroll', cerrarMenuEstado, true)
-  window.removeEventListener('resize', cerrarMenuEstado)
-  window.removeEventListener('blur', cerrarMenuEstado)
-})
-
-watch([activeTab, search, filtroEstado], cerrarMenuEstado)
 
 function extraerLista(payload) {
   if (Array.isArray(payload)) return payload
@@ -386,13 +351,15 @@ const iconoTabActivo = computed(() => tabActiva.value.icon)
 
 const itemsFiltrados = computed(() => {
   const term = search.value.trim().toLowerCase()
-  return baseItemsActivos.value.filter((item) => {
+  const filtrados = baseItemsActivos.value.filter((item) => {
     if (activeTab.value === 'vehiculos' && filtroEstado.value && item.estado !== filtroEstado.value) {
       return false
     }
     if (!term) return true
     return textoBusqueda(item).some((v) => String(v).toLowerCase().includes(term))
   })
+  if (activeTab.value !== 'vehiculos') return filtrados
+  return ordenarVehiculosPorEstado(filtrados)
 })
 
 function conteoTab(tab) {
@@ -450,7 +417,6 @@ const nuevoLabel = computed(() => {
 })
 
 function cambiarTab(tab) {
-  cerrarMenuEstado()
   if (activeTab.value === tab) return
   activeTab.value = tab
   search.value = ''
@@ -529,72 +495,23 @@ function contadorLabel(total) {
   return labels[activeTab.value] || 'registros'
 }
 
-const estadoMenuStyle = computed(() => ({
-  top: `${estadoMenuPos.value.top}px`,
-  left: `${estadoMenuPos.value.left}px`,
-  width: `${estadoMenuPos.value.width}px`,
-}))
-
-function toggleEstadoMenu(id, event) {
-  if (estadoActualizandoId.value === id) return
-  if (estadoMenuAbiertoId.value === id) {
-    estadoMenuAbiertoId.value = null
-    return
-  }
-
-  const rect = event.currentTarget.getBoundingClientRect()
-  const menuWidth = Math.max(rect.width, 170)
-  const margin = 12
-  estadoMenuPos.value = {
-    top: rect.bottom + 6,
-    left: Math.max(margin, Math.min(rect.left, window.innerWidth - menuWidth - margin)),
-    width: menuWidth,
-  }
-  estadoMenuAbiertoId.value = id
-}
-function cerrarMenuEstado() {
-  if (estadoMenuAbiertoId.value !== null) estadoMenuAbiertoId.value = null
-}
-
 function labelEstadoTabla(estado) {
-  return estadosCambioDirecto.find((opcion) => opcion.value === estado)?.label || estado || 'Sin estado'
-}
-function payloadVehiculoConEstado(item, estado) {
-  return {
-    id: item.id,
-    anio: item.anio,
-    color: item.color,
-    placa: item.placa,
-    capacidad_pasajeros: item.capacidad_pasajeros,
-    estado,
-    propietario_id: item.propietario_id ?? item.propietario?.id,
-    categoria_id: item.categoria_id ?? item.categoria?.id,
-    modelo_id: item.modelo_id ?? item.modelo?.id,
-    observaciones: item.observaciones ?? '',
-  }
+  return estadosFiltro.find((opcion) => opcion.value === estado)?.label || estado || 'Sin estado'
 }
 
-async function cambiarEstadoVehiculo(item, nuevoEstado) {
-  if (!nuevoEstado || nuevoEstado === item.estado) return
-
-  estadoActualizandoId.value = item.id
-  try {
-    await store.actualizar(payloadVehiculoConEstado(item, nuevoEstado))
-    estadoMenuAbiertoId.value = null
-  } catch (e) {
-    estadoMenuAbiertoId.value = null
-    await Swal.fire({
-      icon: 'error',
-      title: 'No se pudo cambiar el estado',
-      text: mensajeErrorApi(e, 'El estado no se pudo actualizar con la información actual del vehículo.'),
-      confirmButtonColor: '#c0392b',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
-  } finally {
-    estadoActualizandoId.value = null
-  }
+function vehiculoFueraServicio(item) {
+  return activeTab.value === 'vehiculos' && item?.estado === 'FUERA DE SERVICIO'
 }
+
+function ordenarVehiculosPorEstado(lista) {
+  return [...lista].sort((a, b) => {
+    const ordenA = ordenEstadosVehiculo[a.estado] ?? 99
+    const ordenB = ordenEstadosVehiculo[b.estado] ?? 99
+    if (ordenA !== ordenB) return ordenA - ordenB
+    return nombreVehiculo(a).localeCompare(nombreVehiculo(b), 'es', { sensitivity: 'base' })
+  })
+}
+
 function abrirModalCrear() {
   modoEdicion.value = false
   vehiculoSeleccionado.value = null
@@ -790,12 +707,15 @@ async function accionEditar(item) {
 
 async function accionEliminar(item) {
   const nombre = activeTab.value === 'vehiculos' ? nombreVehiculo(item) : item.nombre
+  const esVehiculo = activeTab.value === 'vehiculos'
   const result = await Swal.fire({
     icon: 'warning',
-    title: `¿Eliminar ${tabActiva.value.label.slice(0, -1).toLowerCase()}?`,
-    text: `Se eliminará ${nombre}. Esta acción no se puede deshacer.`,
+    title: esVehiculo ? '¿Enviar vehículo fuera de servicio?' : `¿Eliminar ${tabActiva.value.label.slice(0, -1).toLowerCase()}?`,
+    text: esVehiculo
+      ? `${nombre} quedará fuera de servicio y se mostrará al final de la lista.`
+      : `Se eliminará ${nombre}. Esta acción no se puede deshacer.`,
     showCancelButton: true,
-    confirmButtonText: 'Sí, eliminar',
+    confirmButtonText: esVehiculo ? 'Sí, enviar fuera de servicio' : 'Sí, eliminar',
     cancelButtonText: 'Cancelar',
     confirmButtonColor: '#c0392b',
     cancelButtonColor: '#6b7280',
@@ -824,8 +744,10 @@ async function accionEliminar(item) {
 
     await Swal.fire({
       icon: 'success',
-      title: 'Registro eliminado',
-      text: 'El registro fue eliminado correctamente.',
+      title: esVehiculo ? 'Vehículo fuera de servicio' : 'Registro eliminado',
+      text: esVehiculo
+        ? 'El vehículo quedó marcado como fuera de servicio.'
+        : 'El registro fue eliminado correctamente.',
       confirmButtonColor: '#c0392b',
       background: isDark.value ? '#1f2937' : '#fff',
       color: isDark.value ? '#f3f4f6' : '#111827',
@@ -833,8 +755,8 @@ async function accionEliminar(item) {
   } catch (e) {
     await Swal.fire({
       icon: 'error',
-      title: 'No se pudo eliminar',
-      text: e.response?.data?.message || 'No fue posible eliminar el registro con la configuración actual.',
+      title: esVehiculo ? 'No se pudo enviar fuera de servicio' : 'No se pudo eliminar',
+      text: mensajeErrorEliminacion(e, activeTab.value),
       confirmButtonColor: '#c0392b',
       background: isDark.value ? '#1f2937' : '#fff',
       color: isDark.value ? '#f3f4f6' : '#111827',
@@ -849,6 +771,16 @@ function mensajeErrorApi(e, fallback) {
     if (first) return String(first)
   }
   return e.response?.data?.message || fallback
+}
+
+function mensajeErrorEliminacion(e, tab) {
+  if (tab === 'vehiculos') {
+    return mensajeErrorApi(e, 'No fue posible cambiar el estado del vehículo.')
+  }
+  if (tab === 'categorias') {
+    return 'No se puede eliminar esta categoría desde el sistema actual. Si ya tiene vehículos asociados, debe conservarse para no romper el historial.'
+  }
+  return mensajeErrorApi(e, 'No fue posible eliminar el registro con la configuración actual.')
 }
 function accionNuevo() {
   if (activeTab.value === 'vehiculos') {
@@ -914,63 +846,16 @@ async function guardarVehiculo(form) {
 </script>
 
 <style scoped>
-.estado-picker {
-  position: relative;
-  width: 100%;
-}
-.estado-trigger {
-  width: 100%;
+.estado-badge {
   min-height: 2.25rem;
   border-radius: 9999px;
   padding: 0.35rem 0.75rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: center;
   font-size: 0.75rem;
   font-weight: 800;
-  outline: none;
-  cursor: pointer;
-}
-.estado-trigger:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-.estado-chevron {
-  font-size: 0.65rem;
-  opacity: 0.7;
-}
-.estado-menu {
-  position: fixed;
-  z-index: 9999;
-  max-width: calc(100vw - 24px);
-  border: 1px solid;
-  border-radius: 0.75rem;
-  padding: 0.35rem;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
-}
-.estado-menu-light {
-  background: #fff;
-  border-color: #cbd5e1;
-}
-.estado-menu-dark {
-  background: #111827;
-  border-color: #374151;
-}
-.estado-option {
-  width: 100%;
-  margin-bottom: 0.3rem;
-  border-radius: 9999px;
-  padding: 0.45rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 800;
-  text-align: left;
-}
-.estado-option:last-child {
-  margin-bottom: 0;
-}
-.estado-option-selected {
-  box-shadow: inset 0 0 0 2px currentColor;
+  min-width: 8.5rem;
 }
 .catalogo-table {
   border-collapse: separate;

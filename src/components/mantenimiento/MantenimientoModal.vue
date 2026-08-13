@@ -1,4 +1,4 @@
-<template>
+F<template>
   <Teleport to="body">
     <Transition name="modal">
       <div
@@ -22,7 +22,7 @@
                   {{ modoEdicion ? 'Editar mantenimiento' : 'Nuevo mantenimiento' }}
                 </p>
                 <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-                  {{ modoEdicion ? 'Actualiza los datos del servicio' : 'Registra un mantenimiento al vehículo' }}
+                  {{ modoEdicion ? 'Actualiza el servicio registrado' : 'Registra un mantenimiento activo para el vehiculo' }}
                 </p>
               </div>
             </div>
@@ -33,14 +33,22 @@
 
           <form class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto" @submit.prevent="handleGuardar">
             <div>
-              <label class="field-label">Vehículo</label>
-              <select v-model="form.vehiculo_id" class="field-input w-full" :class="errors.vehiculo_id ? 'error' : ''">
-                <option value="">Selecciona un vehículo...</option>
+              <label class="field-label">Vehiculo</label>
+              <select
+                v-model="form.vehiculo_id"
+                class="field-input w-full"
+                :class="errors.vehiculo_id ? 'error' : ''"
+                :disabled="modoEdicion"
+              >
+                <option value="">Selecciona un vehiculo disponible...</option>
                 <option v-for="v in vehiculosElegibles" :key="v.id" :value="v.id">
-                  {{ nombreVehiculo(v) }} — {{ v.placa }}
+                  {{ nombreVehiculo(v) }} - {{ v.placa }}
                 </option>
               </select>
               <p v-if="errors.vehiculo_id" class="field-error">{{ errors.vehiculo_id }}</p>
+              <!-- <p v-if="!modoEdicion" class="field-help">
+                Al registrar el mantenimiento, el vehiculo pasara a estado Mantenimiento automaticamente.
+              </p> -->
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -51,11 +59,10 @@
                   <option value="CORRECTIVO">Correctivo</option>
                 </select>
               </div>
-              <div>
+              <div v-if="modoEdicion">
                 <label class="field-label">Estado</label>
                 <select v-model="form.estado" class="field-input w-full">
-                  <option value="PROGRAMADO">Programado</option>
-                  <option value="EN PROCESO">En proceso</option>
+                  <option value="ACTIVO">Activo</option>
                   <option value="FINALIZADO">Finalizado</option>
                   <option value="CANCELADO">Cancelado</option>
                 </select>
@@ -64,33 +71,26 @@
 
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="field-label">Fecha inicio</label>
-                <input v-model="form.fecha_inicio" type="date" class="field-input w-full" :class="errors.fecha_inicio ? 'error' : ''" />
-                <p v-if="errors.fecha_inicio" class="field-error">{{ errors.fecha_inicio }}</p>
+                <label class="field-label">Fecha</label>
+                <input v-model="form.fecha" type="date" class="field-input w-full" :class="errors.fecha ? 'error' : ''" />
+                <p v-if="errors.fecha" class="field-error">{{ errors.fecha }}</p>
               </div>
-              <div>
-                <label class="field-label">Fecha fin</label>
-                <input v-model="form.fecha_fin" type="date" class="field-input w-full" :min="form.fecha_inicio" :class="errors.fecha_fin ? 'error' : ''" />
-                <p v-if="errors.fecha_fin" class="field-error">{{ errors.fecha_fin }}</p>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="field-label">Costo ($)</label>
                 <input v-model="form.costo" type="number" min="0" step="0.01" class="field-input w-full" :class="errors.costo ? 'error' : ''" />
                 <p v-if="errors.costo" class="field-error">{{ errors.costo }}</p>
               </div>
-              <div>
-                <label class="field-label">Proveedor</label>
-                <input v-model="form.proveedor" type="text" class="field-input w-full" :class="errors.proveedor ? 'error' : ''" placeholder="Taller o proveedor" />
-                <p v-if="errors.proveedor" class="field-error">{{ errors.proveedor }}</p>
-              </div>
             </div>
 
             <div>
-              <label class="field-label">Descripción</label>
-              <textarea v-model="form.descripcion" rows="3" class="field-input w-full resize-none" placeholder="Detalle del trabajo realizado o programado..."></textarea>
+              <label class="field-label">Lugar</label>
+              <input v-model="form.lugar" type="text" class="field-input w-full" :class="errors.lugar ? 'error' : ''" placeholder="Taller, sucursal o lugar del servicio" />
+              <p v-if="errors.lugar" class="field-error">{{ errors.lugar }}</p>
+            </div>
+
+            <div>
+              <label class="field-label">Descripcion</label>
+              <textarea v-model="form.descripcion" rows="3" class="field-input w-full resize-none" placeholder="Detalle del trabajo realizado o requerido..."></textarea>
             </div>
 
             <div class="flex gap-3 pt-2">
@@ -130,12 +130,11 @@ const form = ref(formularioVacio())
 const errors = ref({})
 
 const vehiculosElegibles = computed(() => {
-  const bloqueados = ['RENTADO', 'MANTENIMIENTO']
   const idEdicion = props.modoEdicion ? props.mantenimiento?.vehiculo_id : null
 
   return props.vehiculos.filter((v) => {
     if (idEdicion && v.id === idEdicion) return true
-    return !bloqueados.includes(v.estado)
+    return v.estado === 'DISPONIBLE'
   })
 })
 
@@ -146,14 +145,13 @@ watch(
     errors.value = {}
     if (props.modoEdicion && props.mantenimiento) {
       form.value = {
-        vehiculo_id:        props.mantenimiento.vehiculo_id ?? '',
+        vehiculo_id: props.mantenimiento.vehiculo_id ?? '',
         tipo_mantenimiento: props.mantenimiento.tipo_mantenimiento ?? 'PREVENTIVO',
-        descripcion:        props.mantenimiento.descripcion ?? '',
-        costo:              props.mantenimiento.costo ?? '',
-        fecha_inicio:       toInputDate(props.mantenimiento.fecha_inicio),
-        fecha_fin:          toInputDate(props.mantenimiento.fecha_fin),
-        proveedor:          props.mantenimiento.proveedor ?? '',
-        estado:             props.mantenimiento.estado ?? 'PROGRAMADO',
+        descripcion: props.mantenimiento.descripcion ?? '',
+        costo: props.mantenimiento.costo ?? '',
+        fecha: toInputDate(props.mantenimiento.fecha),
+        lugar: props.mantenimiento.lugar ?? '',
+        estado: props.mantenimiento.estado ?? 'ACTIVO',
       }
     } else {
       form.value = formularioVacio()
@@ -167,10 +165,9 @@ function formularioVacio() {
     tipo_mantenimiento: 'PREVENTIVO',
     descripcion: '',
     costo: '',
-    fecha_inicio: '',
-    fecha_fin: '',
-    proveedor: '',
-    estado: 'PROGRAMADO',
+    fecha: '',
+    lugar: '',
+    estado: 'ACTIVO',
   }
 }
 
@@ -181,28 +178,27 @@ function toInputDate(fecha) {
 
 function validar() {
   errors.value = {}
-  if (!form.value.vehiculo_id) errors.value.vehiculo_id = 'Selecciona un vehículo'
-  if (!form.value.fecha_inicio) errors.value.fecha_inicio = 'Requerido'
-  if (form.value.fecha_fin && form.value.fecha_fin < form.value.fecha_inicio) {
-    errors.value.fecha_fin = 'Debe ser posterior al inicio'
-  }
-  if (form.value.costo === '' || Number(form.value.costo) < 0) errors.value.costo = 'Ingresa un costo válido'
-  if (!form.value.proveedor?.trim()) errors.value.proveedor = 'Requerido'
+  if (!form.value.vehiculo_id) errors.value.vehiculo_id = 'Selecciona un vehiculo'
+  if (!form.value.fecha) errors.value.fecha = 'Requerido'
+  if (form.value.costo === '' || Number(form.value.costo) < 0) errors.value.costo = 'Ingresa un costo valido'
+  if (!form.value.lugar?.trim()) errors.value.lugar = 'Requerido'
   return Object.keys(errors.value).length === 0
 }
 
 function handleGuardar() {
   if (!validar()) return
-  emit('guardar', {
-    vehiculo_id:        form.value.vehiculo_id,
+  const payload = {
+    vehiculo_id: form.value.vehiculo_id,
     tipo_mantenimiento: form.value.tipo_mantenimiento,
-    descripcion:        form.value.descripcion?.trim() || null,
-    costo:              Number(form.value.costo),
-    fecha_inicio:       form.value.fecha_inicio,
-    fecha_fin:          form.value.fecha_fin || null,
-    proveedor:          form.value.proveedor.trim(),
-    estado:             form.value.estado,
-  })
+    descripcion: form.value.descripcion?.trim() || null,
+    costo: Number(form.value.costo),
+    fecha: form.value.fecha,
+    lugar: form.value.lugar.trim(),
+  }
+  if (props.modoEdicion) {
+    payload.estado = form.value.estado
+  }
+  emit('guardar', payload)
 }
 </script>
 
@@ -213,6 +209,7 @@ function handleGuardar() {
 .field-input { padding:0.65rem 0.75rem; border-radius:0.75rem; font-size:0.875rem; outline:none; border:1px solid #e5e7eb; }
 .modal-panel-dark .field-input { border-color:#4b5563; background:#1f2937; color:#f3f4f6; }
 .field-input.error { border-color:#f87171; }
+.field-help { font-size:0.72rem; color:#6b7280; margin-top:0.35rem; }
 .field-error { font-size:0.75rem; color:#c0392b; margin-top:0.25rem; }
 .modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; }

@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen" :class="isDark ? 'bg-gray-950' : 'bg-gray-50'">
-
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h1 class="text-2xl font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">Contratos</h1>
@@ -16,7 +15,6 @@
       </router-link>
     </div>
 
-    <!-- Filtros -->
     <div
       class="rounded-2xl border shadow-sm p-4 mb-5 flex flex-col sm:flex-row gap-3"
       :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
@@ -38,8 +36,10 @@
       >
         <option value="">Todos los estados</option>
         <option value="ACTIVO">Activo</option>
-        <option value="FINALIZADO">Finalizado</option>
+        <option value="PENDIENTE">Pendiente</option>
         <option value="VENCIDO">Vencido</option>
+        <option value="FINALIZADO">Finalizado</option>
+        <option value="ANULADO">Anulado</option>
       </select>
       <select
         v-model="filtroPago"
@@ -53,7 +53,6 @@
       </select>
     </div>
 
-    <!-- Tabla -->
     <div
       class="rounded-2xl border shadow-sm overflow-hidden"
       :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
@@ -64,12 +63,12 @@
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm min-w-[1040px]">
           <thead>
             <tr :style="isDark ? 'background:#111827; border-bottom:1px solid #1f2937;' : 'background:#fafafa; border-bottom:1px solid #f3f4f6;'">
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Contrato</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Cliente</th>
-              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Vehículo</th>
+              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Vehiculo</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Periodo</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Total</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Estado</th>
@@ -86,16 +85,16 @@
             >
               <td class="px-5 py-4 font-mono font-bold text-sm" style="color:#922b21;">{{ c.numero_contrato }}</td>
               <td class="px-5 py-4">
-                <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ c.reserva?.cliente?.nombre || '—' }}</p>
-                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ c.reserva?.cliente?.dui }}</p>
+                <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ clienteContrato(c)?.nombre || '-' }}</p>
+                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ clienteContrato(c)?.dui || '' }}</p>
               </td>
               <td class="px-5 py-4">
-                <p class="font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-700'">{{ nombreVehiculo(c.reserva?.vehiculo) }}</p>
-                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ c.reserva?.vehiculo?.placa }}</p>
+                <p class="font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-700'">{{ nombreVehiculo(vehiculoContrato(c)) }}</p>
+                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ vehiculoContrato(c)?.placa || '' }}</p>
               </td>
               <td class="px-5 py-4" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
                 <p>{{ fmtFecha(c.fecha_hora_entrega) }}</p>
-                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">→ {{ fmtFecha(c.fecha_hora_devolucion) }}</p>
+                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">-> {{ fmtFecha(c.fecha_hora_devolucion) }}</p>
               </td>
               <td class="px-5 py-4 tabular-nums" :class="isDark ? 'text-gray-200' : 'text-gray-800'">
                 <p class="font-bold">${{ formatPrecio(totalFinalContrato(c)) }}</p>
@@ -205,22 +204,72 @@ const modalPdf = ref(false)
 const contratoVer = ref(null)
 const cargandoPdf = ref(null)
 
+const ordenEstadoContrato = {
+  ACTIVO: 1,
+  VENCIDO: 2,
+  PENDIENTE: 3,
+  FINALIZADO: 4,
+  ANULADO: 5,
+}
+
+const ordenPagoContrato = {
+  PENDIENTE: 1,
+  PARCIAL: 2,
+  PAGADO: 3,
+}
+
 const contratosFiltrados = computed(() => {
-  let list = store.contratos
+  let list = [...store.contratos]
   const q = buscar.value.trim().toLowerCase()
   if (q) {
-    list = list.filter((c) =>
-      c.numero_contrato?.toLowerCase().includes(q) ||
-      c.reserva?.cliente?.nombre?.toLowerCase().includes(q) ||
-      c.reserva?.cliente?.dui?.includes(q)
-    )
+    list = list.filter((c) => {
+      const cliente = clienteContrato(c)
+      const vehiculo = vehiculoContrato(c)
+      return c.numero_contrato?.toLowerCase().includes(q) ||
+        cliente?.nombre?.toLowerCase().includes(q) ||
+        cliente?.dui?.includes(q) ||
+        nombreVehiculo(vehiculo).toLowerCase().includes(q) ||
+        vehiculo?.placa?.toLowerCase().includes(q)
+    })
   }
   if (filtroEstado.value) list = list.filter((c) => c.estado_contrato === filtroEstado.value)
   if (filtroPago.value) list = list.filter((c) => c.estado_pago === filtroPago.value)
-  return list
+  return ordenarContratos(list)
 })
 
 onMounted(() => store.fetchContratos())
+
+function clienteContrato(contrato) {
+  return contrato?.cliente || contrato?.reserva?.cliente || null
+}
+
+function vehiculoContrato(contrato) {
+  return contrato?.vehiculo || contrato?.reserva?.vehiculo || null
+}
+
+function fechaOrden(contrato) {
+  const fechaBase = contrato.estado_contrato === 'FINALIZADO'
+    ? contrato.fecha_hora_devolucion
+    : contrato.fecha_hora_entrega
+  const fecha = new Date(fechaBase || 0).getTime()
+  return Number.isNaN(fecha) ? 0 : fecha
+}
+
+function ordenarContratos(lista) {
+  return lista.sort((a, b) => {
+    const estadoA = ordenEstadoContrato[a.estado_contrato] ?? 99
+    const estadoB = ordenEstadoContrato[b.estado_contrato] ?? 99
+    if (estadoA !== estadoB) return estadoA - estadoB
+
+    if (a.estado_contrato === 'ACTIVO' || a.estado_contrato === 'VENCIDO') {
+      const pagoA = ordenPagoContrato[a.estado_pago] ?? 99
+      const pagoB = ordenPagoContrato[b.estado_pago] ?? 99
+      if (pagoA !== pagoB) return pagoA - pagoB
+      return fechaOrden(a) - fechaOrden(b)
+    }
+    return fechaOrden(b) - fechaOrden(a)
+  })
+}
 
 function fmtFecha(v) {
   return formatFechaHora12(v)

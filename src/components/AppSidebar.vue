@@ -34,13 +34,6 @@
           @click="navegar('dashboard')"
         />
         <SidebarItem
-          icon="pi-car"
-          label="Vehículos"
-          :collapsed="collapsed"
-          :active="activeRoute === 'vehiculos'"
-          @click="navegar('vehiculos')"
-        />
-        <SidebarItem
           icon="pi-users"
           label="Clientes"
           :collapsed="collapsed"
@@ -48,11 +41,11 @@
           @click="navegar('clientes')"
         />
         <SidebarItem
-          icon="pi-file"
-          label="Contratos"
+          icon="pi-car"
+          label="Vehículos"
           :collapsed="collapsed"
-          :active="activeRoute === 'contratos'"
-          @click="navegar('contratos')"
+          :active="activeRoute === 'vehiculos'"
+          @click="navegar('vehiculos')"
         />
         <SidebarItem
           icon="pi-calendar"
@@ -60,6 +53,13 @@
           :collapsed="collapsed"
           :active="activeRoute === 'reservas'"
           @click="navegar('reservas')"
+        />
+        <SidebarItem
+          icon="pi-file"
+          label="Contratos"
+          :collapsed="collapsed"
+          :active="activeRoute === 'contratos'"
+          @click="navegar('contratos')"
         />
       </div>
 

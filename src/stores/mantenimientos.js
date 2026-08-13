@@ -58,10 +58,15 @@ export const useMantenimientosStore = defineStore('mantenimientos', () => {
     loading.value = true
     error.value = null
     try {
-      await api.delete(`/admin/mantenimientos/${id}`)
-      mantenimientos.value = mantenimientos.value.filter((m) => m.id !== id)
+      const res = await api.delete(`/admin/mantenimientos/${id}`)
+      const actualizado = res.data.data
+      const idx = mantenimientos.value.findIndex((m) => m.id === id)
+      if (idx !== -1 && actualizado) {
+        mantenimientos.value[idx] = actualizado
+      }
+      return actualizado
     } catch (e) {
-      error.value = e.response?.data?.message || 'Error al eliminar el mantenimiento.'
+      error.value = e.response?.data?.message || 'Error al anular el mantenimiento.'
       throw e
     } finally {
       loading.value = false
