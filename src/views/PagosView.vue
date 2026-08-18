@@ -128,7 +128,11 @@ const modalAbierto = ref(false)
 const guardando = ref(false)
 
 const contratosAbiertos = computed(() =>
-  contratosStore.contratos.filter((c) => c.estado_pago !== 'PAGADO' && c.estado_contrato !== 'ANULADO')
+  contratosStore.contratos.filter((c) =>
+    c.estado_contrato === 'ACTIVO' &&
+    c.estado_pago !== 'PAGADO' &&
+    saldoPendienteContrato(c) > 0
+  )
 )
 
 const saldoContrato = computed(() => saldoPendienteContrato(contratoSel.value))
@@ -185,6 +189,7 @@ async function registrarPago(form) {
       await pagosStore.registrar(contratoSel.value.id, pago)
     }
     await cargarContrato()
+    await contratosStore.fetchContratos()
     pagosStore.fetchPagos()
     modalAbierto.value = false
     Swal.fire({

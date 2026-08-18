@@ -59,25 +59,40 @@
             <div class="cierre-fuel-row">
               <div class="cierre-fuel-col">
                 <span class="cierre-fuel-tag">Entrega</span>
-                <span class="cierre-fuel-val cierre-fuel-val--red">{{
-                  contrato.nivel_combustible_entrega
-                }}</span>
-                <div class="cierre-fuel-bar">
-                  <div class="cierre-fuel-fill" :style="{ width: pctEntrega + '%' }"></div>
+                <span class="cierre-fuel-val cierre-fuel-val--red">{{ entregaLabel }}</span>
+                <div class="cierre-fuel-meter cierre-fuel-meter--readonly" :style="{ '--fuel-fill': `${pctEntrega}%` }">
+                  <div class="cierre-fuel-fill"></div>
                 </div>
               </div>
               <div class="cierre-fuel-col">
                 <span class="cierre-fuel-tag">Recepcion</span>
                 <span class="cierre-fuel-val cierre-fuel-val--gold">{{ combLabel }}</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="4"
-                  step="1"
-                  :value="combIdx"
-                  class="cierre-range"
-                  @input="onComb($event.target.value)"
-                />
+                <div class="cierre-fuel-meter" :style="{ '--fuel-fill': `${pctRecepcion}%` }">
+                  <div class="cierre-fuel-fill"></div>
+                  <button
+                    v-for="nivel in NIVELES_COMBUSTIBLE"
+                    :key="nivel.value"
+                    type="button"
+                    class="cierre-fuel-point"
+                    :class="{ 'cierre-fuel-point--active': nivel.value === nivelRecepcion }"
+                    :style="{ left: `${nivel.pct}%` }"
+                    :aria-label="`Seleccionar ${nivel.label}`"
+                    @click="seleccionarCombustible(nivel.value)"
+                  >
+                    <span></span>
+                  </button>
+                </div>
+                <div class="cierre-fuel-labels">
+                  <button
+                    v-for="nivel in NIVELES_COMBUSTIBLE"
+                    :key="`fuel-label-${nivel.value}`"
+                    type="button"
+                    :class="{ 'cierre-fuel-label--active': nivel.value === nivelRecepcion }"
+                    @click="seleccionarCombustible(nivel.value)"
+                  >
+                    {{ combustibleCorto(nivel) }}
+                  </button>
+                </div>
               </div>
             </div>
             <div v-if="alertaCombustible" class="cierre-alert">
@@ -262,6 +277,11 @@ const combIdx = computed(() => {
   return i >= 0 ? i : 2;
 });
 const combLabel = computed(() => NIVELES_COMBUSTIBLE[combIdx.value]?.label);
+const entregaLabel = computed(() =>
+  NIVELES_COMBUSTIBLE.find((n) => n.value === contrato.value?.nivel_combustible_entrega)?.label ||
+  contrato.value?.nivel_combustible_entrega ||
+  "-",
+);
 const pctEntrega = computed(() => nivelCombustiblePct(contrato.value?.nivel_combustible_entrega));
 const pctRecepcion = computed(() => nivelCombustiblePct(nivelRecepcion.value));
 const alertaCombustible = computed(() => pctRecepcion.value < pctEntrega.value);
@@ -363,8 +383,14 @@ function fechaHoraActualApi() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-function onComb(idx) {
-  nivelRecepcion.value = NIVELES_COMBUSTIBLE[Number(idx)]?.value || "1/2";
+function seleccionarCombustible(value) {
+  if (NIVELES_COMBUSTIBLE.some((n) => n.value === value)) nivelRecepcion.value = value;
+}
+
+function combustibleCorto(nivel) {
+  if (nivel.value === "VACIO") return "E";
+  if (nivel.value === "LLENO") return "F";
+  return nivel.label;
 }
 
 function agregarCargoCombustible() {
@@ -693,19 +719,30 @@ async function cerrarRenta() {
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
+.cierre-fuel-col {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(146, 43, 33, 0.12);
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(248, 250, 252, 0.72));
+}
+.cierre-root--dark .cierre-fuel-col {
+  border-color: rgba(146, 43, 33, 0.25);
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.76), rgba(17, 24, 39, 0.74));
+}
 .cierre-fuel-tag {
   font-size: 0.6rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  opacity: 0.5;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
   display: block;
 }
 .cierre-fuel-val {
   display: block;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 900;
-  margin: 0.2rem 0 0.5rem;
+  margin: 0.2rem 0 0.7rem;
 }
 .cierre-fuel-val--red {
   color: #922b21;
@@ -713,22 +750,86 @@ async function cerrarRenta() {
 .cierre-fuel-val--gold {
   color: #d97706;
 }
-.cierre-fuel-bar {
-  height: 6px;
+.cierre-fuel-meter {
+  --fuel-fill: 50%;
+  position: relative;
+  height: 0.75rem;
+  margin: 0.15rem 0.45rem 0.85rem;
   border-radius: 999px;
-  background: rgba(146, 43, 33, 0.12);
-  overflow: hidden;
+  background: #e5e7eb;
+  box-shadow: inset 0 1px 4px rgba(15, 23, 42, 0.15);
+}
+.cierre-root--dark .cierre-fuel-meter {
+  background: #374151;
+}
+.cierre-fuel-meter--readonly {
+  margin-bottom: 0.1rem;
 }
 .cierre-fuel-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #922b21, #f0a500);
-  transition: width 0.3s;
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fuel-fill);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #dc2626 0%, #f97316 38%, #f59e0b 72%, #facc15 100%);
+  box-shadow: 0 0 14px rgba(249, 115, 22, 0.3);
+  transition: width 0.2s ease;
 }
-.cierre-range {
-  width: 100%;
-  accent-color: #922b21;
-  margin-top: 0.5rem;
+.cierre-fuel-point {
+  position: absolute;
+  top: 50%;
+  width: 1.18rem;
+  height: 1.18rem;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.cierre-fuel-point span {
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: inherit;
+  background: #fff;
+}
+.cierre-fuel-point:hover,
+.cierre-fuel-point--active {
+  transform: translate(-50%, -50%) scale(1.13);
+  background: #f59e0b;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.45);
+}
+.cierre-fuel-point--active {
+  outline: 3px solid rgba(245, 158, 11, 0.16);
+}
+.cierre-fuel-labels {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+.cierre-fuel-labels button {
+  min-height: 1.65rem;
+  border-radius: 999px;
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.12);
+  font-size: 0.68rem;
+  font-weight: 900;
+  transition: all 0.15s ease;
+}
+.cierre-fuel-labels button:hover,
+.cierre-fuel-labels .cierre-fuel-label--active {
+  color: #78350f;
+  background: #fef3c7;
+}
+.cierre-root--dark .cierre-fuel-labels button {
+  color: #cbd5e1;
+  background: rgba(55, 65, 81, 0.8);
+}
+.cierre-root--dark .cierre-fuel-labels button:hover,
+.cierre-root--dark .cierre-fuel-labels .cierre-fuel-label--active {
+  color: #fef3c7;
+  background: rgba(146, 64, 14, 0.72);
 }
 .cierre-alert {
   display: flex;
