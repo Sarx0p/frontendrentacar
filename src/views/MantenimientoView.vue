@@ -115,6 +115,7 @@
               <td class="px-5 py-4">
                 <div class="flex items-center justify-end gap-1.5">
                   <button
+                    v-if="m.estado === 'ACTIVO'"
                     type="button"
                     class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all"
                     :class="isDark ? 'border-amber-800 bg-amber-950/30 text-amber-300' : 'border-blue-200 bg-blue-50 text-blue-600'"
@@ -133,6 +134,13 @@
                   >
                     <i class="pi pi-trash text-xs"></i>
                   </button>
+                  <span
+                    v-if="m.estado !== 'ACTIVO'"
+                    class="text-[11px] font-semibold opacity-50"
+                    title="Los mantenimientos finalizados o cancelados no se modifican"
+                  >
+                    Cerrado
+                  </span>
                 </div>
               </td>
             </tr>

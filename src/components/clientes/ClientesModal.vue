@@ -377,7 +377,16 @@ function validar() {
   resetErrors()
   let ok = true
   if (!form.nombre) { errors.nombre = 'El nombre es obligatorio.'; ok = false }
-  if (!form.dui) { errors.dui = 'El DUI es obligatorio.'; ok = false }
+  if (!form.dui) {
+    errors.dui = 'El DUI es obligatorio.'
+    ok = false
+  } else if (!duiTieneFormato(form.dui)) {
+    errors.dui = 'El DUI debe tener el formato 12345678-9.'
+    ok = false
+  } else if (!duiValido(form.dui)) {
+    errors.dui = 'El DUI no es valido. Revisa el digito final.'
+    ok = false
+  }
   if (!form.nacimiento_dui) { errors.nacimiento_dui = 'La fecha del DUI es obligatoria.'; ok = false }
   if (!form.numero_licencia) { errors.numero_licencia = 'El número de licencia es obligatorio.'; ok = false }
   if (!form.vencimiento_licencia) { errors.vencimiento_licencia = 'La fecha de vencimiento de la licencia es obligatoria.'; ok = false }
@@ -418,6 +427,20 @@ function aplicarErroresServidor(serverErrors = {}) {
 function onDuiInput(event) {
   const digits = event.target.value.replace(/\D/g, '').slice(0, 9)
   form.dui = digits.length > 8 ? `${digits.slice(0, 8)}-${digits.slice(8)}` : digits
+}
+
+function duiTieneFormato(value) {
+  return /^\d{8}-\d$/.test(value)
+}
+
+function duiValido(value) {
+  if (!duiTieneFormato(value)) return false
+  const digits = value.replace('-', '').split('').map(Number)
+  const factores = [9, 8, 7, 6, 5, 4, 3, 2]
+  const suma = factores.reduce((total, factor, index) => total + digits[index] * factor, 0)
+  const residuo = suma % 10
+  const verificador = (10 - residuo) % 10
+  return digits[8] === verificador
 }
 
 function soloDigitos(value) {
