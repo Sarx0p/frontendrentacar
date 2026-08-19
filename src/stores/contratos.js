@@ -6,6 +6,8 @@ export const useContratosStore = defineStore('contratos', () => {
   const contratos = ref([])
   const loading   = ref(false)
   const error     = ref(null)
+  const advertencia = ref(null)
+  const incidenciasPendientes = ref([])
 
   async function fetchContratos(params = {}) {
     loading.value = true
@@ -30,9 +32,13 @@ export const useContratosStore = defineStore('contratos', () => {
   async function crear(form) {
     loading.value = true
     error.value   = null
+    advertencia.value = null
+    incidenciasPendientes.value = []
     try {
       const endpoint = form.reserva_id ? '/admin/contratos' : '/admin/contratos/directo'
       const res = await api.post(endpoint, form)
+      advertencia.value = res.data?.advertencia || null
+      incidenciasPendientes.value = res.data?.incidencias_pendientes || []
       contratos.value.unshift(res.data.data)
       return res.data.data
     } catch (e) {
@@ -76,5 +82,16 @@ export const useContratosStore = defineStore('contratos', () => {
     return registrados
   }
 
-  return { contratos, loading, error, fetchContratos, fetchContrato, crear, cerrarRenta, syncCargos }
+  return {
+    contratos,
+    loading,
+    error,
+    advertencia,
+    incidenciasPendientes,
+    fetchContratos,
+    fetchContrato,
+    crear,
+    cerrarRenta,
+    syncCargos,
+  }
 })

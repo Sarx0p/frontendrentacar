@@ -105,12 +105,7 @@
         </form>
       </div>
 
-      <p class="text-center text-xs text-white/40 mt-8 max-w-md mx-auto leading-relaxed">
-        Al hacer clic en «Iniciar sesión» aceptas los
-        <a href="#" class="underline hover:text-white/60">Términos de servicio</a>
-        |
-        <a href="#" class="underline hover:text-white/60">Política de privacidad</a>
-      </p>
+
     </div>
   </div>
 </template>
@@ -282,3 +277,4 @@ async function handleLogin() {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 </style>
+

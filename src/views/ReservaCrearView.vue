@@ -333,10 +333,11 @@ async function confirmarReserva() {
       fecha_inicio: fechaInicio.value,
       fecha_fin: fechaFin.value,
     });
+    const advertenciaReserva = reservasStore.advertencia;
     await Swal.fire({
-      icon: "success",
+      icon: advertenciaReserva ? "warning" : "success",
       title: "¡Reserva creada!",
-      text: "La reserva se registró correctamente.",
+      text: advertenciaReserva || "La reserva se registró correctamente.",
       confirmButtonColor: "#c0392b",
       confirmButtonText: "Ver reservas",
       background: isDark.value ? "#1f2937" : "#fff",

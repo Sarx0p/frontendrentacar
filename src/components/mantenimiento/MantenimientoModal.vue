@@ -1,4 +1,4 @@
-F<template>
+<template>
   <Teleport to="body">
     <Transition name="modal">
       <div
@@ -69,17 +69,19 @@ F<template>
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="field-label">Fecha</label>
-                <input v-model="form.fecha" type="date" class="field-input w-full" :class="errors.fecha ? 'error' : ''" />
-                <p v-if="errors.fecha" class="field-error">{{ errors.fecha }}</p>
-              </div>
-              <div>
-                <label class="field-label">Costo ($)</label>
-                <input v-model="form.costo" type="number" min="0" step="0.01" class="field-input w-full" :class="errors.costo ? 'error' : ''" />
-                <p v-if="errors.costo" class="field-error">{{ errors.costo }}</p>
-              </div>
+            <div>
+              <p v-if="!modoEdicion" class="field-help">
+                La fecha se registrara automaticamente con la hora del sistema.
+              </p>
+              <p v-else class="field-help">
+                Fecha registrada: {{ fechaRegistrada }}
+              </p>
+            </div>
+
+            <div>
+              <label class="field-label">Costo ($)</label>
+              <input v-model="form.costo" type="number" min="0" step="0.01" class="field-input w-full" :class="errors.costo ? 'error' : ''" />
+              <p v-if="errors.costo" class="field-error">{{ errors.costo }}</p>
             </div>
 
             <div>
@@ -129,6 +131,11 @@ const { isDark } = useAppTheme()
 const form = ref(formularioVacio())
 const errors = ref({})
 
+const fechaRegistrada = computed(() => {
+  if (!props.mantenimiento?.fecha) return 'sin fecha registrada'
+  return String(props.mantenimiento.fecha).slice(0, 10)
+})
+
 const vehiculosElegibles = computed(() => {
   const idEdicion = props.modoEdicion ? props.mantenimiento?.vehiculo_id : null
 
@@ -149,7 +156,6 @@ watch(
         tipo_mantenimiento: props.mantenimiento.tipo_mantenimiento ?? 'PREVENTIVO',
         descripcion: props.mantenimiento.descripcion ?? '',
         costo: props.mantenimiento.costo ?? '',
-        fecha: toInputDate(props.mantenimiento.fecha),
         lugar: props.mantenimiento.lugar ?? '',
         estado: props.mantenimiento.estado ?? 'ACTIVO',
       }
@@ -165,21 +171,14 @@ function formularioVacio() {
     tipo_mantenimiento: 'PREVENTIVO',
     descripcion: '',
     costo: '',
-    fecha: '',
     lugar: '',
     estado: 'ACTIVO',
   }
 }
 
-function toInputDate(fecha) {
-  if (!fecha) return ''
-  return String(fecha).slice(0, 10)
-}
-
 function validar() {
   errors.value = {}
   if (!form.value.vehiculo_id) errors.value.vehiculo_id = 'Selecciona un vehiculo'
-  if (!form.value.fecha) errors.value.fecha = 'Requerido'
   if (form.value.costo === '' || Number(form.value.costo) < 0) errors.value.costo = 'Ingresa un costo valido'
   if (!form.value.lugar?.trim()) errors.value.lugar = 'Requerido'
   return Object.keys(errors.value).length === 0
@@ -192,7 +191,6 @@ function handleGuardar() {
     tipo_mantenimiento: form.value.tipo_mantenimiento,
     descripcion: form.value.descripcion?.trim() || null,
     costo: Number(form.value.costo),
-    fecha: form.value.fecha,
     lugar: form.value.lugar.trim(),
   }
   if (props.modoEdicion) {

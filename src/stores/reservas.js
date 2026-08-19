@@ -13,6 +13,8 @@ export const useReservasStore = defineStore("reservas", () => {
   const reservas = ref([]);
   const loading = ref(false);
   const error = ref(null);
+  const advertencia = ref(null);
+  const incidenciasPendientes = ref([]);
 
   async function fetchReservas(params = {}) {
     loading.value = true;
@@ -31,8 +33,12 @@ export const useReservasStore = defineStore("reservas", () => {
   async function crear(form) {
     loading.value = true;
     error.value = null;
+    advertencia.value = null;
+    incidenciasPendientes.value = [];
     try {
       const res = await api.post("/admin/reservas", form);
+      advertencia.value = res.data?.advertencia || null;
+      incidenciasPendientes.value = res.data?.incidencias_pendientes || [];
       reservas.value.unshift(res.data.data);
       return res.data.data;
     } catch (e) {
@@ -139,5 +145,7 @@ export const useReservasStore = defineStore("reservas", () => {
     fetchReservasActivasCliente,
     cancelar,
     fetchCancelaciones,
+    advertencia,
+    incidenciasPendientes,
   };
 });

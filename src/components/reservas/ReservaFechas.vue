@@ -50,7 +50,7 @@
       <div>
         <p class="text-sm font-bold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">Reserva</p>
         <p class="text-xs mt-0.5">
-          Para una renta directa se usará el flujo de Contratos; aquí solo se registran reservas futuras.
+          La reserva aparta el vehículo para el rango seleccionado. El contrato se genera cuando corresponda iniciar la renta.
         </p>
       </div>
     </div>

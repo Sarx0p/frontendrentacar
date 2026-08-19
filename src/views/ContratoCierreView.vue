@@ -1,7 +1,7 @@
 <template>
   <div class="cierre-root" :class="isDark ? 'cierre-root--dark' : 'cierre-root--light'">
     <header class="cierre-header">
-      <button type="button" class="cierre-back" @click="router.push({ name: 'contratos' })">
+      <button type="button" class="cierre-back" @click="volverAContratos">
         <i class="pi pi-arrow-left"></i>
       </button>
       <div class="flex-1 min-w-0">
@@ -59,25 +59,40 @@
             <div class="cierre-fuel-row">
               <div class="cierre-fuel-col">
                 <span class="cierre-fuel-tag">Entrega</span>
-                <span class="cierre-fuel-val cierre-fuel-val--red">{{
-                  contrato.nivel_combustible_entrega
-                }}</span>
-                <div class="cierre-fuel-bar">
-                  <div class="cierre-fuel-fill" :style="{ width: pctEntrega + '%' }"></div>
+                <span class="cierre-fuel-val cierre-fuel-val--red">{{ entregaLabel }}</span>
+                <div class="cierre-fuel-meter cierre-fuel-meter--readonly" :style="{ '--fuel-fill': `${pctEntrega}%` }">
+                  <div class="cierre-fuel-fill"></div>
                 </div>
               </div>
               <div class="cierre-fuel-col">
                 <span class="cierre-fuel-tag">Recepcion</span>
                 <span class="cierre-fuel-val cierre-fuel-val--gold">{{ combLabel }}</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="4"
-                  step="1"
-                  :value="combIdx"
-                  class="cierre-range"
-                  @input="onComb($event.target.value)"
-                />
+                <div class="cierre-fuel-meter" :style="{ '--fuel-fill': `${pctRecepcion}%` }">
+                  <div class="cierre-fuel-fill"></div>
+                  <button
+                    v-for="nivel in NIVELES_COMBUSTIBLE"
+                    :key="nivel.value"
+                    type="button"
+                    class="cierre-fuel-point"
+                    :class="{ 'cierre-fuel-point--active': nivel.value === nivelRecepcion }"
+                    :style="{ left: `${nivel.pct}%` }"
+                    :aria-label="`Seleccionar ${nivel.label}`"
+                    @click="seleccionarCombustible(nivel.value)"
+                  >
+                    <span></span>
+                  </button>
+                </div>
+                <div class="cierre-fuel-labels">
+                  <button
+                    v-for="nivel in NIVELES_COMBUSTIBLE"
+                    :key="`fuel-label-${nivel.value}`"
+                    type="button"
+                    :class="{ 'cierre-fuel-label--active': nivel.value === nivelRecepcion }"
+                    @click="seleccionarCombustible(nivel.value)"
+                  >
+                    {{ combustibleCorto(nivel) }}
+                  </button>
+                </div>
               </div>
             </div>
             <div v-if="alertaCombustible" class="cierre-alert">
@@ -126,7 +141,7 @@
             <button
               type="button"
               class="cierre-add-btn"
-              @click="cargos.push({ concepto: '', monto: 0, tipo_cargo: 'OTRO' })"
+              @click="agregarCargoNuevo()"
             >
               <i class="pi pi-plus"></i> Agregar
             </button>
@@ -135,15 +150,27 @@
             Si agregas cargos aqui, primero se registran y se cobran en Pagos. Luego puedes volver a
             cerrar la renta.
           </p>
-          <div v-if="!cargos.length" class="cierre-empty-cargos">Sin cargos adicionales</div>
+          <div v-if="cargosRegistrados.length" class="cierre-registered-cargos">
+            <div class="cierre-registered-head">
+              <span>Cargos registrados</span>
+              <strong>${{ formatPrecio(totalCargosRegistrados) }}</strong>
+            </div>
+            <div v-for="cargo in cargosRegistrados" :key="cargo.id || `${cargo.tipo_cargo}-${cargo.concepto}`" class="cierre-registered-row">
+              <span>{{ labelTipoCargo(cargo.tipo_cargo) }}</span>
+              <p>{{ cargo.concepto }}</p>
+              <strong>${{ formatPrecio(cargo.monto) }}</strong>
+            </div>
+          </div>
+          <div v-if="!cargosRegistrados.length && !cargos.length" class="cierre-empty-cargos">Sin cargos adicionales</div>
           <div v-for="(cargo, i) in cargos" :key="i" class="cierre-cargo-row">
             <select
               v-model="cargo.tipo_cargo"
               class="cierre-input cierre-input--sm cierre-input--type"
             >
+              <option value="" disabled>Selecciona tipo</option>
               <option value="COMBUSTIBLE">Combustible</option>
               <option value="DANIO">Daño</option>
-              <option value="DIA EXTRA">Dia extra</option>
+              <option value="DIA EXTRA">Día extra</option>
               <option value="OTRO">Otro</option>
             </select>
             <input
@@ -162,9 +189,100 @@
               <i class="pi pi-times"></i>
             </button>
           </div>
-          <p v-if="cargos.length" class="cierre-extras-total">
-            Total por registrar: <strong>${{ formatPrecio(totalExtras) }}</strong>
+          <div v-if="cargos.length" class="cierre-save-row">
+            <p class="cierre-extras-total">
+              Total por registrar: <strong>${{ formatPrecio(totalExtras) }}</strong>
+            </p>
+            <button
+              type="button"
+              class="cierre-save-btn"
+              :disabled="guardandoCargos"
+              @click="guardarCargosPendientes"
+            >
+              <i :class="guardandoCargos ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i>
+              Guardar cargos
+            </button>
+          </div>
+        </section>
+
+        <section class="cierre-card">
+          <div class="cierre-card-head">
+            <span class="cierre-step">5</span>
+            <h2>Incidencias detectadas</h2>
+            <button
+              type="button"
+              class="cierre-add-btn"
+              @click="agregarIncidenciaNueva()"
+            >
+              <i class="pi pi-plus"></i> Agregar
+            </button>
+          </div>
+          <p class="cierre-helper">
+            Registra daños, accidentes o fallas encontradas al recibir el vehículo. Si el responsable es el cliente y hay costo, se suma al contrato.
           </p>
+          <div v-if="incidenciasRegistradas.length" class="cierre-registered-cargos cierre-registered-incidencias">
+            <div class="cierre-registered-head">
+              <span>Incidencias registradas</span>
+              <strong>${{ formatPrecio(totalIncidenciasClienteRegistradas) }}</strong>
+            </div>
+            <div v-for="incidencia in incidenciasRegistradas" :key="incidencia.id || `${incidencia.tipo_incidencia}-${incidencia.descripcion}`" class="cierre-registered-row cierre-registered-row--incidencia">
+              <span>{{ labelTipoIncidencia(incidencia.tipo_incidencia) }}</span>
+              <p>{{ incidencia.descripcion || 'Sin descripción' }}</p>
+              <strong>{{ incidencia.responsable_tipo === 'CLIENTE' ? `$${formatPrecio(incidencia.costo)}` : labelResponsableIncidencia(incidencia.responsable_tipo) }}</strong>
+            </div>
+          </div>
+          <div v-if="!incidenciasRegistradas.length && !incidencias.length" class="cierre-empty-cargos">Sin incidencias registradas</div>
+          <div v-for="(incidencia, i) in incidencias" :key="i" class="cierre-incidencia-row">
+            <select
+              v-model="incidencia.tipo_incidencia"
+              class="cierre-input cierre-input--sm cierre-input--type"
+            >
+              <option value="" disabled>Tipo</option>
+              <option value="DANIO">Daño</option>
+              <option value="ACCIDENTE">Accidente</option>
+              <option value="FALLA MECANICA">Falla mecánica</option>
+              <option value="OTRO">Otro</option>
+            </select>
+            <select
+              v-model="incidencia.responsable_tipo"
+              class="cierre-input cierre-input--sm cierre-input--responsable"
+            >
+              <option value="CLIENTE">Cliente</option>
+              <option value="NEGOCIO">Negocio</option>
+              <option value="TERCERO">Tercero</option>
+              <option value="NO DETERMINADO">No determinado</option>
+            </select>
+            <input
+              v-model="incidencia.descripcion"
+              class="cierre-input cierre-input--sm"
+              placeholder="Descripción de la incidencia"
+            />
+            <input
+              v-model.number="incidencia.costo"
+              type="number"
+              min="0"
+              step="0.01"
+              class="cierre-input cierre-input--sm cierre-input--amount"
+              placeholder="0.00"
+            />
+            <button type="button" class="cierre-remove-btn" @click="incidencias.splice(i, 1)">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+          <div v-if="incidencias.length" class="cierre-save-row">
+            <p class="cierre-extras-total">
+              Total por registrar al cliente: <strong>${{ formatPrecio(totalIncidenciasClientePorRegistrar) }}</strong>
+            </p>
+            <button
+              type="button"
+              class="cierre-save-btn"
+              :disabled="guardandoIncidencias"
+              @click="guardarIncidenciasPendientes"
+            >
+              <i :class="guardandoIncidencias ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i>
+              Guardar incidencias
+            </button>
+          </div>
         </section>
       </div>
 
@@ -184,8 +302,16 @@
             <strong>${{ formatPrecio(contrato.monto_total_renta) }}</strong>
           </div>
           <div class="cierre-ticket-row">
+            <span>Cargos registrados</span>
+            <strong class="cierre-ticket-gold">+${{ formatPrecio(totalCargosRegistrados) }}</strong>
+          </div>
+          <div v-if="totalExtras > 0" class="cierre-ticket-row">
             <span>Cargos por registrar</span>
             <strong class="cierre-ticket-gold">+${{ formatPrecio(totalExtras) }}</strong>
+          </div>
+          <div v-if="totalIncidenciasClientePorRegistrar > 0" class="cierre-ticket-row">
+            <span>Incidencias por registrar</span>
+            <strong class="cierre-ticket-gold">+${{ formatPrecio(totalIncidenciasClientePorRegistrar) }}</strong>
           </div>
           <div v-if="aplicarCargoRetraso" class="cierre-ticket-row">
             <span>Cargo por retraso</span>
@@ -228,10 +354,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import Swal from "sweetalert2";
 import { useContratosStore } from "@/stores/contratos";
+import api from "@/services/api";
 import { useAppTheme } from "@/composables/useAppTheme";
 import {
   NIVELES_COMBUSTIBLE,
@@ -251,9 +378,15 @@ const contrato = ref(null);
 const cargando = ref(true);
 const cerrando = ref(false);
 const cobrando = ref(false);
+const guardandoCargos = ref(false);
+const guardandoIncidencias = ref(false);
+const salidaConfirmada = ref(false);
 const observacionesRecepcion = ref("");
 const nivelRecepcion = ref("1/2");
 const cargos = ref([]);
+const cargosRegistrados = ref([]);
+const incidencias = ref([]);
+const incidenciasRegistradas = ref([]);
 const aplicarCargoRetraso = ref(false);
 const montoRetraso = ref(15);
 
@@ -262,6 +395,11 @@ const combIdx = computed(() => {
   return i >= 0 ? i : 2;
 });
 const combLabel = computed(() => NIVELES_COMBUSTIBLE[combIdx.value]?.label);
+const entregaLabel = computed(() =>
+  NIVELES_COMBUSTIBLE.find((n) => n.value === contrato.value?.nivel_combustible_entrega)?.label ||
+  contrato.value?.nivel_combustible_entrega ||
+  "-",
+);
 const pctEntrega = computed(() => nivelCombustiblePct(contrato.value?.nivel_combustible_entrega));
 const pctRecepcion = computed(() => nivelCombustiblePct(nivelRecepcion.value));
 const alertaCombustible = computed(() => pctRecepcion.value < pctEntrega.value);
@@ -276,14 +414,24 @@ const horasRetraso = computed(() => {
 });
 
 const totalExtras = computed(() => cargosValidos().reduce((s, c) => s + Number(c.monto || 0), 0));
+const tieneCargosSinGuardar = computed(() => cargos.value.length > 0);
+const tieneIncidenciasSinGuardar = computed(() => incidencias.value.length > 0);
+const totalCargosRegistrados = computed(() => cargosRegistrados.value.reduce((s, c) => s + Number(c.monto || 0), 0));
+const totalIncidenciasClientePorRegistrar = computed(() =>
+  incidencias.value
+    .filter((i) => i.responsable_tipo === "CLIENTE")
+    .reduce((s, i) => s + Number(i.costo || 0), 0),
+);
+const totalIncidenciasClienteRegistradas = computed(() =>
+  incidenciasRegistradas.value
+    .filter((i) => i.responsable_tipo === "CLIENTE")
+    .reduce((s, i) => s + Number(i.costo || 0), 0),
+);
 const pagadoContrato = computed(() => montoPagadoContrato(contrato.value));
 const saldoPendiente = computed(() => {
   if (!contrato.value) return 0;
-  if (contrato.value.estado_pago === "PAGADO") return totalExtras.value;
-  return Math.max(
-    0,
-    Number(contrato.value.monto_total_renta || 0) + totalExtras.value - pagadoContrato.value,
-  );
+  const saldoBase = Math.max(0, Number(contrato.value.monto_total_renta || 0) - pagadoContrato.value);
+  return saldoBase + totalExtras.value + totalIncidenciasClientePorRegistrar.value;
 });
 const labelPagoContrato = computed(() =>
   contrato.value?.estado_pago === "PAGADO" ? "Pagado" : "Pendiente",
@@ -292,8 +440,12 @@ const mensajeBloqueoCierre = computed(() => {
   if (!contrato.value) return "No se encontro el contrato.";
   if (contrato.value.estado_contrato !== "ACTIVO")
     return "Solo se puede cerrar un contrato activo.";
-  if (cargosValidos().length > 0)
-    return "Hay cargos pendientes de registrar y cobrar antes del cierre.";
+  if (tieneCargosSinGuardar.value)
+    return "Hay cargos pendientes de guardar antes del cierre.";
+  if (tieneIncidenciasSinGuardar.value)
+    return "Hay incidencias pendientes de guardar antes del cierre.";
+  if (saldoPendiente.value > 0)
+    return "Hay saldo pendiente por pagar antes de cerrar la renta.";
   if (contrato.value.estado_pago !== "PAGADO")
     return "El contrato debe estar pagado antes de cerrar la renta.";
   if (aplicarCargoRetraso.value && (!montoRetraso.value || Number(montoRetraso.value) <= 0)) {
@@ -321,12 +473,20 @@ const infoContrato = computed(() => {
 });
 
 onMounted(async () => {
+  window.addEventListener("beforeunload", advertirSalidaNavegador);
   try {
     contrato.value = await store.fetchContrato(route.params.id);
     nivelRecepcion.value = contrato.value.nivel_combustible_entrega || "1/2";
-    cargos.value = cargosDesdeContrato(
+    cargosRegistrados.value = cargosDesdeContrato(
       contrato.value.cargos_adicionales || contrato.value.cargosAdicionales,
     );
+    cargos.value = [];
+    incidencias.value = [];
+    incidenciasRegistradas.value = incidenciasDesdeLista(
+      contrato.value.incidencias || contrato.value.incidencias_contrato,
+    );
+    await cargarCargosContrato();
+    await cargarIncidenciasContrato();
   } catch (e) {
     const msg =
       e.response?.status === 401
@@ -339,18 +499,221 @@ onMounted(async () => {
   }
 });
 
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", advertirSalidaNavegador);
+});
+
+onBeforeRouteLeave(async () => {
+  if (salidaConfirmada.value) return true;
+  return confirmarSalidaConCargos();
+});
+
 function cargosDesdeContrato(lista) {
   return (lista || [])
     .filter((c) => ["PENDIENTE", "APLICADO"].includes(c.estado_cargo))
     .map((c) => ({
-      concepto: c.descripcion,
+      id: c.id,
+      concepto: c.descripcion || c.concepto || "Cargo adicional",
       monto: Number(c.monto),
       tipo_cargo: c.tipo_cargo || "OTRO",
-    }));
+      estado_cargo: c.estado_cargo || "PENDIENTE",
+    }))
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+}
+
+async function cargarCargosContrato() {
+  if (!contrato.value?.id) return;
+  const res = await api.get("/admin/cargos-adicionales", {
+    params: { contrato_id: contrato.value.id, per_page: 100 },
+  });
+  const payload = res.data?.data;
+  const lista = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+  cargosRegistrados.value = cargosDesdeContrato(lista);
+}
+
+function incidenciasDesdeLista(lista) {
+  return (lista || [])
+    .filter((i) => i.estado_incidencia !== "ANULADA")
+    .map((i) => ({
+      id: i.id,
+      tipo_incidencia: i.tipo_incidencia || "OTRO",
+      responsable_tipo: i.responsable_tipo || "NO DETERMINADO",
+      descripcion: i.descripcion || "Sin descripción",
+      costo: Number(i.costo || 0),
+      estado_incidencia: i.estado_incidencia || "REPORTADA",
+      contrato_id: i.contrato_id || i.contrato?.id,
+    }))
+    .filter((i) => !contrato.value?.id || Number(i.contrato_id) === Number(contrato.value.id))
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+}
+
+async function cargarIncidenciasContrato() {
+  if (!contrato.value?.vehiculo?.id) return;
+  const res = await api.get("/admin/incidencias", {
+    params: { vehiculo_id: contrato.value.vehiculo.id },
+  });
+  const payload = res.data?.data;
+  const lista = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+  incidenciasRegistradas.value = incidenciasDesdeLista(lista);
 }
 
 function cargosValidos() {
-  return cargos.value.filter((c) => c.concepto && Number(c.monto) > 0);
+  return cargos.value.filter((c) => c.tipo_cargo && c.concepto && Number(c.monto) > 0);
+}
+
+function cargosIncompletos() {
+  return cargos.value.some((c) => !c.tipo_cargo || !c.concepto || !Number(c.monto) || Number(c.monto) <= 0);
+}
+
+function agregarCargoNuevo(tipo = "", concepto = "", monto = 0) {
+  const tipoCargo = typeof tipo === "string" ? tipo : "";
+  cargos.value.unshift({ concepto, monto, tipo_cargo: tipoCargo });
+}
+
+async function confirmarSalidaConCargos() {
+  if (!tieneCargosSinGuardar.value && !tieneIncidenciasSinGuardar.value) return true;
+  const result = await Swal.fire({
+    icon: "warning",
+    title: "Cargos sin guardar",
+    text: "Si sales ahora, los cargos o incidencias que escribiste se perderan.",
+    showCancelButton: true,
+    confirmButtonText: "Salir sin guardar",
+    cancelButtonText: "Volver",
+    confirmButtonColor: "#922b21",
+    cancelButtonColor: "#6b7280",
+  });
+  return result.isConfirmed;
+}
+
+function advertirSalidaNavegador(event) {
+  if (!tieneCargosSinGuardar.value && !tieneIncidenciasSinGuardar.value) return;
+  event.preventDefault();
+  event.returnValue = "";
+}
+
+async function volverAContratos() {
+  if (await confirmarSalidaConCargos()) {
+    salidaConfirmada.value = true;
+    router.push({ name: "contratos" });
+  }
+}
+
+async function registrarCargosPendientes({ mostrarExito = false } = {}) {
+  if (!cargos.value.length) return false;
+  if (cargosIncompletos()) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Completa los cargos",
+      text: "Cada cargo debe tener tipo, concepto y un monto mayor a cero antes de guardarlo.",
+      confirmButtonColor: "#922b21",
+    });
+    return false;
+  }
+
+  guardandoCargos.value = true;
+  try {
+    const registrados = await store.syncCargos(contrato.value.id, cargosValidos());
+    cargosRegistrados.value = [...cargosDesdeContrato(registrados), ...cargosRegistrados.value];
+    cargos.value = [];
+    contrato.value = await store.fetchContrato(contrato.value.id);
+    await cargarCargosContrato();
+    if (mostrarExito) {
+      await Swal.fire({
+        icon: "success",
+        title: "Cargos guardados",
+        text: "Los cargos adicionales quedaron registrados en el contrato.",
+        confirmButtonColor: "#922b21",
+      });
+    }
+    return true;
+  } catch (e) {
+    await Swal.fire({
+      icon: "error",
+      title: "No se pudieron guardar",
+      text: e.response?.data?.message || "No se pudieron registrar los cargos.",
+      confirmButtonColor: "#922b21",
+    });
+    return false;
+  } finally {
+    guardandoCargos.value = false;
+  }
+}
+
+async function guardarCargosPendientes() {
+  await registrarCargosPendientes({ mostrarExito: true });
+}
+
+function incidenciasIncompletas() {
+  return incidencias.value.some(
+    (i) => !i.tipo_incidencia || !i.responsable_tipo || !i.descripcion || Number(i.costo || 0) < 0,
+  );
+}
+
+function agregarIncidenciaNueva(tipo = "", descripcion = "", costo = 0) {
+  const tipoIncidencia = typeof tipo === "string" ? tipo : "";
+  incidencias.value.unshift({
+    tipo_incidencia: tipoIncidencia,
+    responsable_tipo: "CLIENTE",
+    descripcion,
+    costo,
+  });
+}
+
+async function registrarIncidenciasPendientes({ mostrarExito = false } = {}) {
+  if (!incidencias.value.length) return false;
+  if (incidenciasIncompletas()) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Completa las incidencias",
+      text: "Cada incidencia debe tener tipo, responsable, descripción y un costo válido.",
+      confirmButtonColor: "#922b21",
+    });
+    return false;
+  }
+
+  guardandoIncidencias.value = true;
+  try {
+    const registradas = [];
+    for (const incidencia of incidencias.value) {
+      const res = await api.post("/admin/incidencias", {
+        vehiculo_id: contrato.value.vehiculo?.id,
+        contrato_id: contrato.value.id,
+        tipo_incidencia: incidencia.tipo_incidencia,
+        responsable_tipo: incidencia.responsable_tipo,
+        descripcion: incidencia.descripcion,
+        fecha: fechaHoraActualApi(),
+        costo: Number(incidencia.costo || 0),
+      });
+      registradas.push(res.data.data);
+    }
+    incidenciasRegistradas.value = [...incidenciasDesdeLista(registradas), ...incidenciasRegistradas.value];
+    incidencias.value = [];
+    contrato.value = await store.fetchContrato(contrato.value.id);
+    await cargarIncidenciasContrato();
+    if (mostrarExito) {
+      await Swal.fire({
+        icon: "success",
+        title: "Incidencias guardadas",
+        text: "Las incidencias quedaron registradas en el contrato.",
+        confirmButtonColor: "#922b21",
+      });
+    }
+    return true;
+  } catch (e) {
+    await Swal.fire({
+      icon: "error",
+      title: "No se pudieron guardar",
+      text: e.response?.data?.message || "No se pudieron registrar las incidencias.",
+      confirmButtonColor: "#922b21",
+    });
+    return false;
+  } finally {
+    guardandoIncidencias.value = false;
+  }
+}
+
+async function guardarIncidenciasPendientes() {
+  await registrarIncidenciasPendientes({ mostrarExito: true });
 }
 
 function fmtFecha(v) {
@@ -363,30 +726,63 @@ function fechaHoraActualApi() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-function onComb(idx) {
-  nivelRecepcion.value = NIVELES_COMBUSTIBLE[Number(idx)]?.value || "1/2";
+function seleccionarCombustible(value) {
+  if (NIVELES_COMBUSTIBLE.some((n) => n.value === value)) nivelRecepcion.value = value;
+}
+
+function labelTipoCargo(tipo) {
+  const labels = {
+    COMBUSTIBLE: "Combustible",
+    DANIO: "Daño",
+    "DIA EXTRA": "Día extra",
+    RETRASO: "Retraso",
+    OTRO: "Otro",
+  };
+  return labels[tipo] || tipo || "Cargo";
+}
+
+function labelTipoIncidencia(tipo) {
+  const labels = {
+    DANIO: "Daño",
+    ACCIDENTE: "Accidente",
+    "FALLA MECANICA": "Falla mecánica",
+    OTRO: "Otro",
+  };
+  return labels[tipo] || tipo || "Incidencia";
+}
+
+function labelResponsableIncidencia(responsable) {
+  const labels = {
+    CLIENTE: "Cliente",
+    NEGOCIO: "Negocio",
+    TERCERO: "Tercero",
+    "NO DETERMINADO": "No determinado",
+  };
+  return labels[responsable] || responsable || "Responsable";
+}
+
+function combustibleCorto(nivel) {
+  if (nivel.value === "VACIO") return "E";
+  if (nivel.value === "LLENO") return "F";
+  return nivel.label;
 }
 
 function agregarCargoCombustible() {
-  cargos.value.push({ concepto: "Falta de gasolina", monto: 10, tipo_cargo: "COMBUSTIBLE" });
+  agregarCargoNuevo("COMBUSTIBLE", "Falta de gasolina", 10);
 }
 
 async function irACobrarSaldo() {
   cobrando.value = true;
   try {
-    const nuevosCargos = cargosValidos();
-    if (nuevosCargos.length) {
-      await store.syncCargos(contrato.value.id, nuevosCargos);
-      cargos.value = [];
+    if (cargos.value.length) {
+      const guardado = await registrarCargosPendientes();
+      if (!guardado) return;
+    }
+    if (incidencias.value.length) {
+      const guardado = await registrarIncidenciasPendientes();
+      if (!guardado) return;
     }
     router.push({ name: "pagos", query: { contrato_id: contrato.value.id, cobrar: "1" } });
-  } catch (e) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: e.response?.data?.message || "No se pudieron registrar los cargos.",
-      confirmButtonColor: "#922b21",
-    });
   } finally {
     cobrando.value = false;
   }
@@ -693,19 +1089,30 @@ async function cerrarRenta() {
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
+.cierre-fuel-col {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(146, 43, 33, 0.12);
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(248, 250, 252, 0.72));
+}
+.cierre-root--dark .cierre-fuel-col {
+  border-color: rgba(146, 43, 33, 0.25);
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.76), rgba(17, 24, 39, 0.74));
+}
 .cierre-fuel-tag {
   font-size: 0.6rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  opacity: 0.5;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
   display: block;
 }
 .cierre-fuel-val {
   display: block;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 900;
-  margin: 0.2rem 0 0.5rem;
+  margin: 0.2rem 0 0.7rem;
 }
 .cierre-fuel-val--red {
   color: #922b21;
@@ -713,22 +1120,86 @@ async function cerrarRenta() {
 .cierre-fuel-val--gold {
   color: #d97706;
 }
-.cierre-fuel-bar {
-  height: 6px;
+.cierre-fuel-meter {
+  --fuel-fill: 50%;
+  position: relative;
+  height: 0.75rem;
+  margin: 0.15rem 0.45rem 0.85rem;
   border-radius: 999px;
-  background: rgba(146, 43, 33, 0.12);
-  overflow: hidden;
+  background: #e5e7eb;
+  box-shadow: inset 0 1px 4px rgba(15, 23, 42, 0.15);
+}
+.cierre-root--dark .cierre-fuel-meter {
+  background: #374151;
+}
+.cierre-fuel-meter--readonly {
+  margin-bottom: 0.1rem;
 }
 .cierre-fuel-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #922b21, #f0a500);
-  transition: width 0.3s;
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fuel-fill);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #dc2626 0%, #f97316 38%, #f59e0b 72%, #facc15 100%);
+  box-shadow: 0 0 14px rgba(249, 115, 22, 0.3);
+  transition: width 0.2s ease;
 }
-.cierre-range {
-  width: 100%;
-  accent-color: #922b21;
-  margin-top: 0.5rem;
+.cierre-fuel-point {
+  position: absolute;
+  top: 50%;
+  width: 1.18rem;
+  height: 1.18rem;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.cierre-fuel-point span {
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: inherit;
+  background: #fff;
+}
+.cierre-fuel-point:hover,
+.cierre-fuel-point--active {
+  transform: translate(-50%, -50%) scale(1.13);
+  background: #f59e0b;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.45);
+}
+.cierre-fuel-point--active {
+  outline: 3px solid rgba(245, 158, 11, 0.16);
+}
+.cierre-fuel-labels {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+.cierre-fuel-labels button {
+  min-height: 1.65rem;
+  border-radius: 999px;
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.12);
+  font-size: 0.68rem;
+  font-weight: 900;
+  transition: all 0.15s ease;
+}
+.cierre-fuel-labels button:hover,
+.cierre-fuel-labels .cierre-fuel-label--active {
+  color: #78350f;
+  background: #fef3c7;
+}
+.cierre-root--dark .cierre-fuel-labels button {
+  color: #cbd5e1;
+  background: rgba(55, 65, 81, 0.8);
+}
+.cierre-root--dark .cierre-fuel-labels button:hover,
+.cierre-root--dark .cierre-fuel-labels .cierre-fuel-label--active {
+  color: #fef3c7;
+  background: rgba(146, 64, 14, 0.72);
 }
 .cierre-alert {
   display: flex;
@@ -808,17 +1279,115 @@ async function cerrarRenta() {
 .cierre-add-btn:hover {
   background: rgba(146, 43, 33, 0.12);
 }
+.cierre-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.65rem;
+}
+.cierre-save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.65rem 1rem;
+  color: #fff;
+  background: linear-gradient(135deg, #922b21, #c0392b);
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(146, 43, 33, 0.24);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.cierre-save-btn:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+.cierre-save-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.cierre-registered-cargos {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.cierre-registered-head,
+.cierre-registered-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.42fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.08);
+}
+.cierre-registered-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  color: #92400e;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cierre-registered-row span {
+  color: #92400e;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+.cierre-registered-row p {
+  min-width: 0;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.cierre-registered-row strong {
+  color: #922b21;
+  font-size: 0.8rem;
+}
+.cierre-root--dark .cierre-registered-head,
+.cierre-root--dark .cierre-registered-row {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.08);
+}
+.cierre-root--dark .cierre-registered-head,
+.cierre-root--dark .cierre-registered-row span,
+.cierre-root--dark .cierre-registered-row strong {
+  color: #fbbf24;
+}
+.cierre-root--dark .cierre-registered-row p {
+  color: #e5e7eb;
+}
 .cierre-empty-cargos {
   font-size: 0.8rem;
   opacity: 0.4;
   text-align: center;
   padding: 0.75rem 0;
 }
-.cierre-cargo-row {
+.cierre-cargo-row,
+.cierre-incidencia-row {
   display: flex;
   gap: 0.5rem;
   align-items: center;
   margin-bottom: 0.5rem;
+}
+.cierre-incidencia-row {
+  flex-wrap: wrap;
+}
+.cierre-incidencia-row .cierre-input:not(.cierre-input--type):not(.cierre-input--responsable):not(.cierre-input--amount) {
+  flex: 1 1 15rem;
+}
+.cierre-input--responsable {
+  width: 10.5rem;
+  flex-shrink: 0;
+}
+.cierre-registered-row--incidencia {
+  grid-template-columns: minmax(92px, 0.34fr) minmax(0, 1fr) minmax(92px, auto);
 }
 .cierre-remove-btn {
   width: 2rem;
@@ -1015,3 +1584,4 @@ async function cerrarRenta() {
   }
 }
 </style>
+

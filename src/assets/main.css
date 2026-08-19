@@ -85,3 +85,58 @@ html[data-theme='dark'] #app {
   margin: 0.5cm;
   size: A4;
 }
+/* Capa de legibilidad para modo claro: mejora contraste de tablas, textos secundarios y bordes. */
+html[data-theme='light'] body {
+  color: #111827;
+}
+
+html[data-theme='light'] .bg-white,
+html[data-theme='light'] .bg-gray-50 {
+  color: #111827;
+}
+
+html[data-theme='light'] .text-gray-400 {
+  color: #64748b !important;
+}
+
+html[data-theme='light'] .text-gray-500 {
+  color: #475569 !important;
+}
+
+html[data-theme='light'] .text-gray-600 {
+  color: #334155 !important;
+}
+
+html[data-theme='light'] .border-gray-50,
+html[data-theme='light'] .border-gray-100 {
+  border-color: #dbe3ee !important;
+}
+
+html[data-theme='light'] table thead tr,
+html[data-theme='light'] table thead th {
+  background-color: #f1f5f9;
+}
+
+html[data-theme='light'] table th {
+  color: #64748b !important;
+  font-weight: 800;
+}
+
+html[data-theme='light'] table td {
+  color: #1e293b;
+}
+
+html[data-theme='light'] table tbody tr {
+  border-color: #e2e8f0 !important;
+}
+
+html[data-theme='light'] input,
+html[data-theme='light'] select,
+html[data-theme='light'] textarea {
+  color: #111827;
+}
+
+html[data-theme='light'] input::placeholder,
+html[data-theme='light'] textarea::placeholder {
+  color: #64748b;
+}

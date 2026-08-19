@@ -1,6 +1,6 @@
 export const HORAS_PERMITIDAS = ['06:00', '06:30', '07:00', '18:00', '18:30', '19:00']
 
-/** Hora 24h (HH:mm) → formato 12h legible, ej. "6:00 a. m." */
+/** Hora 24h (HH:mm) -> formato 12h legible, ej. "6:00 a. m." */
 export function formatHora12(hora24) {
   if (!hora24 || !/^\d{1,2}:\d{2}$/.test(hora24)) return '—'
   const [h, m] = hora24.split(':').map((x) => parseInt(x, 10))
@@ -52,8 +52,25 @@ export const NIVELES_COMBUSTIBLE = [
   { value: 'LLENO', label: 'Lleno', pct: 100 },
 ]
 
+export function moneyCents(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return 0
+  return Math.round((n + Number.EPSILON) * 100)
+}
+
+export function centsToMoney(cents) {
+  return Number((Number(cents || 0) / 100).toFixed(2))
+}
+
+export function toMoneyNumber(value) {
+  return centsToMoney(moneyCents(value))
+}
+
 export function formatPrecio(n) {
-  return Number(n || 0).toLocaleString('es-SV', { minimumFractionDigits: 2 })
+  return toMoneyNumber(n).toLocaleString('es-SV', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 }
 
 export function nombreVehiculo(v) {
@@ -140,30 +157,30 @@ const ESTADOS_CARGO_COBRABLE = ['PENDIENTE', 'APLICADO']
 
 export function montoExtrasContrato(contrato) {
   if (!contrato) return 0
-  if (contrato.monto_extras != null) return Number(contrato.monto_extras)
+  if (contrato.monto_extras != null) return toMoneyNumber(contrato.monto_extras)
   const cargos = contrato.cargos_adicionales || contrato.cargosAdicionales || []
-  return cargos
+  return centsToMoney(cargos
     .filter((c) => ESTADOS_CARGO_COBRABLE.includes(c.estado_cargo))
-    .reduce((s, c) => s + Number(c.monto || 0), 0)
+    .reduce((s, c) => s + moneyCents(c.monto), 0))
 }
 
 export function montoPagadoContrato(contrato) {
   if (!contrato) return 0
-  if (contrato.monto_pagado != null) return Number(contrato.monto_pagado)
+  if (contrato.monto_pagado != null) return toMoneyNumber(contrato.monto_pagado)
   const pagos = contrato.pagos || []
-  return pagos
+  return centsToMoney(pagos
     .filter((p) => p.estado_transaccion === 'CONFIRMADO')
-    .reduce((s, p) => s + Number(p.monto || 0), 0)
+    .reduce((s, p) => s + moneyCents(p.monto), 0))
 }
 
 export function totalFinalContrato(contrato) {
   if (!contrato) return 0
-  if (contrato.total_final != null) return Number(contrato.total_final)
-  return Number(contrato.monto_total_renta || 0) + montoExtrasContrato(contrato)
+  if (contrato.total_final != null) return toMoneyNumber(contrato.total_final)
+  return centsToMoney(moneyCents(contrato.monto_total_renta) + moneyCents(montoExtrasContrato(contrato)))
 }
 
 export function saldoPendienteContrato(contrato) {
   if (!contrato) return 0
-  if (contrato.saldo_pendiente != null) return Number(contrato.saldo_pendiente)
-  return Math.max(0, totalFinalContrato(contrato) - montoPagadoContrato(contrato))
+  if (contrato.saldo_pendiente != null) return toMoneyNumber(contrato.saldo_pendiente)
+  return centsToMoney(Math.max(0, moneyCents(totalFinalContrato(contrato)) - moneyCents(montoPagadoContrato(contrato))))
 }

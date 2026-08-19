@@ -64,7 +64,7 @@
                     type="number"
                     min="0.01"
                     step="0.01"
-                    :max="saldo"
+                    :max="saldoMax"
                     @input="normalizarMonto(linea)"
                   />
                 </div>
@@ -113,6 +113,7 @@ import {
   montoPagadoContrato,
   totalFinalContrato,
   saldoPendienteContrato,
+  toMoneyNumber,
 } from '@/utils/contratoFormatters'
 
 const props = defineProps({
@@ -141,10 +142,11 @@ const clienteNombre = computed(() =>
 const montoExtras = computed(() => montoExtrasContrato(props.contrato))
 const total = computed(() => totalFinalContrato(props.contrato))
 const pagado = computed(() => montoPagadoContrato(props.contrato))
-const saldo = computed(() => saldoPendienteContrato(props.contrato))
+const saldo = computed(() => toMoneyNumber(saldoPendienteContrato(props.contrato)))
 const pctPagado = computed(() => total.value > 0 ? Math.min(100, (pagado.value / total.value) * 100) : 0)
 const estadoPago = computed(() => props.contrato?.estado_pago || 'PENDIENTE')
-const totalFormulario = computed(() => lineas.value.reduce((s, p) => s + Number(p.monto || 0), 0))
+const totalFormulario = computed(() => toMoneyNumber(lineas.value.reduce((s, p) => s + Number(p.monto || 0), 0)))
+const saldoMax = computed(() => saldo.value.toFixed(2))
 const montoValido = computed(() =>
   saldo.value > 0 &&
   totalFormulario.value > 0 &&
@@ -176,7 +178,7 @@ function reiniciarFormulario() {
 function nuevaLinea(monto = 0, metodo = 'EFECTIVO') {
   return {
     id: ++lineId,
-    monto: Number(Number(monto || 0).toFixed(2)),
+    monto: toMoneyNumber(monto),
     metodo_pago: metodo,
   }
 }
@@ -192,13 +194,18 @@ function fechaPagoApi() {
 }
 
 function normalizarMonto(linea) {
-  if (linea.monto < 0) linea.monto = 0
+  const monto = Number(linea.monto)
+  if (!Number.isFinite(monto) || monto < 0) {
+    linea.monto = 0
+    return
+  }
+  if (monto > saldo.value) linea.monto = saldo.value
 }
 
 function agregarLinea() {
   const usados = new Set(lineas.value.map((p) => p.metodo_pago))
   const metodo = metodos.find((m) => !usados.has(m.value))?.value || 'EFECTIVO'
-  const restante = Math.max(0, saldo.value - totalFormulario.value)
+  const restante = toMoneyNumber(Math.max(0, saldo.value - totalFormulario.value))
   lineas.value.push(nuevaLinea(restante, metodo))
 }
 
@@ -236,7 +243,7 @@ function guardar() {
 
   emit('guardar', {
     pagos: lineas.value.map((p) => ({
-      monto: Number(Number(p.monto).toFixed(2)),
+      monto: toMoneyNumber(p.monto),
       metodo_pago: p.metodo_pago,
       fecha_pago: fechaPagoApi(),
     })),

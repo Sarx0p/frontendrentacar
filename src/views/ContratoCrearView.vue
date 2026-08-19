@@ -449,7 +449,13 @@ async function generarContrato() {
     }
     const contrato = await contratosStore.crear(payload)
     contratoGenerado.value = contrato
-    await Swal.fire({ icon: 'success', title: 'Contrato generado', text: `N° ${contrato.numero_contrato}`, confirmButtonColor: '#922b21' })
+    const advertenciaContrato = contratosStore.advertencia
+    await Swal.fire({
+      icon: advertenciaContrato ? 'warning' : 'success',
+      title: 'Contrato generado',
+      text: advertenciaContrato || `N° ${contrato.numero_contrato}`,
+      confirmButtonColor: '#922b21',
+    })
     mostrarPdf.value = true
   } catch (e) {
     error.value = e.response?.status === 401
