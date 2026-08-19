@@ -1,7 +1,7 @@
 <template>
   <div class="cierre-root" :class="isDark ? 'cierre-root--dark' : 'cierre-root--light'">
     <header class="cierre-header">
-      <button type="button" class="cierre-back" @click="router.push({ name: 'contratos' })">
+      <button type="button" class="cierre-back" @click="volverAContratos">
         <i class="pi pi-arrow-left"></i>
       </button>
       <div class="flex-1 min-w-0">
@@ -141,7 +141,7 @@
             <button
               type="button"
               class="cierre-add-btn"
-              @click="cargos.push({ concepto: '', monto: 0, tipo_cargo: 'OTRO' })"
+              @click="agregarCargoNuevo()"
             >
               <i class="pi pi-plus"></i> Agregar
             </button>
@@ -150,15 +150,27 @@
             Si agregas cargos aqui, primero se registran y se cobran en Pagos. Luego puedes volver a
             cerrar la renta.
           </p>
-          <div v-if="!cargos.length" class="cierre-empty-cargos">Sin cargos adicionales</div>
+          <div v-if="cargosRegistrados.length" class="cierre-registered-cargos">
+            <div class="cierre-registered-head">
+              <span>Cargos registrados</span>
+              <strong>${{ formatPrecio(totalCargosRegistrados) }}</strong>
+            </div>
+            <div v-for="cargo in cargosRegistrados" :key="cargo.id || `${cargo.tipo_cargo}-${cargo.concepto}`" class="cierre-registered-row">
+              <span>{{ labelTipoCargo(cargo.tipo_cargo) }}</span>
+              <p>{{ cargo.concepto }}</p>
+              <strong>${{ formatPrecio(cargo.monto) }}</strong>
+            </div>
+          </div>
+          <div v-if="!cargosRegistrados.length && !cargos.length" class="cierre-empty-cargos">Sin cargos adicionales</div>
           <div v-for="(cargo, i) in cargos" :key="i" class="cierre-cargo-row">
             <select
               v-model="cargo.tipo_cargo"
               class="cierre-input cierre-input--sm cierre-input--type"
             >
+              <option value="" disabled>Selecciona tipo</option>
               <option value="COMBUSTIBLE">Combustible</option>
               <option value="DANIO">Daño</option>
-              <option value="DIA EXTRA">Dia extra</option>
+              <option value="DIA EXTRA">Día extra</option>
               <option value="OTRO">Otro</option>
             </select>
             <input
@@ -177,9 +189,20 @@
               <i class="pi pi-times"></i>
             </button>
           </div>
-          <p v-if="cargos.length" class="cierre-extras-total">
-            Total por registrar: <strong>${{ formatPrecio(totalExtras) }}</strong>
-          </p>
+          <div v-if="cargos.length" class="cierre-save-row">
+            <p class="cierre-extras-total">
+              Total por registrar: <strong>${{ formatPrecio(totalExtras) }}</strong>
+            </p>
+            <button
+              type="button"
+              class="cierre-save-btn"
+              :disabled="guardandoCargos"
+              @click="guardarCargosPendientes"
+            >
+              <i :class="guardandoCargos ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i>
+              Guardar cargos
+            </button>
+          </div>
         </section>
       </div>
 
@@ -199,6 +222,10 @@
             <strong>${{ formatPrecio(contrato.monto_total_renta) }}</strong>
           </div>
           <div class="cierre-ticket-row">
+            <span>Cargos registrados</span>
+            <strong class="cierre-ticket-gold">+${{ formatPrecio(totalCargosRegistrados) }}</strong>
+          </div>
+          <div v-if="totalExtras > 0" class="cierre-ticket-row">
             <span>Cargos por registrar</span>
             <strong class="cierre-ticket-gold">+${{ formatPrecio(totalExtras) }}</strong>
           </div>
@@ -243,10 +270,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import Swal from "sweetalert2";
 import { useContratosStore } from "@/stores/contratos";
+import api from "@/services/api";
 import { useAppTheme } from "@/composables/useAppTheme";
 import {
   NIVELES_COMBUSTIBLE,
@@ -266,9 +294,12 @@ const contrato = ref(null);
 const cargando = ref(true);
 const cerrando = ref(false);
 const cobrando = ref(false);
+const guardandoCargos = ref(false);
+const salidaConfirmada = ref(false);
 const observacionesRecepcion = ref("");
 const nivelRecepcion = ref("1/2");
 const cargos = ref([]);
+const cargosRegistrados = ref([]);
 const aplicarCargoRetraso = ref(false);
 const montoRetraso = ref(15);
 
@@ -296,14 +327,13 @@ const horasRetraso = computed(() => {
 });
 
 const totalExtras = computed(() => cargosValidos().reduce((s, c) => s + Number(c.monto || 0), 0));
+const tieneCargosSinGuardar = computed(() => cargos.value.length > 0);
+const totalCargosRegistrados = computed(() => cargosRegistrados.value.reduce((s, c) => s + Number(c.monto || 0), 0));
 const pagadoContrato = computed(() => montoPagadoContrato(contrato.value));
 const saldoPendiente = computed(() => {
   if (!contrato.value) return 0;
-  if (contrato.value.estado_pago === "PAGADO") return totalExtras.value;
-  return Math.max(
-    0,
-    Number(contrato.value.monto_total_renta || 0) + totalExtras.value - pagadoContrato.value,
-  );
+  const saldoBase = Math.max(0, Number(contrato.value.monto_total_renta || 0) - pagadoContrato.value);
+  return saldoBase + totalExtras.value;
 });
 const labelPagoContrato = computed(() =>
   contrato.value?.estado_pago === "PAGADO" ? "Pagado" : "Pendiente",
@@ -312,8 +342,8 @@ const mensajeBloqueoCierre = computed(() => {
   if (!contrato.value) return "No se encontro el contrato.";
   if (contrato.value.estado_contrato !== "ACTIVO")
     return "Solo se puede cerrar un contrato activo.";
-  if (cargosValidos().length > 0)
-    return "Hay cargos pendientes de registrar y cobrar antes del cierre.";
+  if (tieneCargosSinGuardar.value)
+    return "Hay cargos pendientes de guardar antes del cierre.";
   if (contrato.value.estado_pago !== "PAGADO")
     return "El contrato debe estar pagado antes de cerrar la renta.";
   if (aplicarCargoRetraso.value && (!montoRetraso.value || Number(montoRetraso.value) <= 0)) {
@@ -341,12 +371,15 @@ const infoContrato = computed(() => {
 });
 
 onMounted(async () => {
+  window.addEventListener("beforeunload", advertirSalidaNavegador);
   try {
     contrato.value = await store.fetchContrato(route.params.id);
     nivelRecepcion.value = contrato.value.nivel_combustible_entrega || "1/2";
-    cargos.value = cargosDesdeContrato(
+    cargosRegistrados.value = cargosDesdeContrato(
       contrato.value.cargos_adicionales || contrato.value.cargosAdicionales,
     );
+    cargos.value = [];
+    await cargarCargosContrato();
   } catch (e) {
     const msg =
       e.response?.status === 401
@@ -359,18 +392,122 @@ onMounted(async () => {
   }
 });
 
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", advertirSalidaNavegador);
+});
+
+onBeforeRouteLeave(async () => {
+  if (salidaConfirmada.value) return true;
+  return confirmarSalidaConCargos();
+});
+
 function cargosDesdeContrato(lista) {
   return (lista || [])
     .filter((c) => ["PENDIENTE", "APLICADO"].includes(c.estado_cargo))
     .map((c) => ({
-      concepto: c.descripcion,
+      id: c.id,
+      concepto: c.descripcion || c.concepto || "Cargo adicional",
       monto: Number(c.monto),
       tipo_cargo: c.tipo_cargo || "OTRO",
-    }));
+      estado_cargo: c.estado_cargo || "PENDIENTE",
+    }))
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+}
+
+async function cargarCargosContrato() {
+  if (!contrato.value?.id) return;
+  const res = await api.get("/admin/cargos-adicionales", {
+    params: { contrato_id: contrato.value.id, per_page: 100 },
+  });
+  const payload = res.data?.data;
+  const lista = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+  cargosRegistrados.value = cargosDesdeContrato(lista);
 }
 
 function cargosValidos() {
-  return cargos.value.filter((c) => c.concepto && Number(c.monto) > 0);
+  return cargos.value.filter((c) => c.tipo_cargo && c.concepto && Number(c.monto) > 0);
+}
+
+function cargosIncompletos() {
+  return cargos.value.some((c) => !c.tipo_cargo || !c.concepto || !Number(c.monto) || Number(c.monto) <= 0);
+}
+
+function agregarCargoNuevo(tipo = "", concepto = "", monto = 0) {
+  const tipoCargo = typeof tipo === "string" ? tipo : "";
+  cargos.value.unshift({ concepto, monto, tipo_cargo: tipoCargo });
+}
+
+async function confirmarSalidaConCargos() {
+  if (!tieneCargosSinGuardar.value) return true;
+  const result = await Swal.fire({
+    icon: "warning",
+    title: "Cargos sin guardar",
+    text: "Si sales ahora, los cargos adicionales que escribiste se perderan.",
+    showCancelButton: true,
+    confirmButtonText: "Salir sin guardar",
+    cancelButtonText: "Volver",
+    confirmButtonColor: "#922b21",
+    cancelButtonColor: "#6b7280",
+  });
+  return result.isConfirmed;
+}
+
+function advertirSalidaNavegador(event) {
+  if (!tieneCargosSinGuardar.value) return;
+  event.preventDefault();
+  event.returnValue = "";
+}
+
+async function volverAContratos() {
+  if (await confirmarSalidaConCargos()) {
+    salidaConfirmada.value = true;
+    router.push({ name: "contratos" });
+  }
+}
+
+async function registrarCargosPendientes({ mostrarExito = false } = {}) {
+  if (!cargos.value.length) return false;
+  if (cargosIncompletos()) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Completa los cargos",
+      text: "Cada cargo debe tener tipo, concepto y un monto mayor a cero antes de guardarlo.",
+      confirmButtonColor: "#922b21",
+    });
+    return false;
+  }
+
+  guardandoCargos.value = true;
+  try {
+    const registrados = await store.syncCargos(contrato.value.id, cargosValidos());
+    cargosRegistrados.value = [...cargosDesdeContrato(registrados), ...cargosRegistrados.value];
+    cargos.value = [];
+    contrato.value = await store.fetchContrato(contrato.value.id);
+    await cargarCargosContrato();
+    if (mostrarExito) {
+      await Swal.fire({
+        icon: "success",
+        title: "Cargos guardados",
+        text: "Los cargos adicionales quedaron registrados en el contrato.",
+        confirmButtonColor: "#922b21",
+      });
+    }
+    return true;
+  } catch (e) {
+    await Swal.fire({
+      icon: "error",
+      title: "No se pudieron guardar",
+      text: e.response?.data?.message || "No se pudieron registrar los cargos.",
+      confirmButtonColor: "#922b21",
+    });
+    return false;
+  } finally {
+    guardandoCargos.value = false;
+  }
+}
+
+async function guardarCargosPendientes() {
+  await registrarCargosPendientes({ mostrarExito: true });
 }
 
 function fmtFecha(v) {
@@ -387,6 +524,17 @@ function seleccionarCombustible(value) {
   if (NIVELES_COMBUSTIBLE.some((n) => n.value === value)) nivelRecepcion.value = value;
 }
 
+function labelTipoCargo(tipo) {
+  const labels = {
+    COMBUSTIBLE: "Combustible",
+    DANIO: "Daño",
+    "DIA EXTRA": "Día extra",
+    RETRASO: "Retraso",
+    OTRO: "Otro",
+  };
+  return labels[tipo] || tipo || "Cargo";
+}
+
 function combustibleCorto(nivel) {
   if (nivel.value === "VACIO") return "E";
   if (nivel.value === "LLENO") return "F";
@@ -394,25 +542,17 @@ function combustibleCorto(nivel) {
 }
 
 function agregarCargoCombustible() {
-  cargos.value.push({ concepto: "Falta de gasolina", monto: 10, tipo_cargo: "COMBUSTIBLE" });
+  agregarCargoNuevo("COMBUSTIBLE", "Falta de gasolina", 10);
 }
 
 async function irACobrarSaldo() {
   cobrando.value = true;
   try {
-    const nuevosCargos = cargosValidos();
-    if (nuevosCargos.length) {
-      await store.syncCargos(contrato.value.id, nuevosCargos);
-      cargos.value = [];
+    if (cargos.value.length) {
+      const guardado = await registrarCargosPendientes();
+      if (!guardado) return;
     }
     router.push({ name: "pagos", query: { contrato_id: contrato.value.id, cobrar: "1" } });
-  } catch (e) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: e.response?.data?.message || "No se pudieron registrar los cargos.",
-      confirmButtonColor: "#922b21",
-    });
   } finally {
     cobrando.value = false;
   }
@@ -909,6 +1049,90 @@ async function cerrarRenta() {
 .cierre-add-btn:hover {
   background: rgba(146, 43, 33, 0.12);
 }
+.cierre-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.65rem;
+}
+.cierre-save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.65rem 1rem;
+  color: #fff;
+  background: linear-gradient(135deg, #922b21, #c0392b);
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(146, 43, 33, 0.24);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.cierre-save-btn:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+.cierre-save-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.cierre-registered-cargos {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.cierre-registered-head,
+.cierre-registered-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.42fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.08);
+}
+.cierre-registered-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  color: #92400e;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cierre-registered-row span {
+  color: #92400e;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+.cierre-registered-row p {
+  min-width: 0;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.cierre-registered-row strong {
+  color: #922b21;
+  font-size: 0.8rem;
+}
+.cierre-root--dark .cierre-registered-head,
+.cierre-root--dark .cierre-registered-row {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.08);
+}
+.cierre-root--dark .cierre-registered-head,
+.cierre-root--dark .cierre-registered-row span,
+.cierre-root--dark .cierre-registered-row strong {
+  color: #fbbf24;
+}
+.cierre-root--dark .cierre-registered-row p {
+  color: #e5e7eb;
+}
 .cierre-empty-cargos {
   font-size: 0.8rem;
   opacity: 0.4;
@@ -1116,3 +1340,10 @@ async function cerrarRenta() {
   }
 }
 </style>
+
+
+
+
+
+
+

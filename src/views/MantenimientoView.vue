@@ -136,7 +136,7 @@
                   </button>
                   <span
                     v-if="m.estado !== 'ACTIVO'"
-                    class="text-[11px] font-semibold opacity-50"
+                    :class="isDark ? 'inline-flex w-20 justify-center rounded-full bg-gray-800 px-2 py-1 text-[11px] font-bold text-gray-300' : 'inline-flex w-20 justify-center rounded-full bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-600'"
                     title="Los mantenimientos finalizados o cancelados no se modifican"
                   >
                     Cerrado
