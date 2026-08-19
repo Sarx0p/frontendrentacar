@@ -1,4 +1,4 @@
-﻿import { defineStore } from 'pinia'
+import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 
@@ -127,6 +127,4 @@ export const useNotificacionesStore = defineStore('notificaciones', () => {
     iniciarPolling,
   }
 })
-
-
 

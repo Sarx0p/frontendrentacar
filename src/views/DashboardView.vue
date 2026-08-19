@@ -401,7 +401,6 @@ import { ref, computed, onMounted } from "vue";
 import { useAppTheme } from "@/composables/useAppTheme";
 import { useAuthStore } from "@/stores/auth";
 import api from "@/services/api";
-import DashboardMiniLineChart from "@/components/dashboard/DashboardMiniLineChart.vue";
 import DashboardProgressRow from "@/components/dashboard/DashboardProgressRow.vue";
 import DashboardDonutChart from "@/components/dashboard/DashboardDonutChart.vue";
 import DashboardBarChart from "@/components/dashboard/DashboardBarChart.vue";
@@ -527,3 +526,4 @@ function estadoBadge(estado) {
 <style scoped>
 @import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap");
 </style>
+
