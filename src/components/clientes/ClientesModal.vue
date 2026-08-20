@@ -45,7 +45,7 @@
               <label class="field-label">Nombre completo</label>
               <div class="relative">
                 <i class="pi pi-user input-icon"></i>
-                <input v-model.trim="form.nombre" type="text" class="field-input" :class="errors.nombre ? 'error' : ''" autocomplete="name" />
+                <input v-model.trim="form.nombre" type="text" class="field-input" :class="errors.nombre ? 'error' : ''" autocomplete="name" @blur="normalizarNombreEnFormulario" />
               </div>
               <p v-if="errors.nombre" class="field-error">{{ errors.nombre }}</p>
             </div>
@@ -72,9 +72,15 @@
                 <label class="field-label">Vencimiento de DUI</label>
                 <div class="relative">
                   <i class="pi pi-calendar input-icon"></i>
-                  <input v-model="form.nacimiento_dui" type="date" class="field-input" :class="errors.nacimiento_dui ? 'error' : ''" />
+                  <input
+                    v-model="form.vencimiento_dui"
+                    type="date"
+                    :min="fechaMinimaDui"
+                    class="field-input"
+                    :class="errors.vencimiento_dui ? 'error' : ''"
+                  />
                 </div>
-                <p v-if="errors.nacimiento_dui" class="field-error">{{ errors.nacimiento_dui }}</p>
+                <p v-if="errors.vencimiento_dui" class="field-error">{{ errors.vencimiento_dui }}</p>
               </div>
             </div>
 
@@ -83,7 +89,15 @@
                 <label class="field-label">Número de licencia</label>
                 <div class="relative">
                   <i class="pi pi-car input-icon"></i>
-                  <input v-model.trim="form.numero_licencia" type="text" placeholder="X000000000" class="field-input" :class="errors.numero_licencia ? 'error' : ''" />
+                  <input
+                    v-model.trim="form.numero_licencia"
+                    type="text"
+                    inputmode="numeric"
+                    placeholder="10000001"
+                    maxlength="30"
+                    class="field-input"
+                    :class="errors.numero_licencia ? 'error' : ''"
+                  />
                 </div>
                 <p v-if="errors.numero_licencia" class="field-error">{{ errors.numero_licencia }}</p>
               </div>
@@ -91,7 +105,13 @@
                 <label class="field-label">Vencimiento de licencia</label>
                 <div class="relative">
                   <i class="pi pi-calendar input-icon"></i>
-                  <input v-model="form.vencimiento_licencia" type="date" class="field-input" :class="errors.vencimiento_licencia ? 'error' : ''" />
+                  <input
+                    v-model="form.vencimiento_licencia"
+                    type="date"
+                    :min="fechaMinimaLicencia"
+                    class="field-input"
+                    :class="errors.vencimiento_licencia ? 'error' : ''"
+                  />
                 </div>
                 <p v-if="errors.vencimiento_licencia" class="field-error">{{ errors.vencimiento_licencia }}</p>
               </div>
@@ -248,7 +268,7 @@ const form = reactive({
   id: null,
   nombre: '',
   dui: '',
-  nacimiento_dui: '',
+  vencimiento_dui: '',
   numero_licencia: '',
   vencimiento_licencia: '',
   telefono: '',
@@ -260,7 +280,7 @@ const form = reactive({
 const errors = reactive({
   nombre: '',
   dui: '',
-  nacimiento_dui: '',
+  vencimiento_dui: '',
   numero_licencia: '',
   vencimiento_licencia: '',
   telefono: '',
@@ -280,6 +300,8 @@ const paisesTelefono = [
 ]
 
 const paisTelefono = computed(() => paisesTelefono.find((pais) => pais.codigo === form.pais_telefono) || paisesTelefono[0])
+const fechaMinimaDui = computed(() => fechaMananaLocal())
+const fechaMinimaLicencia = computed(() => fechaMananaLocal())
 
 const municipioPlaceholder = computed(() => {
   if (!form.departamento_id) return 'Selecciona primero un departamento'
@@ -324,7 +346,7 @@ function llenarFormulario() {
       id: cliente.id,
       nombre: cliente.nombre || '',
       dui: cliente.dui || '',
-      nacimiento_dui: fechaInput(cliente.nacimiento_dui),
+      vencimiento_dui: fechaInput(cliente.vencimiento_dui),
       numero_licencia: cliente.numero_licencia || '',
       vencimiento_licencia: fechaInput(cliente.vencimiento_licencia),
       telefono: telefonoLocalDesdeGuardado(cliente.telefono || ''),
@@ -339,7 +361,7 @@ function llenarFormulario() {
     id: null,
     nombre: '',
     dui: '',
-    nacimiento_dui: '',
+    vencimiento_dui: '',
     numero_licencia: '',
     vencimiento_licencia: '',
     telefono: '',
@@ -376,7 +398,14 @@ async function cargarMunicipios(departamentoId) {
 function validar() {
   resetErrors()
   let ok = true
+  form.nombre = normalizarNombre(form.nombre)
+  form.numero_licencia = String(form.numero_licencia || '').trim()
+
   if (!form.nombre) { errors.nombre = 'El nombre es obligatorio.'; ok = false }
+  else if (!nombreTieneFormatoValido(form.nombre)) {
+    errors.nombre = 'El nombre solo debe contener letras, espacios, acentos, guion o apostrofo.'
+    ok = false
+  }
   if (!form.dui) {
     errors.dui = 'El DUI es obligatorio.'
     ok = false
@@ -387,9 +416,27 @@ function validar() {
     errors.dui = 'El DUI no es valido. Revisa el digito final.'
     ok = false
   }
-  if (!form.nacimiento_dui) { errors.nacimiento_dui = 'La fecha del DUI es obligatoria.'; ok = false }
-  if (!form.numero_licencia) { errors.numero_licencia = 'El número de licencia es obligatorio.'; ok = false }
-  if (!form.vencimiento_licencia) { errors.vencimiento_licencia = 'La fecha de vencimiento de la licencia es obligatoria.'; ok = false }
+  if (!form.vencimiento_dui) {
+    errors.vencimiento_dui = 'La fecha de vencimiento del DUI es obligatoria.'
+    ok = false
+  } else if (!fechaPosteriorAHoy(form.vencimiento_dui)) {
+    errors.vencimiento_dui = 'El DUI debe vencer después de hoy.'
+    ok = false
+  }
+  if (!form.numero_licencia) {
+    errors.numero_licencia = 'El número de licencia es obligatorio.'
+    ok = false
+  } else if (!/^\d{1,30}$/.test(form.numero_licencia)) {
+    errors.numero_licencia = 'El número de licencia solo debe contener números.'
+    ok = false
+  }
+  if (!form.vencimiento_licencia) {
+    errors.vencimiento_licencia = 'La fecha de vencimiento de la licencia es obligatoria.'
+    ok = false
+  } else if (!fechaPosteriorAHoy(form.vencimiento_licencia)) {
+    errors.vencimiento_licencia = 'La licencia debe vencer después de hoy.'
+    ok = false
+  }
   const telefonoLocal = telefonoLocalNormalizado(form.telefono)
   if (!telefonoLocal) {
     errors.telefono = 'El teléfono es obligatorio.'
@@ -409,8 +456,8 @@ function handleGuardar() {
     id: form.id,
     nombre: form.nombre.trim(),
     dui: form.dui.trim(),
-    nacimiento_dui: form.nacimiento_dui,
-    numero_licencia: form.numero_licencia.trim(),
+    vencimiento_dui: form.vencimiento_dui,
+    numero_licencia: form.numero_licencia,
     vencimiento_licencia: form.vencimiento_licencia,
     telefono: telefonoNormalizadoCompleto(),
     municipio_id: form.municipio_id,
@@ -419,14 +466,39 @@ function handleGuardar() {
 
 function aplicarErroresServidor(serverErrors = {}) {
   Object.keys(errors).forEach(k => errors[k] = '')
+  const aliases = {
+    nacimiento_dui: 'vencimiento_dui',
+  }
+  let primerErrorNoMapeado = ''
+
   Object.entries(serverErrors || {}).forEach(([field, messages]) => {
-    if (field in errors) errors[field] = Array.isArray(messages) ? messages[0] : messages
+    const mensaje = Array.isArray(messages) ? messages[0] : messages
+    const mappedField = aliases[field] || field
+    if (mappedField in errors) {
+      errors[mappedField] = mensaje
+    } else if (!primerErrorNoMapeado) {
+      primerErrorNoMapeado = mensaje
+    }
   })
+
+  if (primerErrorNoMapeado) globalError.value = primerErrorNoMapeado
 }
 
 function onDuiInput(event) {
   const digits = event.target.value.replace(/\D/g, '').slice(0, 9)
   form.dui = digits.length > 8 ? `${digits.slice(0, 8)}-${digits.slice(8)}` : digits
+}
+
+function normalizarNombre(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ')
+}
+
+function normalizarNombreEnFormulario() {
+  form.nombre = normalizarNombre(form.nombre)
+}
+
+function nombreTieneFormatoValido(value) {
+  return /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü' -]+$/.test(value)
 }
 
 function duiTieneFormato(value) {
@@ -502,6 +574,27 @@ function onTelefonoPaste(event) {
 function fechaInput(value) {
   if (!value) return ''
   return String(value).slice(0, 10)
+}
+
+function fechaHoyLocal() {
+  const hoy = new Date()
+  const year = hoy.getFullYear()
+  const month = String(hoy.getMonth() + 1).padStart(2, '0')
+  const day = String(hoy.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function fechaMananaLocal() {
+  const manana = new Date()
+  manana.setDate(manana.getDate() + 1)
+  const year = manana.getFullYear()
+  const month = String(manana.getMonth() + 1).padStart(2, '0')
+  const day = String(manana.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function fechaPosteriorAHoy(value) {
+  return Boolean(value) && value > fechaHoyLocal()
 }
 </script>
 
