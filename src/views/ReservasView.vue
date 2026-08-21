@@ -56,6 +56,7 @@
         <option value="">Todos los estados</option>
         <option value="PENDIENTE">Pendiente</option>
         <option value="CONFIRMADA">Confirmada</option>
+        <option value="CONCLUIDA">Concluida</option>
       </select>
     </div>
 
@@ -131,7 +132,7 @@
                 <div class="acciones-piramide">
                   <div class="acciones-piramide__top">
                     <router-link
-                      v-if="r.estado !== 'CANCELADA' && !r.contrato"
+                      v-if="puedeGenerarContrato(r)"
                       :to="{ name: 'contratos-nuevo', query: { reserva_id: r.id } }"
                       class="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:shadow-sm no-underline hover:no-underline"
                       :class="isDark
@@ -148,17 +149,17 @@
                         isDark
                           ? 'border-red-800 bg-red-950/40 text-[#f0a500] hover:bg-red-950/70 hover:border-red-700'
                           : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100',
-                        r.estado === 'CANCELADA' ? 'opacity-40 cursor-not-allowed' : '',
+                        !puedeModificarReserva(r) ? 'opacity-40 cursor-not-allowed' : '',
                       ]"
-                      :title="r.estado === 'CANCELADA' ? 'No editable' : 'Editar reserva'"
-                      :disabled="r.estado === 'CANCELADA'"
+                      :title="puedeModificarReserva(r) ? 'Editar reserva' : 'Solo las reservas pendientes se pueden editar'"
+                      :disabled="!puedeModificarReserva(r)"
                       @click="abrirModalEditar(r)"
                     >
                       <i class="pi pi-pencil text-xs"></i>
                     </button>
                   </div>
                   <button
-                    v-if="r.estado !== 'CANCELADA' && !r.contrato"
+                    v-if="puedeModificarReserva(r)"
                     type="button"
                     class="acciones-piramide__cancelar"
                     :class="isDark
@@ -341,6 +342,15 @@ async function guardarReserva(form) {
     guardandoEdicion.value = false
   }
 }
+
+function puedeModificarReserva(reserva) {
+  return reserva?.estado === 'PENDIENTE'
+}
+
+function puedeGenerarContrato(reserva) {
+  return reserva?.estado === 'PENDIENTE' && !reserva?.contrato
+}
+
 function nombreVehiculo(v) {
   if (!v) return '—'
   const marca = v.modelo?.marca?.nombre
@@ -354,7 +364,12 @@ function formatFechaHora(fecha) {
 }
 
 function labelEstado(estado) {
-  const map = { PENDIENTE: 'Pendiente', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada' }
+  const map = {
+    PENDIENTE: 'Pendiente',
+    CONFIRMADA: 'Confirmada',
+    CANCELADA: 'Cancelada',
+    CONCLUIDA: 'Concluida',
+  }
   return map[estado] || estado
 }
 
@@ -368,6 +383,7 @@ function estadoStyle(estado) {
     PENDIENTE:  'background:#fef3c7; color:#92400e;',
     CONFIRMADA: 'background:#dcfce7; color:#166534;',
     CANCELADA:  'background:#fee2e2; color:#991b1b;',
+    CONCLUIDA:  'background:#dbeafe; color:#1e40af;',
   }
   return styles[estado] || 'background:#f3f4f6; color:#6b7280;'
 }

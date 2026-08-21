@@ -82,6 +82,7 @@
                       <input
                         v-model="form.placa"
                         type="text"
+                        maxlength="20"
                         class="veh-input veh-input--plate"
                         :class="{ 'veh-input--error': errors.placa }"
                         placeholder="P123456"
@@ -94,8 +95,8 @@
                       <input
                         v-model="form.anio"
                         type="number"
-                        min="1990"
-                        :max="anioMax"
+                        :min="ANIO_MIN"
+                        :max="ANIO_MAX"
                         class="veh-input"
                         :class="{ 'veh-input--error': errors.anio }"
                       />
@@ -147,10 +148,15 @@
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div class="veh-field">
                       <label>Marca</label>
-                      <select v-model="marcaId" class="veh-input veh-input--select">
+                      <select
+                        v-model="marcaId"
+                        class="veh-input veh-input--select"
+                        :class="{ 'veh-input--error': errors.marca_id }"
+                      >
                         <option value="">Seleccionar</option>
                         <option v-for="m in marcas" :key="m.id" :value="m.id">{{ m.nombre }}</option>
                       </select>
+                      <p v-if="errors.marca_id" class="veh-error">{{ errors.marca_id }}</p>
                     </div>
                     <div class="veh-field">
                       <label>Modelo</label>
@@ -256,7 +262,7 @@
                       maxlength="400"
                       class="veh-input veh-input--textarea"
                       :class="{ 'veh-input--error': errors.observaciones }"
-                      placeholder="Detalles generales del vehiculo, si aplica..."
+                      placeholder="Detalles generales del vehículo, si aplica..."
                     ></textarea>
                     <p v-if="errors.observaciones" class="veh-error">{{ errors.observaciones }}</p>
                   </div>
@@ -344,7 +350,8 @@ const coloresRapidos = [
   { nombre: 'Dorado', hex: '#f0a500' },
 ]
 
-const anioMax = new Date().getFullYear() + 1
+const ANIO_MIN = 1980
+const ANIO_MAX = 2050
 const loading = ref(false)
 const globalError = ref('')
 const marcaId = ref('')
@@ -390,6 +397,7 @@ const form = reactive({
   color: '',
   anio: '',
   capacidad_pasajeros: '',
+  marca_id: '',
   modelo_id: '',
   categoria_id: '',
   propietario_id: '',
@@ -455,12 +463,23 @@ function seleccionarTipoPropietario(tipo) {
 }
 
 function validarPaso1() {
-  errors.placa = errors.color = errors.anio = errors.capacidad_pasajeros = errors.modelo_id = ''
+  errors.placa = errors.color = errors.anio = errors.capacidad_pasajeros = errors.marca_id = errors.modelo_id = ''
   let ok = true
-  if (!form.placa.trim()) { errors.placa = 'Requerido'; ok = false }
+  const placa = form.placa.trim()
+  const anio = Number(form.anio)
+  const pasajeros = Number(form.capacidad_pasajeros)
+  if (!placa) { errors.placa = 'La placa es obligatoria.'; ok = false }
+  else if (placa.length > 20) { errors.placa = 'La placa no puede tener más de 20 caracteres.'; ok = false }
   if (!form.color.trim()) { errors.color = 'Requerido'; ok = false }
-  if (!form.anio || Number(form.anio) < 1990) { errors.anio = 'Año inválido'; ok = false }
-  if (!form.capacidad_pasajeros || Number(form.capacidad_pasajeros) < 1) { errors.capacidad_pasajeros = 'Indica la capacidad'; ok = false }
+  if (!form.anio || !Number.isInteger(anio) || anio < ANIO_MIN || anio > ANIO_MAX) {
+    errors.anio = `El año debe ser un número entero entre ${ANIO_MIN} y ${ANIO_MAX}.`
+    ok = false
+  }
+  if (!form.capacidad_pasajeros || !Number.isInteger(pasajeros) || pasajeros < 1 || pasajeros > 255) {
+    errors.capacidad_pasajeros = 'La capacidad debe ser un número entero entre 1 y 255.'
+    ok = false
+  }
+  if (!marcaId.value) { errors.marca_id = 'Selecciona una marca'; ok = false }
   if (!form.modelo_id) { errors.modelo_id = 'Selecciona un modelo'; ok = false }
   return ok
 }
@@ -474,12 +493,49 @@ function validarPaso2() {
   return ok
 }
 
-function validar() {
-  return validarPaso1() && validarPaso2()
-}
-
 function siguientePaso() {
   if (validarPaso1()) paso.value = 2
+}
+
+function limpiarErrores() {
+  Object.keys(errors).forEach((k) => { errors[k] = '' })
+  globalError.value = ''
+}
+
+function aplicarErroresBackend(e) {
+  const responseErrors = e?.response?.data?.errors
+  if (!responseErrors || typeof responseErrors !== 'object') return false
+
+  limpiarErrores()
+  const map = {
+    marca_id: 'marca_id',
+    modelo_id: 'modelo_id',
+    categoria_id: 'categoria_id',
+    propietario_id: 'propietario_id',
+    placa: 'placa',
+    color: 'color',
+    anio: 'anio',
+    capacidad_pasajeros: 'capacidad_pasajeros',
+    observaciones: 'observaciones',
+  }
+
+  Object.entries(responseErrors).forEach(([field, value]) => {
+    const target = map[field]
+    const message = Array.isArray(value) ? value[0] : value
+    if (target && target in errors) errors[target] = message || ''
+  })
+
+  if (errors.marca_id || errors.modelo_id || errors.placa || errors.color || errors.anio || errors.capacidad_pasajeros) {
+    paso.value = 1
+  } else {
+    paso.value = 2
+  }
+
+  const hasMappedErrors = Object.values(errors).some(Boolean)
+  if (!hasMappedErrors) {
+    globalError.value = e?.response?.data?.message || 'No se pudo guardar el vehículo.'
+  }
+  return true
 }
 
 function resetForm() {
@@ -519,7 +575,7 @@ function aplicarVehiculoAlForm(vehiculo) {
 async function prepararModal() {
   paso.value = 1
   globalError.value = ''
-  Object.keys(errors).forEach((k) => { errors[k] = '' })
+  limpiarErrores()
 
   if (props.modoEdicion && props.vehiculo) {
     await vehiculosStore.fetchCatalogos()
@@ -564,8 +620,10 @@ watch(
 )
 
 function handleGuardar() {
-  if (!validar()) {
-    if (!validarPaso1()) paso.value = 1
+  const paso1Ok = validarPaso1()
+  const paso2Ok = paso1Ok ? validarPaso2() : false
+  if (!paso1Ok || !paso2Ok) {
+    if (!paso1Ok) paso.value = 1
     else paso.value = 2
     return
   }
@@ -586,6 +644,8 @@ function handleGuardar() {
   emit('guardar', payload)
   loading.value = false
 }
+
+defineExpose({ aplicarErroresBackend })
 </script>
 
 <style scoped>

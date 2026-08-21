@@ -19,6 +19,11 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
   const propietarios = ref([])
   const modelosPorMarca = ref({})
   const catalogosCargando = ref(false)
+  const catalogosCargados = {
+    marcas: false,
+    categorias: false,
+    propietarios: false,
+  }
   let catalogosPromesa = null
 
   async function fetchVehiculos(params = {}) {
@@ -38,7 +43,7 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
   }
 
   async function fetchCatalogos(force = false) {
-    if (!force && marcas.value.length && categorias.value.length) {
+    if (!force && catalogosCargados.marcas && catalogosCargados.categorias && catalogosCargados.propietarios) {
       return { marcas: marcas.value, categorias: categorias.value, propietarios: propietarios.value }
     }
     if (catalogosPromesa && !force) return catalogosPromesa
@@ -54,6 +59,9 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
         marcas.value = marcasRes.status === 'fulfilled' ? extraerListaApi(marcasRes.value.data?.data) : []
         categorias.value = catsRes.status === 'fulfilled' ? extraerListaApi(catsRes.value.data?.data) : []
         propietarios.value = propsRes.status === 'fulfilled' ? extraerListaApi(propsRes.value.data?.data) : []
+        catalogosCargados.marcas = marcasRes.status === 'fulfilled'
+        catalogosCargados.categorias = catsRes.status === 'fulfilled'
+        catalogosCargados.propietarios = propsRes.status === 'fulfilled'
         return { marcas: marcas.value, categorias: categorias.value, propietarios: propietarios.value }
       } finally {
         catalogosCargando.value = false
@@ -85,9 +93,16 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
     if (!tipo || tipo === 'marca') {
       marcas.value = []
       modelosPorMarca.value = {}
+      catalogosCargados.marcas = false
     }
-    if (!tipo || tipo === 'categoria') categorias.value = []
-    if (!tipo || tipo === 'propietario') propietarios.value = []
+    if (!tipo || tipo === 'categoria') {
+      categorias.value = []
+      catalogosCargados.categorias = false
+    }
+    if (!tipo || tipo === 'propietario') {
+      propietarios.value = []
+      catalogosCargados.propietarios = false
+    }
     if (!tipo || tipo === 'modelo') modelosPorMarca.value = {}
   }
 

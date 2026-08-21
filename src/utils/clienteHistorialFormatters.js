@@ -78,6 +78,7 @@ export function labelEstadoReserva(estado) {
     PENDIENTE: 'Pendiente',
     CONFIRMADA: 'Confirmada',
     CANCELADA: 'Cancelada',
+    CONCLUIDA: 'Concluida',
   }
   return map[estado] || estado || EMPTY
 }
@@ -106,11 +107,13 @@ export function estadoReservaStyle(estado, isDark = false) {
     PENDIENTE: 'background:#fef3c7;color:#92400e;',
     CONFIRMADA: 'background:#dcfce7;color:#166534;',
     CANCELADA: 'background:#fee2e2;color:#991b1b;',
+    CONCLUIDA: 'background:#dbeafe;color:#1e40af;',
   }
   const dark = {
     PENDIENTE: 'background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);',
     CONFIRMADA: 'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
     CANCELADA: 'background:rgba(127,29,29,0.35);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);',
+    CONCLUIDA: 'background:rgba(30,64,175,0.25);color:#93c5fd;border:1px solid rgba(59,130,246,0.35);',
   }
   const styles = isDark ? dark : light
   return styles[estado] || (isDark ? 'background:#374151;color:#d1d5db;' : 'background:#f3f4f6;color:#4b5563;')
