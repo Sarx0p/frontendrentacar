@@ -141,6 +141,27 @@ const vehiculosConsultados = ref(false);
 const errorGlobal = ref("");
 const creando = ref(false);
 
+function escaparHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function htmlAdvertenciaIncidencias(advertencia, incidencias = []) {
+  if (!advertencia) return "";
+  const lista = incidencias.slice(0, 3)
+    .map((i) => `<li><strong>${escaparHtml(i.tipo_incidencia || "Incidencia")}:</strong> ${escaparHtml(i.descripcion || "Sin descripción")}</li>`)
+    .join("");
+  const extra = incidencias.length > 3 ? `<p style="margin-top:.5rem;">Y ${incidencias.length - 3} más.</p>` : "";
+  return `
+    <p style="margin-bottom:.75rem;">${escaparHtml(advertencia)}</p>
+    ${lista ? `<ul style="text-align:left; padding-left:1.25rem; margin:0;">${lista}</ul>${extra}` : ""}
+  `;
+}
+
 const hoy = computed(() => fechaHoyLocal());
 const manana = computed(() => sumarDiasISO(hoy.value, 1));
 const minFechaInicio = computed(() => manana.value);
@@ -334,10 +355,12 @@ async function confirmarReserva() {
       fecha_fin: fechaFin.value,
     });
     const advertenciaReserva = reservasStore.advertencia;
+    const htmlAdvertencia = htmlAdvertenciaIncidencias(advertenciaReserva, reservasStore.incidenciasPendientes);
     await Swal.fire({
       icon: advertenciaReserva ? "warning" : "success",
       title: "¡Reserva creada!",
-      text: advertenciaReserva || "La reserva se registró correctamente.",
+      text: htmlAdvertencia ? undefined : "La reserva se registró correctamente.",
+      html: htmlAdvertencia || undefined,
       confirmButtonColor: "#c0392b",
       confirmButtonText: "Ver reservas",
       background: isDark.value ? "#1f2937" : "#fff",

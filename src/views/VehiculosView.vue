@@ -194,6 +194,7 @@
     </div>
 
     <VehiculosModal
+      ref="vehiculoModalRef"
       :visible="modalAbierto"
       :modo-edicion="modoEdicion"
       :vehiculo="vehiculoSeleccionado"
@@ -204,7 +205,8 @@
     <VehiculosCatalogoModal
       :visible="catalogoAbierto"
       :tipo="catalogoTipo"
-      @cerrar="catalogoAbierto = false"
+      :registro-edicion="catalogoRegistroEdicion"
+      @cerrar="cerrarCatalogo"
       @guardado="onCatalogoGuardado"
     />
   </div>
@@ -228,6 +230,7 @@ import {
 const { isDark } = useAppTheme()
 const store = useVehiculosStore()
 const authStore = useAuthStore()
+const vehiculoModalRef = ref(null)
 
 const search = ref('')
 const filtroEstado = ref('')
@@ -235,6 +238,7 @@ const activeTab = ref('vehiculos')
 const modalAbierto = ref(false)
 const catalogoAbierto = ref(false)
 const catalogoTipo = ref('marca')
+const catalogoRegistroEdicion = ref(null)
 const modoEdicion = ref(false)
 const vehiculoSeleccionado = ref(null)
 const modelos = ref([])
@@ -248,6 +252,9 @@ const ordenEstadosVehiculo = {
   MANTENIMIENTO: 3,
   'FUERA DE SERVICIO': 4,
 }
+const nombreFlexibleRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ./'-]+$/
+const nombrePersonaRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]+$/
+const contieneLetraRegex = /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/
 const vehiculos = computed(() => store.vehiculos)
 const marcas = computed(() => store.marcas)
 const categorias = computed(() => store.categorias)
@@ -433,6 +440,47 @@ function formatFecha(fecha) {
   return new Date(fecha).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+function normalizarTexto(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ')
+}
+
+function normalizarComparacion(value) {
+  return normalizarTexto(value).toLowerCase()
+}
+
+function validarNombreCatalogo(value, tipo, max = 80) {
+  const nombre = normalizarTexto(value)
+  if (!nombre) return 'El nombre es obligatorio'
+  if (nombre.length < 2) return 'El nombre debe tener al menos 2 caracteres'
+  if (nombre.length > max) return `El nombre no puede tener más de ${max} caracteres`
+  if (tipo === 'propietario' && !nombrePersonaRegex.test(nombre)) {
+    return 'El nombre solo debe contener letras y signos básicos'
+  }
+  if (tipo !== 'propietario' && !nombreFlexibleRegex.test(nombre)) {
+    return 'El nombre contiene caracteres no permitidos'
+  }
+  if (tipo === 'categoria' && !contieneLetraRegex.test(nombre)) {
+    return 'La categoría debe incluir al menos una letra'
+  }
+  return null
+}
+
+function existeNombreCatalogo(lista, nombre, exceptId = null, extra = () => true) {
+  const normalizado = normalizarComparacion(nombre)
+  return lista.some((item) => {
+    if (exceptId != null && item.id == exceptId) return false
+    return normalizarComparacion(item.nombre) === normalizado && extra(item)
+  })
+}
+
+function validarPrecioDia(value) {
+  const texto = String(value ?? '').trim()
+  const precio = Number(texto)
+  if (!texto || Number.isNaN(precio) || precio < 1) return 'El precio debe ser de $1.00 o más'
+  if (!/^\d+(\.\d{1,2})?$/.test(texto)) return 'Usa máximo dos decimales'
+  return null
+}
+
 function renderCelda(item, key) {
   const map = {
     placa: item.placa,
@@ -460,14 +508,6 @@ function nombrePropietarioVehiculo(item) {
 
 function contarModelosPorMarca(marcaId) {
   return modelos.value.filter((modelo) => modelo.marca_id == marcaId || modelo.marca?.id == marcaId).length
-}
-
-function existePropietarioPropio(exceptId = null) {
-  return propietarios.value.some((propietario) => {
-    const esPropio = String(propietario.tipo_propietario || '').toUpperCase() === 'PROPIO'
-    const esMismo = exceptId != null && propietario.id == exceptId
-    return esPropio && !esMismo
-  })
 }
 
 function contarVehiculosRelacionados(item) {
@@ -520,10 +560,22 @@ function abrirModalCrear() {
 
 function abrirCatalogo(tipo) {
   catalogoTipo.value = tipo
+  catalogoRegistroEdicion.value = null
   catalogoAbierto.value = true
 }
 
-async function onCatalogoGuardado({ tipo }) {
+function abrirCatalogoEditar(tipo, item) {
+  catalogoTipo.value = tipo
+  catalogoRegistroEdicion.value = { ...item }
+  catalogoAbierto.value = true
+}
+
+function cerrarCatalogo() {
+  catalogoAbierto.value = false
+  catalogoRegistroEdicion.value = null
+}
+
+async function onCatalogoGuardado({ tipo, modoEdicion: catalogoEditado = false }) {
   store.invalidarCatalogos(tipo)
   await Promise.all([
     store.fetchCatalogos(true),
@@ -535,9 +587,12 @@ async function onCatalogoGuardado({ tipo }) {
     modelo: 'Modelo registrado',
     propietario: 'Propietario registrado',
   }
+  const labelsEdicion = {
+    propietario: 'Propietario actualizado',
+  }
   await Swal.fire({
     icon: 'success',
-    title: labels[tipo],
+    title: catalogoEditado ? (labelsEdicion[tipo] || 'Registro actualizado') : labels[tipo],
     text: 'El catálogo se actualizó correctamente.',
     confirmButtonColor: '#c0392b',
     background: isDark.value ? '#1f2937' : '#fff',
@@ -570,10 +625,17 @@ async function accionEditar(item) {
         confirmButtonColor: '#c0392b',
         background: isDark.value ? '#1f2937' : '#fff',
         color: isDark.value ? '#f3f4f6' : '#111827',
-        inputValidator: (value) => (!value?.trim() ? 'El nombre es obligatorio' : null),
+        inputValidator: (value) => {
+          const errorNombre = validarNombreCatalogo(value, 'marca', 80)
+          if (errorNombre) return errorNombre
+          if (existeNombreCatalogo(marcas.value, value, item.id)) {
+            return 'Ya existe una marca registrada con ese nombre'
+          }
+          return null
+        },
       })
       if (!result.isConfirmed) return
-      await api.put(`/marcas/${item.id}`, { nombre: result.value.trim() })
+      await api.put(`/marcas/${item.id}`, { nombre: normalizarTexto(result.value) })
       await store.fetchCatalogos(true)
       return
     }
@@ -591,17 +653,23 @@ async function accionEditar(item) {
       background: isDark.value ? '#1f2937' : '#fff',
       color: isDark.value ? '#f3f4f6' : '#111827',
       preConfirm: () => {
-        const nombre = document.getElementById('swal-cat-nombre')?.value?.trim()
-        const precio = Number(document.getElementById('swal-cat-precio')?.value)
-        if (!nombre) {
-          Swal.showValidationMessage('El nombre es obligatorio')
+        const nombre = normalizarTexto(document.getElementById('swal-cat-nombre')?.value)
+        const precioRaw = document.getElementById('swal-cat-precio')?.value
+        const errorNombre = validarNombreCatalogo(nombre, 'categoria', 80)
+        const errorPrecio = validarPrecioDia(precioRaw)
+        if (errorNombre) {
+          Swal.showValidationMessage(errorNombre)
           return false
         }
-        if (!precio || Number.isNaN(precio) || precio < 1) {
-          Swal.showValidationMessage('El precio debe ser mayor o igual a 1')
+        if (existeNombreCatalogo(categorias.value, nombre, item.id)) {
+          Swal.showValidationMessage('Ya existe una categoría registrada con ese nombre')
           return false
         }
-        return { nombre, precio_dia: precio }
+        if (errorPrecio) {
+          Swal.showValidationMessage(errorPrecio)
+          return false
+        }
+        return { nombre, precio_dia: Number(precioRaw) }
       },
     })
       if (!isConfirmed) return
@@ -612,7 +680,7 @@ async function accionEditar(item) {
     if (activeTab.value === 'modelos') {
       await store.fetchCatalogos()
       const marcasHtml = store.marcas
-        .map((m) => `<option value="${m.id}" ${m.id === item.marca_id ? 'selected' : ''}>${m.nombre}</option>`)
+        .map((m) => `<option value="${m.id}" ${m.id == (item.marca_id || item.marca?.id) ? 'selected' : ''}>${m.nombre}</option>`)
         .join('')
       const { value, isConfirmed } = await Swal.fire({
       title: 'Editar modelo',
@@ -627,14 +695,19 @@ async function accionEditar(item) {
       background: isDark.value ? '#1f2937' : '#fff',
       color: isDark.value ? '#f3f4f6' : '#111827',
       preConfirm: () => {
-        const nombre = document.getElementById('swal-mod-nombre')?.value?.trim()
+        const nombre = normalizarTexto(document.getElementById('swal-mod-nombre')?.value)
         const marca_id = Number(document.getElementById('swal-mod-marca')?.value)
-        if (!nombre) {
-          Swal.showValidationMessage('El nombre es obligatorio')
+        const errorNombre = validarNombreCatalogo(nombre, 'modelo', 100)
+        if (errorNombre) {
+          Swal.showValidationMessage(errorNombre)
           return false
         }
         if (!marca_id) {
           Swal.showValidationMessage('Selecciona una marca')
+          return false
+        }
+        if (existeNombreCatalogo(modelos.value, nombre, item.id, (modelo) => Number(modelo.marca_id || modelo.marca?.id) === marca_id)) {
+          Swal.showValidationMessage('Ya existe un modelo con ese nombre para la marca seleccionada')
           return false
         }
         return { nombre, marca_id }
@@ -646,52 +719,7 @@ async function accionEditar(item) {
       return
     }
     if (activeTab.value === 'propietarios') {
-      const tipoActual = String(item.tipo_propietario || '').toUpperCase()
-      const tipos = existePropietarioPropio(item.id) && tipoActual !== 'PROPIO'
-        ? ['TERCERO', 'FAMILIAR']
-        : ['PROPIO', 'TERCERO', 'FAMILIAR']
-      const tiposHtml = tipos
-        .map((t) => `<option value="${t}" ${t === tipoActual ? 'selected' : ''}>${t}</option>`)
-        .join('')
-      const { value, isConfirmed } = await Swal.fire({
-      title: 'Editar propietario',
-      html: `
-        <input id="swal-prop-nombre" class="swal2-input" placeholder="Nombre" value="${item.nombre ?? ''}">
-        <input id="swal-prop-tel" class="swal2-input" placeholder="Teléfono" value="${item.telefono ?? ''}">
-        <select id="swal-prop-tipo" class="swal2-input">${tiposHtml}</select>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Guardar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#c0392b',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-      preConfirm: () => {
-        const nombre = document.getElementById('swal-prop-nombre')?.value?.trim()
-        const telefono = document.getElementById('swal-prop-tel')?.value?.trim()
-        const tipo_propietario = document.getElementById('swal-prop-tipo')?.value
-        if (!nombre) {
-          Swal.showValidationMessage('El nombre es obligatorio')
-          return false
-        }
-        if (!telefono) {
-          Swal.showValidationMessage('El teléfono es obligatorio')
-          return false
-        }
-        if (!tipo_propietario) {
-          Swal.showValidationMessage('Selecciona un tipo')
-          return false
-        }
-        if (tipo_propietario === 'PROPIO' && existePropietarioPropio(item.id)) {
-          Swal.showValidationMessage('Ya existe un propietario propio registrado')
-          return false
-        }
-        return { nombre, telefono, tipo_propietario }
-      },
-    })
-      if (!isConfirmed) return
-      await api.put(`/admin/propietarios/${item.id}`, value)
-      await store.fetchCatalogos(true)
+      abrirCatalogoEditar('propietario', item)
     }
   } catch (e) {
     await Swal.fire({
@@ -778,7 +806,7 @@ function mensajeErrorEliminacion(e, tab) {
     return mensajeErrorApi(e, 'No fue posible cambiar el estado del vehículo.')
   }
   if (tab === 'categorias') {
-    return 'No se puede eliminar esta categoría desde el sistema actual. Si ya tiene vehículos asociados, debe conservarse para no romper el historial.'
+    return mensajeErrorApi(e, 'No fue posible eliminar la categoría.')
   }
   return mensajeErrorApi(e, 'No fue posible eliminar el registro con la configuración actual.')
 }
@@ -833,10 +861,11 @@ async function guardarVehiculo(form) {
     }
     modalAbierto.value = false
   } catch (e) {
+    if (vehiculoModalRef.value?.aplicarErroresBackend?.(e)) return
     await Swal.fire({
       icon: 'error',
       title: 'Error',
-      text: e.response?.data?.message || store.error || 'No se pudo guardar el vehículo.',
+      text: mensajeErrorApi(e, store.error || 'No se pudo guardar el vehículo.'),
       confirmButtonColor: '#c0392b',
       background: isDark.value ? '#1f2937' : '#fff',
       color: isDark.value ? '#f3f4f6' : '#111827',
@@ -881,8 +910,3 @@ async function guardarVehiculo(form) {
   color: #f3f4f6;
 }
 </style>
-
-
-
-
-

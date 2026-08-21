@@ -21,8 +21,8 @@
                 <i :class="['pi', config.icon, 'text-base']" :style="{ color: config.color }"></i>
               </div>
               <div>
-                <p class="font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">{{ config.titulo }}</p>
-                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ config.subtitulo }}</p>
+                <p class="font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">{{ tituloModal }}</p>
+                <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">{{ subtituloModal }}</p>
               </div>
             </div>
             <button type="button" @click="$emit('cerrar')" class="w-8 h-8 rounded-lg flex items-center justify-center" :class="isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-400'">
@@ -42,7 +42,14 @@
 
             <div>
               <label class="field-label">{{ labelNombre }}</label>
-              <input v-model="form.nombre" type="text" class="field-input" :class="inputClass(errors.nombre)" :placeholder="config.placeholder" />
+              <input
+                v-model="form.nombre"
+                type="text"
+                class="field-input"
+                :class="inputClass(errors.nombre)"
+                :maxlength="nombreMax"
+                :placeholder="config.placeholder"
+              />
               <p v-if="errors.nombre" class="field-error">{{ errors.nombre }}</p>
             </div>
 
@@ -133,6 +140,7 @@ import { useAppTheme } from '@/composables/useAppTheme'
 const props = defineProps({
   visible: { type: Boolean, default: false },
   tipo:    { type: String, default: 'marca' },
+  registroEdicion: { type: Object, default: null },
 })
 
 const emit = defineEmits(['cerrar', 'guardado'])
@@ -142,10 +150,15 @@ const { isDark } = useAppTheme()
 const loading = ref(false)
 const globalError = ref('')
 const marcas = ref([])
+const categoriasExistentes = ref([])
+const modelosExistentes = ref([])
 const propietariosExistentes = ref([])
 const countryMenuOpen = ref(false)
 const form = reactive({ nombre: '', precio_dia: '', marca_id: '', telefono: '', pais_telefono: 'SV', tipo_propietario: '' })
 const errors = reactive({ nombre: '', precio_dia: '', marca_id: '', telefono: '', tipo_propietario: '' })
+const nombreFlexibleRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ./'-]+$/
+const nombrePersonaRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]+$/
+const contieneLetraRegex = /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/
 
 const paisesTelefono = [
   { codigo: 'SV', flagClass: 'flag-sv', prefijo: '+503', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
@@ -206,11 +219,20 @@ const labelNombre = computed(() => {
 })
 
 const config = computed(() => configs[props.tipo] || configs.marca)
+const modoEdicionPropietario = computed(() => props.tipo === 'propietario' && Boolean(props.registroEdicion?.id))
+const tituloModal = computed(() => modoEdicionPropietario.value ? 'Editar propietario' : config.value.titulo)
+const subtituloModal = computed(() =>
+  modoEdicionPropietario.value ? 'Actualiza los datos del propietario' : config.value.subtitulo,
+)
 const iconWrapStyle = computed(() => ({ background: config.value.bg }))
 const paisTelefono = computed(() => paisesTelefono.find((pais) => pais.codigo === form.pais_telefono) || paisesTelefono[0])
 const hasFieldErrors = computed(() => Object.values(errors).some(Boolean))
+const nombreMax = computed(() => props.tipo === 'marca' || props.tipo === 'categoria' ? 80 : 100)
 const hayPropietarioPropio = computed(() =>
-  propietariosExistentes.value.some((p) => String(p.tipo_propietario || '').toUpperCase() === 'PROPIO'),
+  propietariosExistentes.value.some((p) =>
+    String(p.tipo_propietario || '').toUpperCase() === 'PROPIO'
+    && (!modoEdicionPropietario.value || Number(p.id) !== Number(props.registroEdicion?.id)),
+  ),
 )
 const tiposPropietarioDisponibles = computed(() =>
   hayPropietarioPropio.value
@@ -231,6 +253,24 @@ async function cargarMarcas() {
   }
 }
 
+async function cargarCategoriasExistentes() {
+  try {
+    const res = await api.get('/categorias')
+    categoriasExistentes.value = extraerListaApi(res.data?.data)
+  } catch {
+    categoriasExistentes.value = []
+  }
+}
+
+async function cargarModelosExistentes() {
+  try {
+    const res = await api.get('/modelos')
+    modelosExistentes.value = extraerListaApi(res.data?.data)
+  } catch {
+    modelosExistentes.value = []
+  }
+}
+
 async function cargarPropietariosExistentes() {
   try {
     const res = await api.get('/admin/propietarios')
@@ -242,7 +282,7 @@ async function cargarPropietariosExistentes() {
 }
 
 watch(
-  () => [props.visible, props.tipo],
+  () => [props.visible, props.tipo, props.registroEdicion],
   async ([vis]) => {
     if (!vis) return
     globalError.value = ''
@@ -254,8 +294,18 @@ watch(
     countryMenuOpen.value = false
     form.tipo_propietario = ''
     Object.keys(errors).forEach((k) => { errors[k] = '' })
-    if (props.tipo === 'modelo') await cargarMarcas()
+    if (props.tipo === 'marca' || props.tipo === 'modelo') await cargarMarcas()
+    if (props.tipo === 'categoria') await cargarCategoriasExistentes()
+    if (props.tipo === 'modelo') await cargarModelosExistentes()
     if (props.tipo === 'propietario') await cargarPropietariosExistentes()
+    if (modoEdicionPropietario.value) {
+      const propietario = props.registroEdicion
+      const pais = detectarPaisTelefono(propietario.telefono)
+      form.nombre = propietario.nombre || ''
+      form.pais_telefono = pais.codigo
+      form.telefono = formatearTelefono(propietario.telefono || '', pais)
+      form.tipo_propietario = String(propietario.tipo_propietario || '').toUpperCase()
+    }
   },
 )
 
@@ -280,12 +330,32 @@ function formatearTelefono(digitos, pais = paisTelefono.value) {
   return partes.join('-')
 }
 
+function detectarPaisTelefono(value) {
+  const digitos = soloDigitos(value)
+  return paisesTelefono.find((pais) => digitos.startsWith(soloDigitos(pais.prefijo))) || paisesTelefono[0]
+}
+
 function telefonoNormalizadoCompleto() {
   return `${paisTelefono.value.prefijo} ${form.telefono}`
 }
 
 function telefonoLocalNormalizado(value, pais = paisTelefono.value) {
   return quitarPrefijoPais(soloDigitos(value), pais)
+}
+
+function extraerListaApi(payload) {
+  if (Array.isArray(payload)) return payload
+  if (payload?.data && Array.isArray(payload.data)) return payload.data
+  return []
+}
+
+function normalizarNombre(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function existeNombre(lista, nombre, extra = () => true) {
+  const nombreNormalizado = normalizarNombre(nombre)
+  return lista.some((item) => normalizarNombre(item.nombre) === nombreNormalizado && extra(item))
 }
 
 function seleccionarPais(codigo) {
@@ -307,11 +377,54 @@ function onTelefonoPaste(event) {
 function validar() {
   Object.keys(errors).forEach((k) => { errors[k] = '' })
   let ok = true
-  if (!form.nombre.trim()) { errors.nombre = 'Requerido'; ok = false }
-  if (props.tipo === 'categoria' && (!form.precio_dia || Number(form.precio_dia) < 1)) {
-    errors.precio_dia = 'Precio inválido'; ok = false
+  const nombre = form.nombre.trim().replace(/\s+/g, ' ')
+  if (!nombre) {
+    errors.nombre = 'El nombre es obligatorio.'
+    ok = false
+  } else if (nombre.length < 2) {
+    errors.nombre = 'El nombre debe tener al menos 2 caracteres.'
+    ok = false
+  } else if (nombre.length > nombreMax.value) {
+    errors.nombre = `El nombre no puede tener más de ${nombreMax.value} caracteres.`
+    ok = false
+  } else if (props.tipo === 'propietario' && !nombrePersonaRegex.test(nombre)) {
+    errors.nombre = 'El nombre solo debe contener letras y signos básicos.'
+    ok = false
+  } else if (props.tipo !== 'propietario' && !nombreFlexibleRegex.test(nombre)) {
+    errors.nombre = 'El nombre contiene caracteres no permitidos.'
+    ok = false
+  } else if (props.tipo === 'categoria' && !contieneLetraRegex.test(nombre)) {
+    errors.nombre = 'La categoría debe incluir al menos una letra.'
+    ok = false
+  } else if (props.tipo === 'marca' && existeNombre(marcas.value, nombre)) {
+    errors.nombre = 'Ya existe una marca registrada con ese nombre.'
+    ok = false
+  } else if (props.tipo === 'categoria' && existeNombre(categoriasExistentes.value, nombre)) {
+    errors.nombre = 'Ya existe una categoría registrada con ese nombre.'
+    ok = false
   }
-  if (props.tipo === 'modelo' && !form.marca_id) { errors.marca_id = 'Selecciona una marca'; ok = false }
+  if (props.tipo === 'categoria') {
+    const precio = Number(form.precio_dia)
+    const tieneMasDeDosDecimales = !/^\d+(\.\d{1,2})?$/.test(String(form.precio_dia).trim())
+    if (!form.precio_dia || Number.isNaN(precio) || precio < 1) {
+      errors.precio_dia = 'El precio debe ser de $1.00 o más.'
+      ok = false
+    } else if (tieneMasDeDosDecimales) {
+      errors.precio_dia = 'Usa máximo dos decimales.'
+      ok = false
+    }
+  }
+  if (props.tipo === 'modelo' && !form.marca_id) {
+    errors.marca_id = 'Selecciona una marca'
+    ok = false
+  } else if (props.tipo === 'modelo' && existeNombre(
+    modelosExistentes.value,
+    nombre,
+    (modelo) => Number(modelo.marca_id || modelo.marca?.id) === Number(form.marca_id),
+  )) {
+    errors.nombre = 'Ya existe un modelo con ese nombre para la marca seleccionada.'
+    ok = false
+  }
   if (props.tipo === 'propietario') {
     const telefonoLocal = telefonoLocalNormalizado(form.telefono)
     if (!telefonoLocal) {
@@ -320,7 +433,10 @@ function validar() {
     } else if (telefonoLocal.length !== paisTelefono.value.digitos) {
       errors.telefono = `Debe tener ${paisTelefono.value.digitos} dígitos para ${paisTelefono.value.prefijo}.`
       ok = false
-    } else if (propietariosExistentes.value.some((p) => telefonoLocalNormalizado(p.telefono) === telefonoLocal)) {
+    } else if (propietariosExistentes.value.some((p) =>
+      Number(p.id) !== Number(props.registroEdicion?.id)
+      && telefonoLocalNormalizado(p.telefono) === telefonoLocal,
+    )) {
       errors.telefono = 'Ya existe un propietario registrado con ese número de teléfono.'
       ok = false
     }
@@ -339,27 +455,35 @@ async function handleGuardar() {
   globalError.value = ''
   try {
     let res
+    const nombre = form.nombre.trim().replace(/\s+/g, ' ')
     if (props.tipo === 'marca') {
-      res = await api.post('/marcas', { nombre: form.nombre.trim() })
+      res = await api.post('/marcas', { nombre })
     } else if (props.tipo === 'categoria') {
-      res = await api.post('/categorias', { nombre: form.nombre.trim(), precio_dia: Number(form.precio_dia) })
+      res = await api.post('/categorias', { nombre, precio_dia: Number(form.precio_dia) })
     } else if (props.tipo === 'modelo') {
-      res = await api.post('/modelos', { nombre: form.nombre.trim(), marca_id: Number(form.marca_id) })
+      res = await api.post('/modelos', { nombre, marca_id: Number(form.marca_id) })
     } else if (props.tipo === 'propietario') {
-      res = await api.post('/admin/propietarios', {
-        nombre: form.nombre.trim(),
+      const payload = {
+        nombre,
         telefono: telefonoNormalizadoCompleto(),
         tipo_propietario: form.tipo_propietario,
-      })
+      }
+      res = modoEdicionPropietario.value
+        ? await api.put(`/admin/propietarios/${props.registroEdicion.id}`, payload)
+        : await api.post('/admin/propietarios', payload)
     }
-    emit('guardado', { tipo: props.tipo, data: res.data.data })
+    emit('guardado', { tipo: props.tipo, data: res.data.data, modoEdicion: modoEdicionPropietario.value })
     emit('cerrar')
   } catch (e) {
     const responseErrors = e.response?.data?.errors || {}
     Object.keys(errors).forEach((key) => {
       errors[key] = Array.isArray(responseErrors[key]) ? responseErrors[key][0] : responseErrors[key] || ''
     })
-    globalError.value = e.response?.data?.message || 'No se pudo guardar.'
+    if (responseErrors.telefono && !errors.telefono) {
+      errors.telefono = Array.isArray(responseErrors.telefono) ? responseErrors.telefono[0] : responseErrors.telefono
+    }
+    const firstError = Object.values(responseErrors).flat().find(Boolean)
+    globalError.value = firstError || e.response?.data?.message || 'No se pudo guardar.'
   } finally {
     loading.value = false
   }

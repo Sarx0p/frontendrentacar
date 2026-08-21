@@ -188,6 +188,27 @@ const error = ref('')
 const contratoGenerado = ref(null)
 const mostrarPdf = ref(false)
 
+function escaparHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function htmlAdvertenciaIncidencias(advertencia, incidencias = []) {
+  if (!advertencia) return ''
+  const lista = incidencias.slice(0, 3)
+    .map((i) => `<li><strong>${escaparHtml(i.tipo_incidencia || 'Incidencia')}:</strong> ${escaparHtml(i.descripcion || 'Sin descripción')}</li>`)
+    .join('')
+  const extra = incidencias.length > 3 ? `<p style="margin-top:.5rem;">Y ${incidencias.length - 3} más.</p>` : ''
+  return `
+    <p style="margin-bottom:.75rem;">${escaparHtml(advertencia)}</p>
+    ${lista ? `<ul style="text-align:left; padding-left:1.25rem; margin:0;">${lista}</ul>${extra}` : ''}
+  `
+}
+
 const contratoActivoCliente = computed(() => {
   if (!cliente.value?.id) return null
   return contratosStore.contratos.find((contrato) => {
@@ -450,10 +471,12 @@ async function generarContrato() {
     const contrato = await contratosStore.crear(payload)
     contratoGenerado.value = contrato
     const advertenciaContrato = contratosStore.advertencia
+    const htmlAdvertencia = htmlAdvertenciaIncidencias(advertenciaContrato, contratosStore.incidenciasPendientes)
     await Swal.fire({
       icon: advertenciaContrato ? 'warning' : 'success',
       title: 'Contrato generado',
-      text: advertenciaContrato || `N° ${contrato.numero_contrato}`,
+      text: htmlAdvertencia ? undefined : `N° ${contrato.numero_contrato}`,
+      html: htmlAdvertencia || undefined,
       confirmButtonColor: '#922b21',
     })
     mostrarPdf.value = true

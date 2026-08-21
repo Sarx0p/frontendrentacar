@@ -102,7 +102,7 @@ export const useReservasStore = defineStore("reservas", () => {
     });
     return extractList(res.data).filter(
       (reserva) => Number(reserva.cliente_id || reserva.cliente?.id) === Number(clienteId)
-        && !["CANCELADA", "FINALIZADA"].includes(reserva.estado)
+        && reserva.estado === "PENDIENTE"
         && !reserva.contrato,
     );
   }
