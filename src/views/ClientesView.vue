@@ -166,12 +166,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import Swal from 'sweetalert2'
 import { formatFecha, fechaSoloISO, fechaHoyLocal } from '@/utils/reservaFormatters'
 import ClientesModal from '@/components/clientes/ClientesModal.vue'
 import ClientesHistorialModal from '@/components/clientes/ClientesHistorialModal.vue'
 import { useClientesStore } from '@/stores/clientes'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { toastSuccess } from '@/utils/toast'
 
 const { isDark } = useAppTheme()
 const store = useClientesStore()
@@ -228,16 +228,10 @@ async function guardarCliente(form) {
   try {
     if (modoEdicion.value) {
       await store.actualizar(form)
+      toastSuccess('Cliente actualizado')
     } else {
       await store.crear(form)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Cliente registrado!',
-        text: 'El cliente se creó correctamente.',
-        confirmButtonColor: '#c0392b',
-        background: isDark.value ? '#1f2937' : '#fff',
-        color: isDark.value ? '#f3f4f6' : '#111827',
-      })
+      toastSuccess('Cliente registrado')
     }
     modalAbierto.value = false
   } catch (e) {

@@ -154,6 +154,7 @@ import { useReservasStore } from '@/stores/reservas'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { calcularDias, documentosVigentes } from '@/utils/contratoFormatters'
 import { fechaHoyLocal } from '@/utils/reservaFormatters'
+import { toastSuccess } from '@/utils/toast'
 
 const router = useRouter()
 const route = useRoute()
@@ -472,13 +473,16 @@ async function generarContrato() {
     contratoGenerado.value = contrato
     const advertenciaContrato = contratosStore.advertencia
     const htmlAdvertencia = htmlAdvertenciaIncidencias(advertenciaContrato, contratosStore.incidenciasPendientes)
-    await Swal.fire({
-      icon: advertenciaContrato ? 'warning' : 'success',
-      title: 'Contrato generado',
-      text: htmlAdvertencia ? undefined : `N° ${contrato.numero_contrato}`,
-      html: htmlAdvertencia || undefined,
-      confirmButtonColor: '#922b21',
-    })
+    if (htmlAdvertencia) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Contrato generado',
+        html: htmlAdvertencia,
+        confirmButtonColor: '#922b21',
+      })
+    } else {
+      toastSuccess('Contrato generado', `N° ${contrato.numero_contrato}`)
+    }
     mostrarPdf.value = true
   } catch (e) {
     error.value = e.response?.status === 401

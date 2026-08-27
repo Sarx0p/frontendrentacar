@@ -183,6 +183,7 @@ import { useAppTheme } from '@/composables/useAppTheme'
 import { formatFecha, nombreVehiculo } from '@/utils/reservaFormatters'
 import api from '@/services/api'
 import { fetchAllPaginated } from '@/utils/apiPagination'
+import { toastSuccess } from '@/utils/toast'
 
 const { isDark } = useAppTheme()
 const store = useMantenimientosStore()
@@ -271,14 +272,7 @@ async function guardar(form) {
     } else {
       await store.crear(form)
     }
-    await Swal.fire({
-      icon: 'success',
-      title: modoEdicion.value ? 'Actualizado' : 'Registrado',
-      text: 'El mantenimiento se guardo correctamente.',
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    toastSuccess(modoEdicion.value ? 'Mantenimiento actualizado' : 'Mantenimiento registrado')
     cerrarModal()
     await Promise.all([
       aplicarFiltros(),
@@ -322,13 +316,7 @@ async function confirmarEliminar(m) {
       aplicarFiltros(),
       buscarVehiculosDisponibles(),
     ])
-    await Swal.fire({
-      icon: 'success',
-      title: 'Mantenimiento anulado',
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    toastSuccess('Mantenimiento anulado')
   } catch (e) {
     await Swal.fire({
       icon: 'error',

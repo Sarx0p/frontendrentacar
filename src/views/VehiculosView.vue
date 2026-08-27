@@ -226,6 +226,7 @@ import {
   estadoVehiculoStyle,
   ESTADOS_VEHICULO_TODOS,
 } from '@/utils/vehiculoFormatters'
+import { toastSuccess } from '@/utils/toast'
 
 const { isDark } = useAppTheme()
 const store = useVehiculosStore()
@@ -590,14 +591,7 @@ async function onCatalogoGuardado({ tipo, modoEdicion: catalogoEditado = false }
   const labelsEdicion = {
     propietario: 'Propietario actualizado',
   }
-  await Swal.fire({
-    icon: 'success',
-    title: catalogoEditado ? (labelsEdicion[tipo] || 'Registro actualizado') : labels[tipo],
-    text: 'El catálogo se actualizó correctamente.',
-    confirmButtonColor: '#c0392b',
-    background: isDark.value ? '#1f2937' : '#fff',
-    color: isDark.value ? '#f3f4f6' : '#111827',
-  })
+  toastSuccess(catalogoEditado ? (labelsEdicion[tipo] || 'Registro actualizado') : labels[tipo])
 }
 
 function abrirModalEditar(v) {
@@ -770,16 +764,7 @@ async function accionEliminar(item) {
       await store.fetchCatalogos(true)
     }
 
-    await Swal.fire({
-      icon: 'success',
-      title: esVehiculo ? 'Vehículo fuera de servicio' : 'Registro eliminado',
-      text: esVehiculo
-        ? 'El vehículo quedó marcado como fuera de servicio.'
-        : 'El registro fue eliminado correctamente.',
-      confirmButtonColor: '#c0392b',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    toastSuccess(esVehiculo ? 'Vehículo fuera de servicio' : 'Registro eliminado')
   } catch (e) {
     await Swal.fire({
       icon: 'error',
@@ -840,24 +825,10 @@ async function guardarVehiculo(form) {
   try {
     if (modoEdicion.value) {
       await store.actualizar(form)
-      await Swal.fire({
-        icon: 'success',
-        title: 'Vehículo actualizado',
-        text: 'Los cambios se guardaron correctamente.',
-        confirmButtonColor: '#c0392b',
-        background: isDark.value ? '#1f2937' : '#fff',
-        color: isDark.value ? '#f3f4f6' : '#111827',
-      })
+      toastSuccess('Vehículo actualizado')
     } else {
       await store.crear(form)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Vehículo registrado!',
-        text: 'El vehículo se agregó a la flota.',
-        confirmButtonColor: '#c0392b',
-        background: isDark.value ? '#1f2937' : '#fff',
-        color: isDark.value ? '#f3f4f6' : '#111827',
-      })
+      toastSuccess('Vehículo registrado')
     }
     modalAbierto.value = false
   } catch (e) {

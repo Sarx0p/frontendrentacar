@@ -111,6 +111,7 @@ import { useClientesStore } from "@/stores/clientes";
 import { useReservasStore } from "@/stores/reservas";
 import { useAppTheme } from "@/composables/useAppTheme";
 import { fechaHoyLocal, sumarDiasISO, diasEntreFechasISO } from "@/utils/reservaFormatters";
+import { toastSuccess } from "@/utils/toast";
 
 const router = useRouter();
 const { isDark } = useAppTheme();
@@ -240,14 +241,7 @@ async function onClienteCreado(form) {
     const creado = await clientesStore.crear(form);
     seleccionarCliente(creado);
     modalClienteAbierto.value = false;
-    await Swal.fire({
-      icon: "success",
-      title: "Cliente registrado",
-      text: `${creado.nombre} se agregó correctamente.`,
-      confirmButtonColor: "#c0392b",
-      background: isDark.value ? "#1f2937" : "#fff",
-      color: isDark.value ? "#f3f4f6" : "#111827",
-    });
+    toastSuccess("Cliente registrado", `${creado.nombre} se agregó correctamente.`);
   } catch (e) {
     const backendErrors = e.response?.data?.errors || {};
     erroresCliente.value = backendErrors;
@@ -356,16 +350,19 @@ async function confirmarReserva() {
     });
     const advertenciaReserva = reservasStore.advertencia;
     const htmlAdvertencia = htmlAdvertenciaIncidencias(advertenciaReserva, reservasStore.incidenciasPendientes);
-    await Swal.fire({
-      icon: advertenciaReserva ? "warning" : "success",
-      title: "¡Reserva creada!",
-      text: htmlAdvertencia ? undefined : "La reserva se registró correctamente.",
-      html: htmlAdvertencia || undefined,
-      confirmButtonColor: "#c0392b",
-      confirmButtonText: "Ver reservas",
-      background: isDark.value ? "#1f2937" : "#fff",
-      color: isDark.value ? "#f3f4f6" : "#111827",
-    });
+    if (htmlAdvertencia) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Reserva creada",
+        html: htmlAdvertencia,
+        confirmButtonColor: "#c0392b",
+        confirmButtonText: "Ver reservas",
+        background: isDark.value ? "#1f2937" : "#fff",
+        color: isDark.value ? "#f3f4f6" : "#111827",
+      });
+    } else {
+      toastSuccess("Reserva creada", "La reserva se registró correctamente.");
+    }
     router.push({ name: "reservas" });
   } catch (e) {
     if (e.response?.status === 401) {

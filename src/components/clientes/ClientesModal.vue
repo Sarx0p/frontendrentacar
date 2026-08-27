@@ -263,6 +263,7 @@ const municipios = ref([])
 const cargandoDepartamentos = ref(false)
 const cargandoMunicipios = ref(false)
 const countryMenuOpen = ref(false)
+const inicializandoFormulario = ref(false)
 
 const form = reactive({
   id: null,
@@ -312,13 +313,19 @@ const municipioPlaceholder = computed(() => {
 watch(() => props.visible, async (val) => {
   if (!val) return
   resetErrors()
-  llenarFormulario()
-  await cargarDepartamentos()
-  if (form.departamento_id) await cargarMunicipios(form.departamento_id, false)
+  inicializandoFormulario.value = true
+  try {
+    llenarFormulario()
+    await cargarDepartamentos()
+    if (form.departamento_id) await cargarMunicipios(form.departamento_id, false)
+  } finally {
+    inicializandoFormulario.value = false
+  }
 })
 
 watch(() => form.departamento_id, async (departamentoId, previo) => {
   if (!props.visible || departamentoId === previo) return
+  if (inicializandoFormulario.value) return
   form.municipio_id = ''
   municipios.value = []
   await cargarMunicipios(departamentoId, true)
@@ -412,6 +419,9 @@ function validar() {
   } else if (!duiTieneFormato(form.dui)) {
     errors.dui = 'El DUI debe tener el formato 12345678-9.'
     ok = false
+  } else if (duiTieneDigitosRepetidos(form.dui)) {
+    errors.dui = 'Ingresa un DUI real, no una secuencia repetida.'
+    ok = false
   } else if (!duiValido(form.dui)) {
     errors.dui = 'El DUI no es valido. Revisa el digito final.'
     ok = false
@@ -503,6 +513,11 @@ function nombreTieneFormatoValido(value) {
 
 function duiTieneFormato(value) {
   return /^\d{8}-\d$/.test(value)
+}
+
+function duiTieneDigitosRepetidos(value) {
+  const digits = String(value || '').replace(/\D/g, '')
+  return /^(\d)\1{8}$/.test(digits)
 }
 
 function duiValido(value) {

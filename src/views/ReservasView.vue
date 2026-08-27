@@ -231,6 +231,7 @@ import ReservasCanceladasModal from '@/components/reservas/ReservasCanceladasMod
 import { useReservasStore } from '@/stores/reservas'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { formatFecha } from '@/utils/reservaFormatters'
+import { toastSuccess } from '@/utils/toast'
 
 const { isDark } = useAppTheme()
 const store = useReservasStore()
@@ -278,14 +279,7 @@ async function confirmarCancelacion(motivo) {
   try {
     await store.cancelar(reservaACancelar.value.id, motivo)
     await aplicarFiltros()
-    await Swal.fire({
-      icon: 'success',
-      title: 'Reserva cancelada',
-      text: 'La reserva fue cancelada y ya no aparecerá en la lista activa.',
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    toastSuccess('Reserva cancelada')
     cerrarModalCancelar()
   } catch (e) {
     await Swal.fire({
@@ -320,14 +314,7 @@ async function guardarReserva(form) {
       fecha_fin:    form.fecha_fin,
     })
     await aplicarFiltros()
-    await Swal.fire({
-      icon: 'success',
-      title: 'Reserva actualizada',
-      text: 'Los cambios se guardaron correctamente.',
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    toastSuccess('Reserva actualizada')
     cerrarModal()
   } catch (e) {
     await Swal.fire({

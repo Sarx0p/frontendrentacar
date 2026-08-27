@@ -360,6 +360,7 @@ import Swal from "sweetalert2";
 import { useContratosStore } from "@/stores/contratos";
 import api from "@/services/api";
 import { useAppTheme } from "@/composables/useAppTheme";
+import { toastSuccess } from "@/utils/toast";
 import {
   NIVELES_COMBUSTIBLE,
   formatPrecio,
@@ -618,12 +619,7 @@ async function registrarCargosPendientes({ mostrarExito = false } = {}) {
     contrato.value = await store.fetchContrato(contrato.value.id);
     await cargarCargosContrato();
     if (mostrarExito) {
-      await Swal.fire({
-        icon: "success",
-        title: "Cargos guardados",
-        text: "Los cargos adicionales quedaron registrados en el contrato.",
-        confirmButtonColor: "#922b21",
-      });
+      toastSuccess("Cargos guardados", "Los cargos adicionales quedaron registrados en el contrato.");
     }
     return true;
   } catch (e) {
@@ -691,12 +687,7 @@ async function registrarIncidenciasPendientes({ mostrarExito = false } = {}) {
     contrato.value = await store.fetchContrato(contrato.value.id);
     await cargarIncidenciasContrato();
     if (mostrarExito) {
-      await Swal.fire({
-        icon: "success",
-        title: "Incidencias guardadas",
-        text: "Las incidencias quedaron registradas en el contrato.",
-        confirmButtonColor: "#922b21",
-      });
+      toastSuccess("Incidencias guardadas", "Las incidencias quedaron registradas en el contrato.");
     }
     return true;
   } catch (e) {
@@ -811,12 +802,7 @@ async function cerrarRenta() {
       payload.monto_retraso = Number(montoRetraso.value);
     }
     await store.cerrarRenta(contrato.value.id, payload);
-    await Swal.fire({
-      icon: "success",
-      title: "Renta cerrada",
-      text: "Vehículo liberado.",
-      confirmButtonColor: "#922b21",
-    });
+    toastSuccess("Renta cerrada", "Vehículo liberado.");
     router.push({ name: "contratos" });
   } catch (e) {
     Swal.fire({

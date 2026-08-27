@@ -144,16 +144,6 @@ async function handleLogin() {
   try {
     await authStore.login(form.email, form.password, form.remember)
 
-    await Swal.fire({
-      icon:             'success',
-      title:            '¡Sesión iniciada correctamente!',
-      text:             'Bienvenido al panel de RentaCar El Guayabo.',
-      confirmButtonColor: '#16a34a',
-      confirmButtonText:  'Continuar',
-      background:       '#fff',
-      iconColor:        '#16a34a',
-    })
-
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
     router.push(redirect || { name: 'dashboard' })
 
@@ -277,4 +267,3 @@ async function handleLogin() {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 </style>
-
