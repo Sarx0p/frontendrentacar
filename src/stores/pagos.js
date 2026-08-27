@@ -1,13 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/services/api'
-
-function extractList(responseData) {
-  const payload = responseData?.data
-  if (Array.isArray(payload)) return payload
-  if (Array.isArray(payload?.data)) return payload.data
-  return []
-}
+import { fetchAllPaginated } from '@/utils/apiPagination'
 
 export const usePagosStore = defineStore('pagos', () => {
   const pagos   = ref([])
@@ -18,8 +12,11 @@ export const usePagosStore = defineStore('pagos', () => {
     loading.value = true
     error.value   = null
     try {
-      const res = await api.get('/admin/pagos', { params })
-      pagos.value = extractList(res.data)
+      const { items } = await fetchAllPaginated(
+        (requestParams) => api.get('/admin/pagos', { params: requestParams }),
+        params,
+      )
+      pagos.value = items
     } catch {
       error.value = 'Error al cargar pagos.'
       pagos.value = []

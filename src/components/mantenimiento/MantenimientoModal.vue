@@ -22,7 +22,7 @@
                   {{ modoEdicion ? 'Editar mantenimiento' : 'Nuevo mantenimiento' }}
                 </p>
                 <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
-                  {{ modoEdicion ? 'Actualiza el servicio registrado' : 'Registra un mantenimiento activo para el vehiculo' }}
+                  {{ modoEdicion ? 'Actualiza el servicio registrado' : 'Registra un mantenimiento activo para el vehículo' }}
                 </p>
               </div>
             </div>
@@ -33,21 +33,68 @@
 
           <form class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto" @submit.prevent="handleGuardar">
             <div>
-              <label class="field-label">Vehiculo</label>
-              <select
-                v-model="form.vehiculo_id"
-                class="field-input w-full"
-                :class="errors.vehiculo_id ? 'error' : ''"
-                :disabled="modoEdicion"
-              >
-                <option value="">Selecciona un vehiculo disponible...</option>
-                <option v-for="v in vehiculosElegibles" :key="v.id" :value="v.id">
-                  {{ nombreVehiculo(v) }} - {{ v.placa }}
-                </option>
-              </select>
+              <label class="field-label">Vehículo</label>
+              <div v-if="modoEdicion" class="vehicle-selected readonly">
+                <i class="pi pi-car text-xs"></i>
+                <span>{{ vehiculoSeleccionadoLabel || 'Vehículo registrado' }}</span>
+              </div>
+              <div v-else class="vehicle-combobox">
+                <div class="vehicle-search" :class="errors.vehiculo_id ? 'error' : ''">
+                  <i class="pi pi-search vehicle-search-icon"></i>
+                  <input
+                    v-model="busquedaVehiculo"
+                    type="text"
+                    placeholder="Buscar o seleccionar vehículo..."
+                    @focus="abrirListaVehiculos"
+                    @input="onBuscarVehiculo"
+                  />
+                  <button
+                    type="button"
+                    class="vehicle-toggle"
+                    :title="listaVehiculosAbierta ? 'Ocultar vehículos' : 'Mostrar vehículos'"
+                    @click="alternarListaVehiculos"
+                  >
+                    <i class="pi" :class="listaVehiculosAbierta ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                  </button>
+                </div>
+
+                <div v-if="vehiculoSeleccionado" class="vehicle-selected">
+                  <i class="pi pi-check-circle text-xs"></i>
+                  <span>{{ nombreVehiculo(vehiculoSeleccionado) }} - {{ vehiculoSeleccionado.placa }}</span>
+                  <button type="button" title="Cambiar vehículo" @click="limpiarVehiculoSeleccionado">
+                    <i class="pi pi-times text-xs"></i>
+                  </button>
+                </div>
+
+                <div v-if="listaVehiculosAbierta" class="vehicle-options" :class="isDark ? 'dark' : ''">
+                  <div v-if="vehiculosLoading" class="vehicle-option muted">
+                    <i class="pi pi-spin pi-spinner text-xs"></i>
+                    Buscando vehículos disponibles...
+                  </div>
+                  <button
+                    v-for="v in vehiculosElegibles"
+                    v-else
+                    :key="v.id"
+                    type="button"
+                    class="vehicle-option"
+                    :class="{ selected: Number(form.vehiculo_id) === Number(v.id) }"
+                    @mousedown.prevent="seleccionarVehiculo(v)"
+                  >
+                    <span class="vehicle-option-title">{{ nombreVehiculo(v) }}</span>
+                    <span class="vehicle-option-plate">{{ v.placa }}</span>
+                  </button>
+                </div>
+
+                <p v-if="mostrarSinResultados" class="field-help">
+                  No se encontraron vehículos disponibles con esa búsqueda.
+                </p>
+                <p v-else-if="mostrarSinDisponibles" class="field-help">
+                  No hay vehículos disponibles para registrar mantenimiento.
+                </p>
+              </div>
               <p v-if="errors.vehiculo_id" class="field-error">{{ errors.vehiculo_id }}</p>
               <!-- <p v-if="!modoEdicion" class="field-help">
-                Al registrar el mantenimiento, el vehiculo pasara a estado Mantenimiento automaticamente.
+                Al registrar el mantenimiento, el vehículo pasará a estado Mantenimiento automáticamente.
               </p> -->
             </div>
 
@@ -71,7 +118,7 @@
 
             <div>
               <p v-if="!modoEdicion" class="field-help">
-                La fecha se registrara automaticamente con la hora del sistema.
+                La fecha se registrará automáticamente con la hora del sistema.
               </p>
               <p v-else class="field-help">
                 Fecha registrada: {{ fechaRegistrada }}
@@ -91,7 +138,7 @@
             </div>
 
             <div>
-              <label class="field-label">Descripcion</label>
+              <label class="field-label">Descripción</label>
               <textarea v-model="form.descripcion" rows="3" class="field-input w-full resize-none" placeholder="Detalle del trabajo realizado o requerido..."></textarea>
             </div>
 
@@ -121,15 +168,21 @@ const props = defineProps({
   modoEdicion: { type: Boolean, default: false },
   mantenimiento: { type: Object, default: null },
   vehiculos: { type: Array, default: () => [] },
+  vehiculosLoading: { type: Boolean, default: false },
   guardando: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['cerrar', 'guardar'])
+const emit = defineEmits(['cerrar', 'guardar', 'buscar-vehiculos'])
 
 const { isDark } = useAppTheme()
 
 const form = ref(formularioVacio())
 const errors = ref({})
+const busquedaVehiculo = ref('')
+const listaVehiculosAbierta = ref(false)
+const vehiculoSeleccionado = ref(null)
+let omitirSiguienteBusqueda = false
+let buscarVehiculosTimer = null
 
 const fechaRegistrada = computed(() => {
   if (!props.mantenimiento?.fecha) return 'sin fecha registrada'
@@ -145,11 +198,36 @@ const vehiculosElegibles = computed(() => {
   })
 })
 
+const vehiculoSeleccionadoLabel = computed(() => {
+  const vehiculo = vehiculoSeleccionado.value || props.mantenimiento?.vehiculo
+  if (!vehiculo) return ''
+  return `${nombreVehiculo(vehiculo)} - ${vehiculo.placa || 'sin placa'}`
+})
+
+const mostrarSinResultados = computed(() =>
+  !props.modoEdicion
+  && !props.vehiculosLoading
+  && listaVehiculosAbierta.value
+  && busquedaVehiculo.value.trim().length > 0
+  && vehiculosElegibles.value.length === 0,
+)
+
+const mostrarSinDisponibles = computed(() =>
+  !props.modoEdicion
+  && !props.vehiculosLoading
+  && listaVehiculosAbierta.value
+  && busquedaVehiculo.value.trim().length === 0
+  && vehiculosElegibles.value.length === 0,
+)
+
 watch(
   () => [props.visible, props.mantenimiento],
   () => {
     if (!props.visible) return
     errors.value = {}
+    busquedaVehiculo.value = ''
+    listaVehiculosAbierta.value = false
+    vehiculoSeleccionado.value = null
     if (props.modoEdicion && props.mantenimiento) {
       form.value = {
         vehiculo_id: props.mantenimiento.vehiculo_id ?? '',
@@ -159,11 +237,33 @@ watch(
         lugar: props.mantenimiento.lugar ?? '',
         estado: props.mantenimiento.estado ?? 'ACTIVO',
       }
+      vehiculoSeleccionado.value = props.mantenimiento.vehiculo || null
     } else {
       form.value = formularioVacio()
     }
   },
 )
+
+watch(busquedaVehiculo, (value) => {
+  if (!props.visible || props.modoEdicion) return
+  if (omitirSiguienteBusqueda) {
+    omitirSiguienteBusqueda = false
+    return
+  }
+  clearTimeout(buscarVehiculosTimer)
+  if (form.value.vehiculo_id) {
+    form.value.vehiculo_id = ''
+    vehiculoSeleccionado.value = null
+  }
+  if (!value.trim()) {
+    listaVehiculosAbierta.value = false
+  } else {
+    listaVehiculosAbierta.value = true
+  }
+  buscarVehiculosTimer = setTimeout(() => {
+    emit('buscar-vehiculos', value.trim())
+  }, 300)
+})
 
 function formularioVacio() {
   return {
@@ -178,10 +278,39 @@ function formularioVacio() {
 
 function validar() {
   errors.value = {}
-  if (!form.value.vehiculo_id) errors.value.vehiculo_id = 'Selecciona un vehiculo'
-  if (form.value.costo === '' || Number(form.value.costo) < 0) errors.value.costo = 'Ingresa un costo valido'
+  if (!form.value.vehiculo_id) errors.value.vehiculo_id = 'Selecciona un vehículo'
+  if (form.value.costo === '' || Number(form.value.costo) < 0) errors.value.costo = 'Ingresa un costo válido'
   if (!form.value.lugar?.trim()) errors.value.lugar = 'Requerido'
   return Object.keys(errors.value).length === 0
+}
+
+function abrirListaVehiculos() {
+  if (props.modoEdicion) return
+  listaVehiculosAbierta.value = true
+}
+
+function alternarListaVehiculos() {
+  if (props.modoEdicion) return
+  listaVehiculosAbierta.value = !listaVehiculosAbierta.value
+}
+
+function onBuscarVehiculo() {
+  listaVehiculosAbierta.value = Boolean(busquedaVehiculo.value.trim())
+}
+
+function seleccionarVehiculo(vehiculo) {
+  form.value.vehiculo_id = vehiculo.id
+  vehiculoSeleccionado.value = vehiculo
+  omitirSiguienteBusqueda = true
+  busquedaVehiculo.value = ''
+  listaVehiculosAbierta.value = false
+  errors.value.vehiculo_id = ''
+}
+
+function limpiarVehiculoSeleccionado() {
+  form.value.vehiculo_id = ''
+  vehiculoSeleccionado.value = null
+  listaVehiculosAbierta.value = false
 }
 
 function handleGuardar() {
@@ -209,6 +338,31 @@ function handleGuardar() {
 .field-input.error { border-color:#f87171; }
 .field-help { font-size:0.72rem; color:#6b7280; margin-top:0.35rem; }
 .field-error { font-size:0.75rem; color:#c0392b; margin-top:0.25rem; }
+.vehicle-combobox { display:flex; flex-direction:column; gap:0.5rem; }
+.vehicle-search { display:flex; align-items:center; gap:0.5rem; border:1px solid #e5e7eb; border-radius:0.75rem; padding:0 0.55rem; min-height:2.85rem; background:#fff; }
+.modal-panel-dark .vehicle-search { border-color:#4b5563; background:#1f2937; color:#f3f4f6; }
+.vehicle-search.error { border-color:#f87171; }
+.vehicle-search-icon { flex:0 0 auto; color:#94a3b8; font-size:0.8rem; }
+.vehicle-search input { flex:1; min-width:0; height:2.7rem; border:0; outline:0; background:transparent; color:inherit; font-size:0.875rem; }
+.vehicle-toggle { flex:0 0 auto; width:2rem; height:2rem; border:0; border-radius:0.6rem; display:flex; align-items:center; justify-content:center; color:#64748b; background:transparent; }
+.vehicle-toggle:hover { background:#f1f5f9; }
+.modal-panel-dark .vehicle-toggle:hover { background:#374151; }
+.vehicle-options { border:1px solid #e5e7eb; border-radius:0.85rem; background:#fff; max-height:13.5rem; overflow-y:auto; box-shadow:0 10px 25px rgba(15, 23, 42, 0.12); padding:0.35rem; }
+.vehicle-options.dark { border-color:#4b5563; background:#111827; }
+.vehicle-option { width:100%; border:0; border-radius:0.65rem; padding:0.65rem 0.75rem; display:flex; align-items:center; justify-content:space-between; gap:0.75rem; text-align:left; background:transparent; color:#111827; }
+.vehicle-options.dark .vehicle-option { color:#f3f4f6; }
+.vehicle-option:hover, .vehicle-option.selected { background:#fef2f2; color:#922b21; }
+.vehicle-options.dark .vehicle-option:hover, .vehicle-options.dark .vehicle-option.selected { background:#3b1f1b; color:#fca5a5; }
+.vehicle-option.muted { justify-content:flex-start; color:#64748b; cursor:default; }
+.vehicle-option-title { font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vehicle-option-plate { flex:0 0 auto; font-size:0.78rem; font-weight:800; color:#64748b; }
+.vehicle-selected { border:1px solid #bbf7d0; border-radius:0.75rem; padding:0.65rem 0.75rem; display:flex; align-items:center; gap:0.55rem; background:#f0fdf4; color:#166534; font-size:0.85rem; font-weight:800; }
+.vehicle-selected.readonly { border-color:#e5e7eb; background:#f8fafc; color:#334155; }
+.modal-panel-dark .vehicle-selected { border-color:#166534; background:#052e16; color:#bbf7d0; }
+.modal-panel-dark .vehicle-selected.readonly { border-color:#4b5563; background:#1f2937; color:#e5e7eb; }
+.vehicle-selected span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vehicle-selected button { border:0; background:transparent; color:inherit; width:1.6rem; height:1.6rem; border-radius:0.45rem; display:flex; align-items:center; justify-content:center; }
+.vehicle-selected button:hover { background:rgba(22, 101, 52, 0.12); }
 .modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
 </style>

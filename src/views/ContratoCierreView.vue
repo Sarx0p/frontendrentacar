@@ -31,7 +31,7 @@
         <section class="cierre-card">
           <div class="cierre-card-head">
             <span class="cierre-step">1</span>
-            <h2>Inspeccion del vehiculo</h2>
+            <h2>Inspección del vehículo</h2>
           </div>
           <div class="cierre-field">
             <label>Observaciones de entrega</label>
@@ -344,7 +344,7 @@
             @click="cerrarRenta"
           >
             <i :class="cerrando ? 'pi pi-spin pi-spinner' : 'pi pi-flag'"></i>
-            Cerrar renta y liberar vehiculo
+            Cerrar renta y liberar vehículo
           </button>
         </div>
         <div class="cierre-ticket-perf cierre-ticket-perf--flip"></div>
@@ -449,7 +449,7 @@ const mensajeBloqueoCierre = computed(() => {
   if (contrato.value.estado_pago !== "PAGADO")
     return "El contrato debe estar pagado antes de cerrar la renta.";
   if (aplicarCargoRetraso.value && (!montoRetraso.value || Number(montoRetraso.value) <= 0)) {
-    return "Indica un monto valido para el cargo por retraso.";
+    return "Indica un monto válido para el cargo por retraso.";
   }
   return "";
 });
@@ -459,7 +459,7 @@ const infoContrato = computed(() => {
   return [
     { label: "Cliente", value: contrato.value.cliente?.nombre || "-", icon: "pi-user" },
     {
-      label: "Vehiculo",
+      label: "Vehículo",
       value: `${nombreVehiculo(contrato.value.vehiculo)} - ${contrato.value.vehiculo?.placa || ""}`,
       icon: "pi-car",
     },
@@ -575,7 +575,7 @@ async function confirmarSalidaConCargos() {
   const result = await Swal.fire({
     icon: "warning",
     title: "Cargos sin guardar",
-    text: "Si sales ahora, los cargos o incidencias que escribiste se perderan.",
+    text: "Si sales ahora, los cargos o incidencias que escribiste se perderán.",
     showCancelButton: true,
     confirmButtonText: "Salir sin guardar",
     cancelButtonText: "Volver",
@@ -792,7 +792,7 @@ async function cerrarRenta() {
   if (mensajeBloqueoCierre.value) {
     await Swal.fire({
       icon: "warning",
-      title: "No se puede cerrar todavia",
+      title: "No se puede cerrar todavía",
       text: mensajeBloqueoCierre.value,
       confirmButtonColor: "#922b21",
     });
@@ -814,7 +814,7 @@ async function cerrarRenta() {
     await Swal.fire({
       icon: "success",
       title: "Renta cerrada",
-      text: "Vehiculo liberado.",
+      text: "Vehículo liberado.",
       confirmButtonColor: "#922b21",
     });
     router.push({ name: "contratos" });
@@ -1584,4 +1584,3 @@ async function cerrarRenta() {
   }
 }
 </style>
-

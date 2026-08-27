@@ -6,6 +6,9 @@ export function labelTipoHistorial(tipo) {
   const map = {
     'DEUDA PENDIENTE': 'Deuda pendiente',
     'DANIO VEHICULO': 'Daño vehículo',
+    DANIO: 'Daño',
+    ACCIDENTE: 'Accidente',
+    'FALLA MECANICA': 'Falla mecánica',
     OTRO: 'Otro',
   }
   return map[tipo] || tipo || EMPTY
@@ -16,6 +19,10 @@ export function labelEstadoHistorial(estado) {
     VIGENTE: 'Vigente',
     RESUELTO: 'Resuelto',
     ARCHIVADO: 'Archivado',
+    REPORTADA: 'Reportada',
+    'EN REVISION': 'En revisión',
+    RESUELTA: 'Resuelta',
+    ANULADA: 'Anulada',
   }
   return map[estado] || estado || EMPTY
 }
@@ -25,11 +32,19 @@ export function estadoHistorialStyle(estado, isDark = false) {
     VIGENTE: 'background:#fef3c7;color:#92400e;',
     RESUELTO: 'background:#dcfce7;color:#166534;',
     ARCHIVADO: 'background:#f3f4f6;color:#4b5563;',
+    REPORTADA: 'background:#fef3c7;color:#92400e;',
+    'EN REVISION': 'background:#dbeafe;color:#1d4ed8;',
+    RESUELTA: 'background:#dcfce7;color:#166534;',
+    ANULADA: 'background:#fee2e2;color:#991b1b;',
   }
   const dark = {
     VIGENTE: 'background:rgba(146,43,33,0.25);color:#f0a500;border:1px solid rgba(240,165,0,0.3);',
     RESUELTO: 'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
     ARCHIVADO: 'background:rgba(55,65,81,0.5);color:#9ca3af;border:1px solid #374151;',
+    REPORTADA: 'background:rgba(234,179,8,0.15);color:#fbbf24;border:1px solid rgba(234,179,8,0.3);',
+    'EN REVISION': 'background:rgba(29,78,216,0.2);color:#93c5fd;border:1px solid rgba(59,130,246,0.3);',
+    RESUELTA: 'background:rgba(22,101,52,0.25);color:#86efac;border:1px solid rgba(34,197,94,0.3);',
+    ANULADA: 'background:rgba(127,29,29,0.35);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);',
   }
   const styles = isDark ? dark : light
   return styles[estado] || (isDark ? 'background:#374151;color:#d1d5db;' : 'background:#f3f4f6;color:#4b5563;')

@@ -71,7 +71,7 @@
         <table class="w-full text-sm mantenimiento-table">
           <thead>
             <tr :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-100 border-gray-200'" class="border-b">
-              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Vehiculo</th>
+              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Vehículo</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Tipo</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Fecha</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Lugar</th>
@@ -163,10 +163,12 @@
       :visible="modalAbierto"
       :modo-edicion="modoEdicion"
       :mantenimiento="seleccionado"
-      :vehiculos="vehiculosStore.vehiculos"
+      :vehiculos="vehiculosModal"
+      :vehiculos-loading="vehiculosModalLoading"
       :guardando="guardando"
       @cerrar="cerrarModal"
       @guardar="guardar"
+      @buscar-vehiculos="buscarVehiculosDisponibles"
     />
   </div>
 </template>
@@ -176,14 +178,14 @@ import { ref, computed, onMounted } from 'vue'
 import Swal from 'sweetalert2'
 import MantenimientoModal from '@/components/mantenimiento/MantenimientoModal.vue'
 import { useMantenimientosStore } from '@/stores/mantenimientos'
-import { useVehiculosStore } from '@/stores/vehiculos'
 import { useAuthStore } from '@/stores/auth'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { formatFecha, nombreVehiculo } from '@/utils/reservaFormatters'
+import api from '@/services/api'
+import { fetchAllPaginated } from '@/utils/apiPagination'
 
 const { isDark } = useAppTheme()
 const store = useMantenimientosStore()
-const vehiculosStore = useVehiculosStore()
 const authStore = useAuthStore()
 
 const search = ref('')
@@ -193,6 +195,8 @@ const modalAbierto = ref(false)
 const modoEdicion = ref(false)
 const seleccionado = ref(null)
 const guardando = ref(false)
+const vehiculosModal = ref([])
+const vehiculosModalLoading = ref(false)
 
 const lista = computed(() => {
   const prioridadEstado = {
@@ -211,7 +215,7 @@ const lista = computed(() => {
 onMounted(async () => {
   await Promise.all([
     aplicarFiltros(),
-    vehiculosStore.fetchVehiculos(),
+    buscarVehiculosDisponibles(),
   ])
 })
 
@@ -223,15 +227,34 @@ async function aplicarFiltros() {
   await store.fetchMantenimientos(params)
 }
 
-function abrirModalCrear() {
+async function buscarVehiculosDisponibles(search = '') {
+  vehiculosModalLoading.value = true
+  try {
+    const params = { estado: 'DISPONIBLE' }
+    if (search.trim()) params.search = search.trim()
+    const { items } = await fetchAllPaginated(
+      (requestParams) => api.get('/admin/vehiculos', { params: requestParams }),
+      params,
+    )
+    vehiculosModal.value = items
+  } catch {
+    vehiculosModal.value = []
+  } finally {
+    vehiculosModalLoading.value = false
+  }
+}
+
+async function abrirModalCrear() {
   modoEdicion.value = false
   seleccionado.value = null
   modalAbierto.value = true
+  await buscarVehiculosDisponibles()
 }
 
 function abrirModalEditar(m) {
   modoEdicion.value = true
   seleccionado.value = m
+  vehiculosModal.value = m.vehiculo ? [m.vehiculo] : []
   modalAbierto.value = true
 }
 
@@ -259,7 +282,7 @@ async function guardar(form) {
     cerrarModal()
     await Promise.all([
       aplicarFiltros(),
-      vehiculosStore.fetchVehiculos(),
+      buscarVehiculosDisponibles(),
     ])
   } catch (e) {
     const errores = e.response?.data?.errors
@@ -283,7 +306,7 @@ async function confirmarEliminar(m) {
   const result = await Swal.fire({
     icon: 'warning',
     title: 'Anular mantenimiento',
-    text: `El mantenimiento de ${m.vehiculo?.placa || 'este vehiculo'} pasara a cancelado.`,
+    text: `El mantenimiento de ${m.vehiculo?.placa || 'este vehículo'} pasará a cancelado.`,
     showCancelButton: true,
     confirmButtonColor: '#c0392b',
     cancelButtonColor: '#6b7280',
@@ -297,7 +320,7 @@ async function confirmarEliminar(m) {
     await store.eliminar(m.id)
     await Promise.all([
       aplicarFiltros(),
-      vehiculosStore.fetchVehiculos(),
+      buscarVehiculosDisponibles(),
     ])
     await Swal.fire({
       icon: 'success',

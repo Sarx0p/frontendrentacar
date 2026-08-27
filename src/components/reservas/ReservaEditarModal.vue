@@ -90,7 +90,7 @@
             </div>
 
             <p class="text-xs rounded-lg p-3 border" :class="isDark ? 'text-gray-300 bg-gray-800/60 border-gray-700' : 'text-gray-600 bg-gray-50 border-gray-200'">
-              Solo se pueden ajustar las fechas. El estado cambia desde los flujos de contrato o cancelaci?n.
+              Solo se pueden ajustar las fechas. El estado cambia desde los flujos de contrato o cancelación.
             </p>
 
             <div class="flex gap-3 pt-2">

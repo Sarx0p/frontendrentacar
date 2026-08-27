@@ -640,7 +640,6 @@ function handleGuardar() {
     propietario_id: Number(form.propietario_id),
     observaciones: form.observaciones?.trim() || null,
   }
-  if (!props.modoEdicion) payload.estado = 'DISPONIBLE'
   emit('guardar', payload)
   loading.value = false
 }

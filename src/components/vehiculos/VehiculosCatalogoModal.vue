@@ -136,6 +136,7 @@
 import { ref, reactive, watch, computed } from 'vue'
 import api from '@/services/api'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { fetchAllPaginated } from '@/utils/apiPagination'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -246,8 +247,8 @@ function inputClass(hasError) {
 
 async function cargarMarcas() {
   try {
-    const res = await api.get('/marcas')
-    marcas.value = res.data.data ?? []
+    const { items } = await fetchAllPaginated((params) => api.get('/marcas', { params }))
+    marcas.value = items
   } catch {
     marcas.value = []
   }
@@ -255,8 +256,8 @@ async function cargarMarcas() {
 
 async function cargarCategoriasExistentes() {
   try {
-    const res = await api.get('/categorias')
-    categoriasExistentes.value = extraerListaApi(res.data?.data)
+    const { items } = await fetchAllPaginated((params) => api.get('/categorias', { params }))
+    categoriasExistentes.value = items
   } catch {
     categoriasExistentes.value = []
   }
@@ -264,8 +265,8 @@ async function cargarCategoriasExistentes() {
 
 async function cargarModelosExistentes() {
   try {
-    const res = await api.get('/modelos')
-    modelosExistentes.value = extraerListaApi(res.data?.data)
+    const { items } = await fetchAllPaginated((params) => api.get('/modelos', { params }))
+    modelosExistentes.value = items
   } catch {
     modelosExistentes.value = []
   }
@@ -273,9 +274,8 @@ async function cargarModelosExistentes() {
 
 async function cargarPropietariosExistentes() {
   try {
-    const res = await api.get('/admin/propietarios')
-    const payload = res.data?.data
-    propietariosExistentes.value = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : [])
+    const { items } = await fetchAllPaginated((params) => api.get('/admin/propietarios', { params }))
+    propietariosExistentes.value = items
   } catch {
     propietariosExistentes.value = []
   }
@@ -341,12 +341,6 @@ function telefonoNormalizadoCompleto() {
 
 function telefonoLocalNormalizado(value, pais = paisTelefono.value) {
   return quitarPrefijoPais(soloDigitos(value), pais)
-}
-
-function extraerListaApi(payload) {
-  if (Array.isArray(payload)) return payload
-  if (payload?.data && Array.isArray(payload.data)) return payload.data
-  return []
 }
 
 function normalizarNombre(value) {

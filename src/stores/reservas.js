@@ -1,13 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import api from "@/services/api";
-
-function extractList(responseData) {
-  const payload = responseData?.data;
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  return [];
-}
+import { fetchAllPaginated } from "@/utils/apiPagination";
 
 export const useReservasStore = defineStore("reservas", () => {
   const reservas = ref([]);
@@ -20,8 +14,11 @@ export const useReservasStore = defineStore("reservas", () => {
     loading.value = true;
     error.value = null;
     try {
-      const res = await api.get("/admin/reservas", { params });
-      reservas.value = extractList(res.data);
+      const { items } = await fetchAllPaginated(
+        (requestParams) => api.get("/admin/reservas", { params: requestParams }),
+        params,
+      );
+      reservas.value = items;
     } catch {
       error.value = "Error al cargar reservas.";
       reservas.value = [];
@@ -56,8 +53,11 @@ export const useReservasStore = defineStore("reservas", () => {
     try {
       const params = { fecha_inicio: fechaInicio, fecha_fin: fechaFin, estado: "DISPONIBLE" };
       if (reservaId) params.reserva_id = reservaId;
-      const res = await api.get("/admin/vehiculos", { params });
-      return extractList(res.data);
+      const { items } = await fetchAllPaginated(
+        (requestParams) => api.get("/admin/vehiculos", { params: requestParams }),
+        params,
+      );
+      return items;
     } catch (e) {
       if (e.response?.status === 404) return [];
       throw e;
@@ -94,13 +94,11 @@ export const useReservasStore = defineStore("reservas", () => {
       ? (cliente?.dui || cliente?.nombre || clienteId)
       : clienteId;
 
-    const res = await api.get("/admin/reservas", {
-      params: {
-        search,
-        per_page: 100,
-      },
-    });
-    return extractList(res.data).filter(
+    const { items } = await fetchAllPaginated(
+      (params) => api.get("/admin/reservas", { params }),
+      { search },
+    );
+    return items.filter(
       (reserva) => Number(reserva.cliente_id || reserva.cliente?.id) === Number(clienteId)
         && reserva.estado === "PENDIENTE"
         && !reserva.contrato,
@@ -127,10 +125,11 @@ export const useReservasStore = defineStore("reservas", () => {
   }
 
   async function fetchCancelaciones(params = {}) {
-    const res = await api.get("/admin/cancelaciones", {
-      params: { per_page: 50, ...params },
-    });
-    return extractList(res.data);
+    const { items } = await fetchAllPaginated(
+      (requestParams) => api.get("/admin/cancelaciones", { params: requestParams }),
+      params,
+    );
+    return items;
   }
 
   return {

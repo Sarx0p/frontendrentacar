@@ -1,13 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
-
-function paginatedData(payload) {
-  const data = payload?.data
-  if (Array.isArray(data)) return data
-  if (Array.isArray(data?.data)) return data.data
-  return []
-}
+import { fetchAllPaginated } from '@/utils/apiPagination'
 
 function normalizeCliente(cliente) {
   if (!cliente) return cliente
@@ -37,8 +31,8 @@ export const useClientesStore = defineStore('clientes', () => {
     loading.value = true
     error.value   = null
     try {
-      const res = await api.get('/admin/clientes')
-      clientes.value = paginatedData(res.data).map(normalizeCliente)
+      const { items } = await fetchAllPaginated((params) => api.get('/admin/clientes', { params }))
+      clientes.value = items.map(normalizeCliente)
     } catch {
       error.value = 'Error al cargar clientes.'
     } finally {
@@ -80,8 +74,11 @@ export const useClientesStore = defineStore('clientes', () => {
   async function buscarClientes(term) {
     if (!term?.trim()) return []
     try {
-      const res = await api.get('/admin/clientes', { params: { search: term.trim() } })
-      return paginatedData(res.data).map(normalizeCliente)
+      const { items } = await fetchAllPaginated(
+        (params) => api.get('/admin/clientes', { params }),
+        { search: term.trim() },
+      )
+      return items.map(normalizeCliente)
     } catch {
       return []
     }
@@ -107,8 +104,33 @@ export const useClientesStore = defineStore('clientes', () => {
   async function fetchHistorial(clienteId) {
     error.value = null
     try {
-      const res = await api.get(`/admin/clientes/${clienteId}/historial`)
-      return res.data.data
+      const base = `/admin/clientes/${clienteId}/historial`
+      const [resumenRes, reservasRes, contratosRes, incidenciasRes] = await Promise.all([
+        api.get(`${base}/resumen`),
+        fetchAllPaginated((params) => api.get(`${base}/reservas`, { params })),
+        fetchAllPaginated((params) => api.get(`${base}/contratos`, { params })),
+        fetchAllPaginated((params) => api.get(`${base}/incidencias`, { params })),
+      ])
+
+      const resumen = resumenRes.data?.data ?? null
+      const reservas = reservasRes.items
+      const contratos = contratosRes.items
+      const incidentes = incidenciasRes.items.map((incidencia) => ({
+        ...incidencia,
+        estado: incidencia.estado_incidencia,
+        tipo_registro: incidencia.tipo_incidencia,
+        fecha_registro: incidencia.fecha || incidencia.created_at,
+        monto_pendiente: incidencia.responsable_tipo === 'CLIENTE' ? Number(incidencia.costo || 0) : 0,
+        user: incidencia.usuario || incidencia.user,
+      }))
+
+      return {
+        disponible: true,
+        cliente: resumen,
+        reservas,
+        contratos,
+        incidentes,
+      }
     } catch (e) {
       if (e.response?.status === 404) {
         return {

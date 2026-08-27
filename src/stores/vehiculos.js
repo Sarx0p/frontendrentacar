@@ -1,11 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/services/api'
+import { extractListFromApi, fetchAllPaginated } from '@/utils/apiPagination'
 
 function extraerListaApi(payload) {
-  if (Array.isArray(payload)) return payload
-  if (payload?.data && Array.isArray(payload.data)) return payload.data
-  return []
+  return extractListFromApi({ data: payload })
 }
 
 export const useVehiculosStore = defineStore('vehiculos', () => {
@@ -30,9 +29,12 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await api.get('/admin/vehiculos', { params })
-      const payload = res.data?.data
-      vehiculos.value = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : [])
+      const { items, response } = await fetchAllPaginated(
+        (requestParams) => api.get('/admin/vehiculos', { params: requestParams }),
+        params,
+      )
+      vehiculos.value = items
+      const res = response
       estadosOpciones.value = res.data.meta?.estados ?? []
     } catch (e) {
       error.value = e.response?.data?.message || 'Error al cargar vehículos.'
@@ -54,11 +56,11 @@ export const useVehiculosStore = defineStore('vehiculos', () => {
         const [marcasRes, catsRes, propsRes] = await Promise.allSettled([
           api.get('/marcas'),
           api.get('/categorias'),
-          api.get('/admin/propietarios'),
+          fetchAllPaginated((params) => api.get('/admin/propietarios', { params })),
         ])
         marcas.value = marcasRes.status === 'fulfilled' ? extraerListaApi(marcasRes.value.data?.data) : []
         categorias.value = catsRes.status === 'fulfilled' ? extraerListaApi(catsRes.value.data?.data) : []
-        propietarios.value = propsRes.status === 'fulfilled' ? extraerListaApi(propsRes.value.data?.data) : []
+        propietarios.value = propsRes.status === 'fulfilled' ? propsRes.value.items : []
         catalogosCargados.marcas = marcasRes.status === 'fulfilled'
         catalogosCargados.categorias = catsRes.status === 'fulfilled'
         catalogosCargados.propietarios = propsRes.status === 'fulfilled'

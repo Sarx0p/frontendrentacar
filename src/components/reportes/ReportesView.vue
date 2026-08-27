@@ -193,10 +193,9 @@ const tiposReporte = [
     label: 'Desempeño general',
     descripcion: 'Resumen de rentas, ingresos y ocupación.',
     grupo: 'general',
-    modo: 'vista',
+    modo: 'pdf',
     needsPeriod: true,
-    needsEstado: true,
-    endpoint: null,
+    endpoint: '/admin/reportes/desempeno-general',
   },
   {
     value: 'ingresos-por-vehiculo',
@@ -223,7 +222,7 @@ const tiposReporte = [
     grupo: 'propietarios',
     modo: 'pdf',
     needsPeriod: true,
-    endpoint: '/admin/reportes/neto-por-vehiculo',
+    endpoint: '/admin/reportes/resultado-neto-por-vehiculo',
   },
   {
     value: 'saldos-pendientes',
@@ -233,16 +232,6 @@ const tiposReporte = [
     modo: 'pdf',
     needsPeriod: false,
     endpoint: '/admin/reportes/saldos-pendientes',
-  },
-  {
-    value: 'historial-cliente',
-    label: 'Historial de cliente',
-    descripcion: 'Reservas, contratos, pagos e incidencias.',
-    grupo: 'operativos',
-    modo: 'pdf',
-    needsPeriod: false,
-    needsCliente: true,
-    endpoint: '/admin/reportes/historial-cliente',
   },
   {
     value: 'ingresos',
