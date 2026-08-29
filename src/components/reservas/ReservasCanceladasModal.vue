@@ -71,7 +71,7 @@
 
             <div v-else class="space-y-2.5">
               <article
-                v-for="item in lista"
+                v-for="item in listaPaginada"
                 :key="item.id"
                 class="cancel-card"
                 :class="isDark ? 'cancel-card--dark' : 'cancel-card--light'"
@@ -129,8 +129,33 @@
 
           <!-- Pie -->
           <div class="modal-footer shrink-0">
-            <span>{{ lista.length }} registro{{ lista.length !== 1 ? 's' : '' }}</span>
-            <button type="button" class="modal-btn-cerrar" @click="$emit('cerrar')">Cerrar</button>
+            <span>
+              Mostrando {{ pagination.from }}-{{ pagination.to }} de {{ pagination.total }} registro{{ pagination.total !== 1 ? 's' : '' }}
+            </span>
+            <div class="modal-footer__actions">
+              <button
+                type="button"
+                class="modal-page-btn"
+                :disabled="pagination.current_page <= 1 || cargando"
+                @click="cambiarPagina(pagination.current_page - 1)"
+              >
+                <i class="pi pi-chevron-left text-[0.6rem]"></i>
+                Anterior
+              </button>
+              <span class="modal-page-label">
+                {{ pagination.current_page }} / {{ pagination.last_page }}
+              </span>
+              <button
+                type="button"
+                class="modal-page-btn"
+                :disabled="pagination.current_page >= pagination.last_page || cargando"
+                @click="cambiarPagina(pagination.current_page + 1)"
+              >
+                Siguiente
+                <i class="pi pi-chevron-right text-[0.6rem]"></i>
+              </button>
+              <button type="button" class="modal-btn-cerrar" @click="$emit('cerrar')">Cerrar</button>
+            </div>
           </div>
         </div>
       </div>
@@ -139,7 +164,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useReservasStore } from '@/stores/reservas'
 import { formatFecha, nombreVehiculo } from '@/utils/reservaFormatters'
@@ -156,12 +181,36 @@ const store = useReservasStore()
 const busqueda = ref('')
 const lista = ref([])
 const cargando = ref(false)
+const paginaActual = ref(1)
+const registrosPorPagina = 5
+
+const pagination = computed(() => {
+  const total = lista.value.length
+  const lastPage = Math.max(1, Math.ceil(total / registrosPorPagina))
+  const currentPage = Math.min(paginaActual.value, lastPage)
+  const from = total ? ((currentPage - 1) * registrosPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * registrosPorPagina, total) : 0
+
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    total,
+    from,
+    to,
+  }
+})
+
+const listaPaginada = computed(() => {
+  const start = (pagination.value.current_page - 1) * registrosPorPagina
+  return lista.value.slice(start, start + registrosPorPagina)
+})
 
 watch(
   () => props.visible,
   (v) => {
     if (v) {
       busqueda.value = ''
+      paginaActual.value = 1
       cargar()
     }
   },
@@ -169,6 +218,7 @@ watch(
 
 async function cargar() {
   cargando.value = true
+  paginaActual.value = 1
   try {
     lista.value = await store.fetchCancelaciones({
       search: busqueda.value.trim() || undefined,
@@ -178,6 +228,11 @@ async function cargar() {
   } finally {
     cargando.value = false
   }
+}
+
+function cambiarPagina(page) {
+  if (page < 1 || page > pagination.value.last_page || page === paginaActual.value) return
+  paginaActual.value = page
 }
 
 function formatFechaHora(fecha) {
@@ -379,6 +434,7 @@ function formatFechaHora(fecha) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
   font-size: 0.65rem;
   opacity: 0.65;
 }
@@ -400,6 +456,50 @@ function formatFechaHora(fecha) {
   color: #f0a500;
 }
 .modal-btn-cerrar:hover { background: rgba(146,43,33,0.06); }
+
+.modal-footer__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.modal-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(146,43,33,0.25);
+  color: #922b21;
+  font-weight: 800;
+  transition: background 0.15s, opacity 0.15s;
+}
+.modal-shell--dark .modal-page-btn {
+  border-color: rgba(240,165,0,0.35);
+  color: #f0a500;
+}
+.modal-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.modal-page-btn:not(:disabled):hover { background: rgba(146,43,33,0.06); }
+.modal-page-label {
+  min-width: 2.8rem;
+  text-align: center;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .modal-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .modal-footer__actions {
+    justify-content: flex-start;
+  }
+}
 
 .modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
