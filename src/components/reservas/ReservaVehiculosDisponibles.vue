@@ -41,11 +41,11 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <button
-          v-for="v in vehiculos"
+          v-for="v in vehiculosPaginados"
           :key="v.id"
           type="button"
           class="reserva-card rounded-xl text-left transition-all overflow-hidden"
-          :class="{ 'reserva-card--selected': vehiculoSeleccionado?.id === v.id }"
+          :class="{ 'reserva-card--selected': esVehiculoSeleccionado(v) }"
           @click="$emit('seleccionar', v)"
         >
           <!-- Encabezado -->
@@ -64,7 +64,7 @@
               </div>
             </div>
             <span
-              v-if="vehiculoSeleccionado?.id === v.id"
+              v-if="esVehiculoSeleccionado(v)"
               class="card-selected-badge"
               title="Seleccionado"
             >
@@ -114,15 +114,49 @@
           </div>
         </button>
       </div>
+
+      <div
+        v-if="paginacionVehiculos.total > vehiculosPorPagina"
+        class="vehicles-pagination"
+        :class="isDark ? 'vehicles-pagination--dark' : 'vehicles-pagination--light'"
+      >
+        <span>
+          Mostrando {{ paginacionVehiculos.from }}-{{ paginacionVehiculos.to }} de {{ paginacionVehiculos.total }} vehículos disponibles
+        </span>
+        <div class="vehicles-pagination__actions">
+          <button
+            type="button"
+            class="vehicles-pagination__btn"
+            :disabled="!puedeRetrocederVehiculos"
+            @click="cambiarPaginaVehiculos(paginacionVehiculos.current_page - 1)"
+          >
+            <i class="pi pi-chevron-left text-[0.65rem]"></i>
+            Anterior
+          </button>
+          <span class="vehicles-pagination__page">
+            Página {{ paginacionVehiculos.current_page }} de {{ paginacionVehiculos.last_page }}
+          </span>
+          <button
+            type="button"
+            class="vehicles-pagination__btn"
+            :disabled="!puedeAvanzarVehiculos"
+            @click="cambiarPaginaVehiculos(paginacionVehiculos.current_page + 1)"
+          >
+            Siguiente
+            <i class="pi pi-chevron-right text-[0.65rem]"></i>
+          </button>
+        </div>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup>
+import { computed, ref, watch } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { nombreVehiculo, formatPrecio } from '@/utils/reservaFormatters'
 
-defineProps({
+const props = defineProps({
   fechaInicio:          { type: String, default: '' },
   fechaFin:             { type: String, default: '' },
   vehiculos:            { type: Array, default: () => [] },
@@ -134,6 +168,52 @@ defineProps({
 defineEmits(['seleccionar'])
 
 const { isDark } = useAppTheme()
+const vehiculosPorPagina = 6
+const paginaVehiculos = ref(1)
+
+const paginacionVehiculos = computed(() => {
+  const total = props.vehiculos.length
+  const lastPage = Math.max(1, Math.ceil(total / vehiculosPorPagina))
+  const currentPage = Math.min(paginaVehiculos.value, lastPage)
+  const from = total ? ((currentPage - 1) * vehiculosPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * vehiculosPorPagina, total) : 0
+
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    total,
+    from,
+    to,
+  }
+})
+
+const vehiculosPaginados = computed(() => {
+  const start = (paginacionVehiculos.value.current_page - 1) * vehiculosPorPagina
+  return props.vehiculos.slice(start, start + vehiculosPorPagina)
+})
+
+const puedeRetrocederVehiculos = computed(() => paginacionVehiculos.value.current_page > 1)
+const puedeAvanzarVehiculos = computed(() => paginacionVehiculos.value.current_page < paginacionVehiculos.value.last_page)
+
+watch(
+  () => props.vehiculos.map((v) => v.id).join('|'),
+  () => {
+    paginaVehiculos.value = 1
+  },
+)
+
+watch(
+  () => props.vehiculoSeleccionado?.id,
+  (id) => {
+    if (!id) return
+    const index = props.vehiculos.findIndex((v) => String(v.id) === String(id))
+    if (index >= 0) paginaVehiculos.value = Math.floor(index / vehiculosPorPagina) + 1
+  },
+)
+
+watch(paginacionVehiculos, (value) => {
+  if (paginaVehiculos.value !== value.current_page) paginaVehiculos.value = value.current_page
+})
 
 const COLORES_HEX = {
   blanco: '#f8fafc',
@@ -161,6 +241,15 @@ function colorHex(nombre) {
   if (!nombre) return '#9ca3af'
   const key = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   return COLORES_HEX[key] || '#9ca3af'
+}
+
+function cambiarPaginaVehiculos(page) {
+  if (page < 1 || page > paginacionVehiculos.value.last_page || page === paginaVehiculos.value) return
+  paginaVehiculos.value = page
+}
+
+function esVehiculoSeleccionado(vehiculo) {
+  return String(props.vehiculoSeleccionado?.id) === String(vehiculo.id)
 }
 </script>
 
@@ -304,5 +393,63 @@ function colorHex(nombre) {
   background: rgba(0, 0, 0, 0.2);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   margin-top: auto;
+}
+
+.vehicles-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.25rem 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.vehicles-pagination--light {
+  color: #64748b;
+  border-top: 1px solid #f1f5f9;
+}
+.vehicles-pagination--dark {
+  color: #9ca3af;
+  border-top: 1px solid #1f2937;
+}
+.vehicles-pagination__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.vehicles-pagination__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.7rem;
+  border: 1px solid currentColor;
+  font-size: 0.72rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+.vehicles-pagination__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.vehicles-pagination__btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  color: #c0392b;
+}
+.vehicles-pagination__page {
+  min-width: 6.5rem;
+  text-align: center;
+}
+@media (max-width: 640px) {
+  .vehicles-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .vehicles-pagination__actions {
+    justify-content: flex-start;
+  }
 }
 </style>
