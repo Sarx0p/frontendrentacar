@@ -69,7 +69,7 @@
         </p>
       </div>
 
-      <div class="order-1 lg:order-2">
+      <div class="order-1 lg:order-2 lg:sticky lg:top-24 lg:self-start">
         <ReservaResumen
           :cliente="clienteSeleccionado"
           :fecha-inicio="fechaInicio"
