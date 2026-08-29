@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
-import { fetchAllPaginated } from '@/utils/apiPagination'
+import { extractListFromApi, fetchAllPaginated } from '@/utils/apiPagination'
 
 function normalizeCliente(cliente) {
   if (!cliente) return cliente
@@ -24,17 +24,51 @@ export const useClientesStore = defineStore('clientes', () => {
   const departamentos = ref([])
   const loading  = ref(false)
   const error    = ref(null)
+  const pagination = ref({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: 0,
+    to: 0,
+  })
 
-  const total = computed(() => clientes.value.length)
+  const total = computed(() => pagination.value.total || clientes.value.length)
 
-  async function fetchClientes() {
+  function normalizePagination(payload) {
+    if (!payload || typeof payload !== 'object' || !Array.isArray(payload.data)) {
+      return {
+        current_page: 1,
+        last_page: 1,
+        per_page: clientes.value.length || 10,
+        total: clientes.value.length,
+        from: clientes.value.length ? 1 : 0,
+        to: clientes.value.length,
+      }
+    }
+
+    return {
+      current_page: Number(payload.current_page || 1),
+      last_page: Number(payload.last_page || 1),
+      per_page: Number(payload.per_page || 10),
+      total: Number(payload.total || 0),
+      from: Number(payload.from || 0),
+      to: Number(payload.to || 0),
+    }
+  }
+
+  async function fetchClientes(params = {}) {
     loading.value = true
     error.value   = null
     try {
-      const { items } = await fetchAllPaginated((params) => api.get('/admin/clientes', { params }))
-      clientes.value = items.map(normalizeCliente)
-    } catch {
-      error.value = 'Error al cargar clientes.'
+      const res = await api.get('/admin/clientes', { params })
+      const payload = res.data?.data
+      clientes.value = extractListFromApi(res.data).map(normalizeCliente)
+      pagination.value = normalizePagination(payload)
+    } catch (e) {
+      error.value = e.response?.data?.message || 'Error al cargar clientes.'
+      clientes.value = []
+      pagination.value = normalizePagination(null)
     } finally {
       loading.value = false
     }
@@ -151,6 +185,7 @@ export const useClientesStore = defineStore('clientes', () => {
     departamentos,
     loading,
     error,
+    pagination,
     total,
     fetchClientes,
     fetchDepartamentos,
