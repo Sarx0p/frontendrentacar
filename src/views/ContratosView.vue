@@ -78,7 +78,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="c in contratosFiltrados"
+              v-for="c in contratosPaginados"
               :key="c.id"
               class="border-b transition-colors"
               :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-50 hover:bg-gray-50/80'"
@@ -160,8 +160,37 @@
         </table>
       </div>
 
-      <div class="px-5 py-3 border-t text-xs" :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-50 text-gray-400'">
-        {{ contratosFiltrados.length }} contrato{{ contratosFiltrados.length !== 1 ? 's' : '' }}
+      <div class="px-5 py-3 border-t text-xs" :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span>
+            Mostrando {{ pagination.from }}-{{ pagination.to }} de {{ pagination.total }} contrato{{ pagination.total !== 1 ? 's' : '' }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeRetroceder || store.loading"
+              @click="cambiarPagina(paginaActual - 1)"
+            >
+              <i class="pi pi-chevron-left text-[0.65rem]"></i>
+              Anterior
+            </button>
+            <span class="pagination-page" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              Página {{ pagination.current_page }} de {{ pagination.last_page }}
+            </span>
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeAvanzar || store.loading"
+              @click="cambiarPagina(paginaActual + 1)"
+            >
+              Siguiente
+              <i class="pi pi-chevron-right text-[0.65rem]"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -171,7 +200,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import Swal from 'sweetalert2'
 import PagoRegistrarModal from '@/components/pagos/PagoRegistrarModal.vue'
 import ContratoPdfPreview from '@/components/contratos/ContratoPdfPreview.vue'
@@ -203,6 +232,8 @@ const cargandoPago = ref(null)
 const modalPdf = ref(false)
 const contratoVer = ref(null)
 const cargandoPdf = ref(null)
+const paginaActual = ref(1)
+const contratosPorPagina = 10
 
 const ordenEstadoContrato = {
   ACTIVO: 1,
@@ -237,7 +268,44 @@ const contratosFiltrados = computed(() => {
   return ordenarContratos(list)
 })
 
+const pagination = computed(() => {
+  const total = contratosFiltrados.value.length
+  const lastPage = Math.max(1, Math.ceil(total / contratosPorPagina))
+  const currentPage = Math.min(paginaActual.value, lastPage)
+  const from = total ? ((currentPage - 1) * contratosPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * contratosPorPagina, total) : 0
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    per_page: contratosPorPagina,
+    total,
+    from,
+    to,
+  }
+})
+
+const contratosPaginados = computed(() => {
+  const start = (pagination.value.current_page - 1) * contratosPorPagina
+  return contratosFiltrados.value.slice(start, start + contratosPorPagina)
+})
+
+const puedeRetroceder = computed(() => pagination.value.current_page > 1)
+const puedeAvanzar = computed(() => pagination.value.current_page < pagination.value.last_page)
+
 onMounted(() => store.fetchContratos())
+
+watch([buscar, filtroEstado, filtroPago], () => {
+  paginaActual.value = 1
+})
+
+watch(pagination, (value) => {
+  if (paginaActual.value !== value.current_page) paginaActual.value = value.current_page
+})
+
+function cambiarPagina(page) {
+  if (page < 1 || page > pagination.value.last_page || page === paginaActual.value) return
+  paginaActual.value = page
+}
 
 function clienteContrato(contrato) {
   return contrato?.cliente || contrato?.reserva?.cliente || null
@@ -372,3 +440,58 @@ async function registrarPago(form) {
   }
 }
 </script>
+
+<style scoped>
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.pagination-btn-light {
+  color: #334155;
+  background: #ffffff;
+  border-color: #dbe3ed;
+}
+
+.pagination-btn-light:not(:disabled):hover {
+  color: #c0392b;
+  background: #fff7f5;
+  border-color: #fecaca;
+}
+
+.pagination-btn-dark {
+  color: #d1d5db;
+  background: #111827;
+  border-color: #374151;
+}
+
+.pagination-btn-dark:not(:disabled):hover {
+  color: #f0a500;
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+.pagination-page {
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+</style>

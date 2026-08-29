@@ -44,40 +44,75 @@
       <i class="pi pi-exclamation-triangle mr-1"></i> No hay vehículos disponibles para esas fechas.
     </div>
 
-    <div v-else-if="vehiculos.length" class="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-2">
-      <button
-        v-for="v in vehiculos"
-        :key="v.id"
-        type="button"
-        class="reserva-card rounded-xl text-left transition-all overflow-hidden"
-        :class="{ 'reserva-card--selected': vehiculoId === v.id }"
-        @click="$emit('update:vehiculoId', v.id)"
-      >
-        <div class="card-header">
-          <div class="flex items-start gap-3 min-w-0 flex-1">
-            <div class="card-icon-wrap"><i class="pi pi-car text-lg text-white"></i></div>
-            <div class="min-w-0">
-              <p class="font-extrabold text-base leading-tight text-white truncate">{{ nombreVehiculo(v) }}</p>
-              <p v-if="v.categoria?.nombre" class="text-[11px] text-white/75 mt-0.5">{{ v.categoria.nombre }}</p>
+    <div v-else-if="vehiculos.length" class="space-y-3 pt-2">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <button
+          v-for="v in vehiculosPaginados"
+          :key="v.id"
+          type="button"
+          class="reserva-card rounded-xl text-left transition-all overflow-hidden"
+          :class="{ 'reserva-card--selected': esVehiculoSeleccionado(v) }"
+          @click="$emit('update:vehiculoId', v.id)"
+        >
+          <div class="card-header">
+            <div class="flex items-start gap-3 min-w-0 flex-1">
+              <div class="card-icon-wrap"><i class="pi pi-car text-lg text-white"></i></div>
+              <div class="min-w-0">
+                <p class="font-extrabold text-base leading-tight text-white truncate">{{ nombreVehiculo(v) }}</p>
+                <p v-if="v.categoria?.nombre" class="text-[11px] text-white/75 mt-0.5">{{ v.categoria.nombre }}</p>
+              </div>
             </div>
+            <span v-if="esVehiculoSeleccionado(v)" class="card-selected-badge"><i class="pi pi-check text-[10px]"></i></span>
           </div>
-          <span v-if="vehiculoId === v.id" class="card-selected-badge"><i class="pi pi-check text-[10px]"></i></span>
+          <div class="card-specs">
+            <div class="spec-item"><span class="spec-label">Placa</span><span class="spec-value spec-value--mono">{{ v.placa }}</span></div>
+            <div class="spec-item"><span class="spec-label">Color</span><span class="spec-value">{{ v.color }}</span></div>
+          </div>
+          <div v-if="v.categoria?.precio_dia" class="card-price-bar">
+            <span class="text-[10px] font-bold uppercase text-white/70">Tarifa diaria</span>
+            <span class="text-lg font-extrabold text-white">${{ formatPrecio(v.categoria.precio_dia) }}<span class="text-xs font-semibold text-white/80">/día</span></span>
+          </div>
+        </button>
+      </div>
+
+      <div
+        v-if="paginacionVehiculos.total > vehiculosPorPagina"
+        class="vehicles-pagination"
+        :class="isDark ? 'vehicles-pagination--dark' : 'vehicles-pagination--light'"
+      >
+        <span>
+          Mostrando {{ paginacionVehiculos.from }}-{{ paginacionVehiculos.to }} de {{ paginacionVehiculos.total }} vehículos disponibles
+        </span>
+        <div class="vehicles-pagination__actions">
+          <button
+            type="button"
+            class="vehicles-pagination__btn"
+            :disabled="!puedeRetrocederVehiculos"
+            @click="cambiarPaginaVehiculos(paginacionVehiculos.current_page - 1)"
+          >
+            <i class="pi pi-chevron-left text-[0.65rem]"></i>
+            Anterior
+          </button>
+          <span class="vehicles-pagination__page">
+            Página {{ paginacionVehiculos.current_page }} de {{ paginacionVehiculos.last_page }}
+          </span>
+          <button
+            type="button"
+            class="vehicles-pagination__btn"
+            :disabled="!puedeAvanzarVehiculos"
+            @click="cambiarPaginaVehiculos(paginacionVehiculos.current_page + 1)"
+          >
+            Siguiente
+            <i class="pi pi-chevron-right text-[0.65rem]"></i>
+          </button>
         </div>
-        <div class="card-specs">
-          <div class="spec-item"><span class="spec-label">Placa</span><span class="spec-value spec-value--mono">{{ v.placa }}</span></div>
-          <div class="spec-item"><span class="spec-label">Color</span><span class="spec-value">{{ v.color }}</span></div>
-        </div>
-        <div v-if="v.categoria?.precio_dia" class="card-price-bar">
-          <span class="text-[10px] font-bold uppercase text-white/70">Tarifa diaria</span>
-          <span class="text-lg font-extrabold text-white">${{ formatPrecio(v.categoria.precio_dia) }}<span class="text-xs font-semibold text-white/80">/día</span></span>
-        </div>
-      </button>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { HORAS_PERMITIDAS_OPCIONES, nombreVehiculo, formatPrecio } from '@/utils/contratoFormatters'
 
@@ -97,13 +132,69 @@ defineEmits(['update:fechaEntrega', 'update:horaEntrega', 'update:fechaDevolucio
 
 const { isDark } = useAppTheme()
 const hoy = new Date().toISOString().split('T')[0]
+const vehiculosPorPagina = 6
+const paginaVehiculos = ref(1)
+
 const minFechaDevolucion = computed(() => {
   const base = props.fechaEntrega || hoy
   const d = new Date(`${base}T00:00:00`)
   d.setDate(d.getDate() + 1)
   return d.toISOString().split('T')[0]
 })
+
+const paginacionVehiculos = computed(() => {
+  const total = props.vehiculos.length
+  const lastPage = Math.max(1, Math.ceil(total / vehiculosPorPagina))
+  const currentPage = Math.min(paginaVehiculos.value, lastPage)
+  const from = total ? ((currentPage - 1) * vehiculosPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * vehiculosPorPagina, total) : 0
+
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    total,
+    from,
+    to,
+  }
+})
+
+const vehiculosPaginados = computed(() => {
+  const start = (paginacionVehiculos.value.current_page - 1) * vehiculosPorPagina
+  return props.vehiculos.slice(start, start + vehiculosPorPagina)
+})
+
+const puedeRetrocederVehiculos = computed(() => paginacionVehiculos.value.current_page > 1)
+const puedeAvanzarVehiculos = computed(() => paginacionVehiculos.value.current_page < paginacionVehiculos.value.last_page)
 const shellClass = computed(() => isDark.value ? 'form-section-dark bg-gray-900 border-gray-800' : 'form-section-light bg-white border-gray-100')
+
+watch(
+  () => props.vehiculos.map((v) => v.id).join('|'),
+  () => {
+    paginaVehiculos.value = 1
+  },
+)
+
+watch(
+  () => props.vehiculoId,
+  (id) => {
+    if (!id) return
+    const index = props.vehiculos.findIndex((v) => String(v.id) === String(id))
+    if (index >= 0) paginaVehiculos.value = Math.floor(index / vehiculosPorPagina) + 1
+  },
+)
+
+watch(paginacionVehiculos, (value) => {
+  if (paginaVehiculos.value !== value.current_page) paginaVehiculos.value = value.current_page
+})
+
+function cambiarPaginaVehiculos(page) {
+  if (page < 1 || page > paginacionVehiculos.value.last_page || page === paginaVehiculos.value) return
+  paginaVehiculos.value = page
+}
+
+function esVehiculoSeleccionado(vehiculo) {
+  return String(props.vehiculoId) === String(vehiculo.id)
+}
 </script>
 
 <style scoped>
@@ -128,4 +219,16 @@ const shellClass = computed(() => isDark.value ? 'form-section-dark bg-gray-900 
 .spec-value { font-size:0.8rem; font-weight:700; color:#fff; }
 .spec-value--mono { font-family:ui-monospace,monospace; }
 .card-price-bar { display:flex; align-items:center; justify-content:space-between; padding:0.625rem 1rem; background:rgba(0,0,0,0.2); border-top:1px solid rgba(255,255,255,0.12); margin-top:auto; }
+.vehicles-pagination { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; padding:0.75rem 0.25rem 0; font-size:0.75rem; font-weight:700; }
+.vehicles-pagination--light { color:#64748b; border-top:1px solid #f1f5f9; }
+.vehicles-pagination--dark { color:#9ca3af; border-top:1px solid #1f2937; }
+.vehicles-pagination__actions { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; justify-content:flex-end; }
+.vehicles-pagination__btn { display:inline-flex; align-items:center; gap:0.35rem; min-height:2rem; padding:0.4rem 0.7rem; border-radius:0.7rem; border:1px solid currentColor; font-size:0.72rem; font-weight:800; transition:all 0.15s ease; }
+.vehicles-pagination__btn:disabled { opacity:0.45; cursor:not-allowed; }
+.vehicles-pagination__btn:not(:disabled):hover { transform:translateY(-1px); color:#c0392b; }
+.vehicles-pagination__page { min-width:6.5rem; text-align:center; }
+@media (max-width: 640px) {
+  .vehicles-pagination { align-items:flex-start; flex-direction:column; }
+  .vehicles-pagination__actions { justify-content:flex-start; }
+}
 </style>
