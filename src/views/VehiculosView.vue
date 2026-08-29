@@ -119,7 +119,7 @@
           </thead>
           <tbody :key="activeTab">
             <tr
-              v-for="(item, index) in itemsFiltrados"
+              v-for="(item, index) in itemsVisibles"
               :key="`${activeTab}-${item.id}-${index}`"
               class="border-b transition-colors"
               :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-200 hover:bg-slate-50'"
@@ -222,9 +222,36 @@
             </button>
           </div>
         </div>
-        <span v-else>
-          Mostrando {{ itemsFiltrados.length }} de {{ conteoTab(activeTab) }} {{ contadorLabel(itemsFiltrados.length) }}
-        </span>
+        <div v-else class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span>
+            Mostrando {{ catalogoPagination.from }}-{{ catalogoPagination.to }} de {{ catalogoPagination.total }} {{ contadorLabel(catalogoPagination.total) }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeRetrocederCatalogo || isLoadingTab"
+              @click="cambiarPaginaCatalogo(catalogoPaginaActual - 1)"
+            >
+              <i class="pi pi-chevron-left text-[0.65rem]"></i>
+              Anterior
+            </button>
+            <span class="pagination-page" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              Página {{ catalogoPagination.current_page }} de {{ catalogoPagination.last_page }}
+            </span>
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeAvanzarCatalogo || isLoadingTab"
+              @click="cambiarPaginaCatalogo(catalogoPaginaActual + 1)"
+            >
+              Siguiente
+              <i class="pi pi-chevron-right text-[0.65rem]"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -279,6 +306,8 @@ const modoEdicion = ref(false)
 const vehiculoSeleccionado = ref(null)
 const modelos = ref([])
 const cargandoModelos = ref(false)
+const catalogoPaginaActual = ref(1)
+const catalogoItemsPorPagina = 10
 
 const estadosFiltro = ESTADOS_VEHICULO_TODOS
 const ordenEstadosVehiculo = {
@@ -372,6 +401,11 @@ watch([search, filtroEstado], () => {
   searchTimer = setTimeout(() => cargarVehiculos(1), 300)
 })
 
+watch([search, activeTab], () => {
+  if (activeTab.value === 'vehiculos') return
+  catalogoPaginaActual.value = 1
+})
+
 function extraerLista(payload) {
   if (Array.isArray(payload)) return payload
   if (payload?.data && Array.isArray(payload.data)) return payload.data
@@ -413,6 +447,39 @@ const itemsFiltrados = computed(() => {
   })
   if (activeTab.value !== 'vehiculos') return filtrados
   return ordenarVehiculosPorEstado(filtrados)
+})
+
+const catalogoPagination = computed(() => {
+  const total = itemsFiltrados.value.length
+  const lastPage = Math.max(1, Math.ceil(total / catalogoItemsPorPagina))
+  const currentPage = Math.min(catalogoPaginaActual.value, lastPage)
+  const from = total ? ((currentPage - 1) * catalogoItemsPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * catalogoItemsPorPagina, total) : 0
+
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    per_page: catalogoItemsPorPagina,
+    total,
+    from,
+    to,
+  }
+})
+
+const itemsVisibles = computed(() => {
+  if (activeTab.value === 'vehiculos') return itemsFiltrados.value
+  const start = (catalogoPagination.value.current_page - 1) * catalogoItemsPorPagina
+  return itemsFiltrados.value.slice(start, start + catalogoItemsPorPagina)
+})
+
+const puedeRetrocederCatalogo = computed(() => catalogoPagination.value.current_page > 1)
+const puedeAvanzarCatalogo = computed(() => catalogoPagination.value.current_page < catalogoPagination.value.last_page)
+
+watch(catalogoPagination, (value) => {
+  if (activeTab.value === 'vehiculos') return
+  if (catalogoPaginaActual.value !== value.current_page) {
+    catalogoPaginaActual.value = value.current_page
+  }
 })
 
 function conteoTab(tab) {
@@ -474,6 +541,7 @@ function cambiarTab(tab) {
   if (activeTab.value === tab) return
   activeTab.value = tab
   search.value = ''
+  catalogoPaginaActual.value = 1
   if (tab !== 'vehiculos') filtroEstado.value = ''
   if (tab === 'vehiculos') cargarVehiculos(1)
 }
@@ -496,6 +564,11 @@ async function cargarVehiculos(page = pagination.value.current_page || 1) {
 async function cambiarPaginaVehiculos(page) {
   if (page < 1 || page > pagination.value.last_page || page === pagination.value.current_page) return
   await cargarVehiculos(page)
+}
+
+function cambiarPaginaCatalogo(page) {
+  if (page < 1 || page > catalogoPagination.value.last_page || page === catalogoPaginaActual.value) return
+  catalogoPaginaActual.value = page
 }
 
 function descripcionCategoria(item) {
