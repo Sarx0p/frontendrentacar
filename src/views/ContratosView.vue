@@ -201,6 +201,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import PagoRegistrarModal from '@/components/pagos/PagoRegistrarModal.vue'
 import ContratoPdfPreview from '@/components/contratos/ContratoPdfPreview.vue'
@@ -219,6 +220,8 @@ import {
 } from '@/utils/contratoFormatters'
 
 const { isDark } = useAppTheme()
+const route = useRoute()
+const router = useRouter()
 const store = useContratosStore()
 const pagosStore = usePagosStore()
 
@@ -292,7 +295,10 @@ const contratosPaginados = computed(() => {
 const puedeRetroceder = computed(() => pagination.value.current_page > 1)
 const puedeAvanzar = computed(() => pagination.value.current_page < pagination.value.last_page)
 
-onMounted(() => store.fetchContratos())
+onMounted(async () => {
+  await store.fetchContratos()
+  await abrirContratoDesdeQuery()
+})
 
 watch([buscar, filtroEstado, filtroPago], () => {
   paginaActual.value = 1
@@ -411,6 +417,17 @@ async function verContrato(c) {
 function cerrarPdf() {
   modalPdf.value = false
   contratoVer.value = null
+  if (route.query.ver_contrato) {
+    const query = { ...route.query }
+    delete query.ver_contrato
+    router.replace({ name: 'contratos', query })
+  }
+}
+
+async function abrirContratoDesdeQuery() {
+  const contratoId = Number(route.query.ver_contrato)
+  if (!contratoId) return
+  await verContrato({ id: contratoId })
 }
 
 async function registrarPago(form) {

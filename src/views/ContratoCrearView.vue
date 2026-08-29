@@ -92,7 +92,7 @@
 
         <!-- Navegación -->
         <div class="wizard-nav">
-          <button v-if="paso > 1" type="button" class="wizard-btn wizard-btn--ghost" @click="paso--">
+          <button v-if="paso > 1" type="button" class="wizard-btn wizard-btn--ghost" @click="anterior">
             <i class="pi pi-arrow-left"></i> Anterior
           </button>
           <div v-else></div>
@@ -141,7 +141,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Swal from 'sweetalert2'
 import ContratoClienteSection from '@/components/contratos/ContratoClienteSection.vue'
@@ -263,11 +263,21 @@ const puedeAvanzar = computed(() => {
 })
 
 function irPaso(n) {
-  if (n <= pasoMaximo.value) paso.value = n
+  if (n <= pasoMaximo.value) cambiarPaso(n)
 }
 
 function siguiente() {
-  if (paso.value < 3 && puedeAvanzar.value) paso.value++
+  if (paso.value < 3 && puedeAvanzar.value) cambiarPaso(paso.value + 1)
+}
+
+function anterior() {
+  if (paso.value > 1) cambiarPaso(paso.value - 1)
+}
+
+async function cambiarPaso(n) {
+  paso.value = n
+  await nextTick()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function limpiarDatosReserva() {
@@ -483,7 +493,7 @@ async function generarContrato() {
     } else {
       toastSuccess('Contrato generado', `N° ${contrato.numero_contrato}`)
     }
-    mostrarPdf.value = true
+    await router.push({ name: 'contratos', query: { ver_contrato: contrato.id } })
   } catch (e) {
     error.value = e.response?.status === 401
       ? 'Tu sesión expiró. Vuelve a iniciar sesión.'
