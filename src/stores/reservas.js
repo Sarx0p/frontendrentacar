@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import api from "@/services/api";
-import { fetchAllPaginated } from "@/utils/apiPagination";
+import { extractListFromApi, fetchAllPaginated } from "@/utils/apiPagination";
 
 export const useReservasStore = defineStore("reservas", () => {
   const reservas = ref([]);
@@ -9,19 +9,51 @@ export const useReservasStore = defineStore("reservas", () => {
   const error = ref(null);
   const advertencia = ref(null);
   const incidenciasPendientes = ref([]);
+  const pagination = ref({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: 0,
+    to: 0,
+  });
+
+  const total = computed(() => pagination.value.total || reservas.value.length);
+
+  function normalizePagination(payload) {
+    if (!payload || typeof payload !== "object" || !Array.isArray(payload.data)) {
+      return {
+        current_page: 1,
+        last_page: 1,
+        per_page: reservas.value.length || 10,
+        total: reservas.value.length,
+        from: reservas.value.length ? 1 : 0,
+        to: reservas.value.length,
+      };
+    }
+
+    return {
+      current_page: Number(payload.current_page || 1),
+      last_page: Number(payload.last_page || 1),
+      per_page: Number(payload.per_page || 10),
+      total: Number(payload.total || 0),
+      from: Number(payload.from || 0),
+      to: Number(payload.to || 0),
+    };
+  }
 
   async function fetchReservas(params = {}) {
     loading.value = true;
     error.value = null;
     try {
-      const { items } = await fetchAllPaginated(
-        (requestParams) => api.get("/admin/reservas", { params: requestParams }),
-        params,
-      );
-      reservas.value = items;
+      const res = await api.get("/admin/reservas", { params });
+      const payload = res.data?.data;
+      reservas.value = extractListFromApi(res.data);
+      pagination.value = normalizePagination(payload);
     } catch {
       error.value = "Error al cargar reservas.";
       reservas.value = [];
+      pagination.value = normalizePagination(null);
     } finally {
       loading.value = false;
     }
@@ -136,6 +168,8 @@ export const useReservasStore = defineStore("reservas", () => {
     reservas,
     loading,
     error,
+    pagination,
+    total,
     fetchReservas,
     fetchReserva,
     crear,
