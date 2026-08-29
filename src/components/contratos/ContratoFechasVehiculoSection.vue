@@ -45,6 +45,25 @@
     </div>
 
     <div v-else-if="vehiculos.length" class="space-y-3 pt-2">
+      <div class="vehicles-search">
+        <i class="pi pi-search vehicles-search__icon"></i>
+        <input
+          v-model="busquedaVehiculo"
+          type="text"
+          class="vehicles-search__input"
+          :class="isDark ? 'vehicles-search__input--dark' : 'vehicles-search__input--light'"
+          placeholder="Buscar por vehículo, marca, modelo o categoría..."
+        />
+      </div>
+
+      <div
+        v-if="!vehiculosFiltrados.length"
+        class="text-sm rounded-xl p-3 border"
+        :class="isDark ? 'text-amber-300 bg-amber-950/30 border-amber-900/40' : 'text-amber-700 bg-amber-50 border-amber-100'"
+      >
+        <i class="pi pi-search mr-1"></i> No se encontraron vehículos disponibles con esa búsqueda.
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <button
           v-for="v in vehiculosPaginados"
@@ -134,6 +153,7 @@ const { isDark } = useAppTheme()
 const hoy = new Date().toISOString().split('T')[0]
 const vehiculosPorPagina = 6
 const paginaVehiculos = ref(1)
+const busquedaVehiculo = ref('')
 
 const minFechaDevolucion = computed(() => {
   const base = props.fechaEntrega || hoy
@@ -143,7 +163,7 @@ const minFechaDevolucion = computed(() => {
 })
 
 const paginacionVehiculos = computed(() => {
-  const total = props.vehiculos.length
+  const total = vehiculosFiltrados.value.length
   const lastPage = Math.max(1, Math.ceil(total / vehiculosPorPagina))
   const currentPage = Math.min(paginaVehiculos.value, lastPage)
   const from = total ? ((currentPage - 1) * vehiculosPorPagina) + 1 : 0
@@ -160,19 +180,36 @@ const paginacionVehiculos = computed(() => {
 
 const vehiculosPaginados = computed(() => {
   const start = (paginacionVehiculos.value.current_page - 1) * vehiculosPorPagina
-  return props.vehiculos.slice(start, start + vehiculosPorPagina)
+  return vehiculosFiltrados.value.slice(start, start + vehiculosPorPagina)
 })
 
 const puedeRetrocederVehiculos = computed(() => paginacionVehiculos.value.current_page > 1)
 const puedeAvanzarVehiculos = computed(() => paginacionVehiculos.value.current_page < paginacionVehiculos.value.last_page)
 const shellClass = computed(() => isDark.value ? 'form-section-dark bg-gray-900 border-gray-800' : 'form-section-light bg-white border-gray-100')
 
+const vehiculosFiltrados = computed(() => {
+  const terminos = normalizarBusqueda(busquedaVehiculo.value)
+    .split(' ')
+    .filter(Boolean)
+  if (!terminos.length) return props.vehiculos
+
+  return props.vehiculos.filter((vehiculo) => {
+    const texto = normalizarBusqueda(textoVehiculo(vehiculo))
+    return terminos.every((termino) => texto.includes(termino))
+  })
+})
+
 watch(
   () => props.vehiculos.map((v) => v.id).join('|'),
   () => {
     paginaVehiculos.value = 1
+    busquedaVehiculo.value = ''
   },
 )
+
+watch(busquedaVehiculo, () => {
+  paginaVehiculos.value = 1
+})
 
 watch(
   () => props.vehiculoId,
@@ -194,6 +231,26 @@ function cambiarPaginaVehiculos(page) {
 
 function esVehiculoSeleccionado(vehiculo) {
   return String(props.vehiculoId) === String(vehiculo.id)
+}
+
+function textoVehiculo(vehiculo) {
+  return [
+    nombreVehiculo(vehiculo),
+    vehiculo.marca?.nombre,
+    vehiculo.modelo?.nombre,
+    vehiculo.categoria?.nombre,
+    vehiculo.color,
+    vehiculo.placa,
+  ].join(' ')
+}
+
+function normalizarBusqueda(valor) {
+  return String(valor ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 </script>
 
@@ -219,6 +276,12 @@ function esVehiculoSeleccionado(vehiculo) {
 .spec-value { font-size:0.8rem; font-weight:700; color:#fff; }
 .spec-value--mono { font-family:ui-monospace,monospace; }
 .card-price-bar { display:flex; align-items:center; justify-content:space-between; padding:0.625rem 1rem; background:rgba(0,0,0,0.2); border-top:1px solid rgba(255,255,255,0.12); margin-top:auto; }
+.vehicles-search { position:relative; }
+.vehicles-search__icon { position:absolute; left:0.9rem; top:50%; transform:translateY(-50%); font-size:0.85rem; color:#9ca3af; pointer-events:none; }
+.vehicles-search__input { width:100%; min-height:2.75rem; border-radius:0.85rem; border:1px solid; padding:0.7rem 1rem 0.7rem 2.45rem; font-size:0.875rem; outline:none; transition:border-color 0.15s, box-shadow 0.15s, background 0.15s; }
+.vehicles-search__input:focus { border-color:#c0392b; box-shadow:0 0 0 3px rgba(192,57,43,0.12); }
+.vehicles-search__input--light { border-color:#dbe3ed; background:#fff; color:#1f2937; }
+.vehicles-search__input--dark { border-color:#374151; background:#111827; color:#f9fafb; }
 .vehicles-pagination { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; padding:0.75rem 0.25rem 0; font-size:0.75rem; font-weight:700; }
 .vehicles-pagination--light { color:#64748b; border-top:1px solid #f1f5f9; }
 .vehicles-pagination--dark { color:#9ca3af; border-top:1px solid #1f2937; }
