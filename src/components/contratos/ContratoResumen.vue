@@ -113,7 +113,12 @@ function lineaFechaHora(fecha, hora) {
   box-shadow: 0 20px 50px rgba(0,0,0,0.25), 0 0 0 1px rgba(146,43,33,0.4);
 }
 @media (min-width: 1024px) {
-  .ticket-panel { position: sticky; top: 1rem; }
+  .ticket-panel {
+    position: sticky;
+    top: calc(64px + 1rem);
+    align-self: flex-start;
+    z-index: 10;
+  }
 }
 
 .ticket-perforation {
