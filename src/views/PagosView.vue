@@ -69,6 +69,8 @@
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Cliente</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Monto</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Método</th>
+              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Estado</th>
+              <th class="text-right px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -83,13 +85,36 @@
               <td class="px-5 py-4">
                 <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ nombreClientePago(p) }}</p>
               </td>
-              <td class="px-5 py-4 font-bold tabular-nums" style="color:#166534;">${{ formatPrecio(p.monto) }}</td>
+              <td class="px-5 py-4 font-bold tabular-nums" :class="p.estado_transaccion === 'CANCELADO' ? (isDark ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : ''" :style="p.estado_transaccion === 'CANCELADO' ? '' : 'color:#166534;'">${{ formatPrecio(p.monto) }}</td>
               <td class="px-5 py-4">
                 <span class="text-xs font-bold px-2.5 py-1 rounded-full" :style="metodoStyle(p.metodo_pago)">{{ p.metodo_pago }}</span>
               </td>
+              <td class="px-5 py-4">
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full" :style="estadoTransaccionStyle(p.estado_transaccion)">
+                  {{ labelEstadoTransaccion(p.estado_transaccion) }}
+                </span>
+                <p v-if="p.estado_transaccion === 'CANCELADO' && p.motivo_cancelacion" class="text-[11px] mt-1" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+                  {{ p.motivo_cancelacion }}
+                </p>
+              </td>
+              <td class="px-5 py-4 text-right">
+                <button
+                  v-if="p.estado_transaccion === 'CONFIRMADO'"
+                  type="button"
+                  class="w-8 h-8 rounded-lg inline-flex items-center justify-center border transition-all hover:shadow-sm"
+                  :class="isDark
+                    ? 'border-red-800 bg-red-950/40 text-red-300 hover:bg-red-950/70 hover:border-red-700'
+                    : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'"
+                  title="Cancelar pago"
+                  @click="cancelarPago(p)"
+                >
+                  <i class="pi pi-times text-xs"></i>
+                </button>
+                <span v-else class="text-xs" :class="isDark ? 'text-gray-600' : 'text-gray-300'">—</span>
+              </td>
             </tr>
             <tr v-if="!pagosStore.pagos.length">
-              <td colspan="5" class="px-5 py-16 text-center">
+              <td colspan="7" class="px-5 py-16 text-center">
                 <i class="pi pi-dollar text-4xl mb-3 block" :class="isDark ? 'text-gray-700' : 'text-gray-200'"></i>
                 <p class="font-medium" :class="isDark ? 'text-gray-500' : 'text-gray-400'">No hay pagos registrados</p>
               </td>
@@ -183,7 +208,9 @@ function saldoLabel(c) {
   return `Total $${formatPrecio(totalFinalContrato(c))}`
 }
 
-const totalCobrado = computed(() => pagosStore.pagos.reduce((s, p) => s + Number(p.monto || 0), 0))
+const totalCobrado = computed(() => pagosStore.pagos
+  .filter((p) => p.estado_transaccion === 'CONFIRMADO')
+  .reduce((s, p) => s + Number(p.monto || 0), 0))
 
 const pagination = computed(() => {
   const total = pagosStore.pagos.length
@@ -272,6 +299,44 @@ async function registrarPago(form) {
   }
 }
 
+async function cancelarPago(pago) {
+  const result = await Swal.fire({
+    icon: 'warning',
+    title: '¿Cancelar pago?',
+    text: `El pago de $${formatPrecio(pago.monto)} quedará cancelado y el saldo del contrato se recalculará.`,
+    input: 'textarea',
+    inputLabel: 'Motivo de cancelación',
+    inputPlaceholder: 'Indica por qué se cancela este pago...',
+    inputAttributes: { maxlength: 500 },
+    showCancelButton: true,
+    confirmButtonText: 'Cancelar pago',
+    cancelButtonText: 'Volver',
+    confirmButtonColor: '#c0392b',
+    cancelButtonColor: '#6b7280',
+    background: isDark.value ? '#1f2937' : '#fff',
+    color: isDark.value ? '#f3f4f6' : '#111827',
+    preConfirm: (value) => {
+      const motivo = String(value || '').trim()
+      if (!motivo) {
+        Swal.showValidationMessage('Debes indicar el motivo de cancelación')
+        return false
+      }
+      return motivo
+    },
+  })
+
+  if (!result.isConfirmed) return
+
+  try {
+    await pagosStore.cancelar(pago.id, result.value)
+    await pagosStore.fetchPagos()
+    await contratosStore.fetchContratos()
+    if (contratoSel.value) await cargarContrato()
+    toastSuccess('Pago cancelado')
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'Error', text: e.response?.data?.message || pagosStore.error, confirmButtonColor: '#922b21' })
+  }
+}
 function fmt(v) {
   if (!v) return '—'
   return new Date(v).toLocaleString('es-SV', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -293,6 +358,19 @@ function metodoStyle(m) {
     DEPOSITO: 'background:#f3e8ff; color:#6b21a8;',
   }
   return map[m] || 'background:#f3f4f6; color:#6b7280;'
+}
+
+function labelEstadoTransaccion(estado) {
+  const map = { CONFIRMADO: 'Confirmado', CANCELADO: 'Cancelado' }
+  return map[estado] || estado || 'Sin estado'
+}
+
+function estadoTransaccionStyle(estado) {
+  const map = {
+    CONFIRMADO: 'background:#dcfce7; color:#166534;',
+    CANCELADO: 'background:#fee2e2; color:#991b1b;',
+  }
+  return map[estado] || 'background:#f3f4f6; color:#6b7280;'
 }
 </script>
 
@@ -350,4 +428,6 @@ function metodoStyle(m) {
   font-weight: 700;
 }
 </style>
+
+
 

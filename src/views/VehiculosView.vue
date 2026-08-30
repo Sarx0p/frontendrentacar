@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="min-h-screen" :class="isDark ? 'bg-gray-950' : 'bg-slate-100'">
     <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
       <div>
@@ -175,6 +175,18 @@
                     :title="activeTab === 'vehiculos' ? 'Enviar fuera de servicio' : `Eliminar ${tabActiva.label.slice(0, -1).toLowerCase()}`"
                   >
                     <i class="pi pi-trash text-xs"></i>
+                  </button>
+                  <button
+                    v-if="activeTab === 'vehiculos' && vehiculoFueraServicio(item)"
+                    type="button"
+                    @click="accionRestaurar(item)"
+                    class="w-8 h-8 rounded-lg inline-flex items-center justify-center border transition-all hover:shadow-sm"
+                    :class="isDark
+                      ? 'border-amber-800 bg-amber-950/40 text-amber-300 hover:bg-amber-950/70 hover:border-amber-700'
+                      : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'"
+                    title="Restaurar vehículo"
+                  >
+                    <i class="pi pi-refresh text-xs"></i>
                   </button>
                 </div>
               </td>
@@ -867,6 +879,50 @@ async function accionEditar(item) {
   }
 }
 
+async function accionRestaurar(item) {
+  const nombre = nombreVehiculo(item)
+  const result = await Swal.fire({
+    icon: 'question',
+    title: '¿Restaurar vehículo?',
+    text: `${nombre} volverá a estar disponible para reservas y contratos.`,
+    input: 'textarea',
+    inputLabel: 'Motivo de restauración',
+    inputPlaceholder: 'Ej. Reparación completada, vehículo revisado...',
+    inputAttributes: { maxlength: 500 },
+    showCancelButton: true,
+    confirmButtonText: 'Restaurar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#c0392b',
+    cancelButtonColor: '#6b7280',
+    background: isDark.value ? '#1f2937' : '#fff',
+    color: isDark.value ? '#f3f4f6' : '#111827',
+    preConfirm: (value) => {
+      const motivo = normalizarTexto(value)
+      if (!motivo) {
+        Swal.showValidationMessage('Debes indicar el motivo de restauración')
+        return false
+      }
+      return motivo
+    },
+  })
+
+  if (!result.isConfirmed) return
+
+  try {
+    await store.restaurar(item.id, result.value)
+    await cargarVehiculos()
+    toastSuccess('Vehículo restaurado')
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'No se pudo restaurar',
+      text: mensajeErrorApi(e, store.error || 'Ocurrió un error al restaurar el vehículo.'),
+      confirmButtonColor: '#c0392b',
+      background: isDark.value ? '#1f2937' : '#fff',
+      color: isDark.value ? '#f3f4f6' : '#111827',
+    })
+  }
+}
 async function accionEliminar(item) {
   const nombre = activeTab.value === 'vehiculos' ? nombreVehiculo(item) : item.nombre
   const esVehiculo = activeTab.value === 'vehiculos'
@@ -1075,3 +1131,4 @@ async function guardarVehiculo(form) {
   font-weight: 700;
 }
 </style>
+
