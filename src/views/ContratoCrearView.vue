@@ -1,6 +1,9 @@
 <template>
-  <div class="min-h-screen wizard-root" :class="isDark ? 'wizard-root--dark' : 'wizard-root--light'">
+  <div class="wizard-root" :class="isDark ? 'wizard-root--dark' : 'wizard-root--light'">
 
+    <div class="wizard-body">
+      <!-- Contenido del paso -->
+      <div ref="wizardMainRef" class="wizard-main">
     <!-- Top bar -->
     <header class="wizard-header">
       <button type="button" class="wizard-back" @click="volver">
@@ -43,10 +46,6 @@
         <span class="wizard-step-label">{{ s.titulo }}</span>
       </button>
     </nav>
-
-    <div class="wizard-body">
-      <!-- Contenido del paso -->
-      <div class="wizard-main">
         <Transition name="slide-fade" mode="out-in">
           <div :key="paso" class="wizard-panel">
             <ContratoClienteSection
@@ -171,6 +170,7 @@ const cargandoReserva = ref(false)
 const rentaDirectaConfirmada = ref(false)
 
 const clienteRef = ref(null)
+const wizardMainRef = ref(null)
 const paso = ref(1)
 const cliente = ref(null)
 const fechaEntrega = ref('')
@@ -274,10 +274,15 @@ function anterior() {
   if (paso.value > 1) cambiarPaso(paso.value - 1)
 }
 
+function scrollProcesoArriba(behavior = 'smooth') {
+  wizardMainRef.value?.scrollTo({ top: 0, behavior })
+  window.scrollTo({ top: 0, behavior })
+}
+
 async function cambiarPaso(n) {
   paso.value = n
   await nextTick()
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  scrollProcesoArriba()
 }
 
 function limpiarDatosReserva() {
@@ -521,8 +526,8 @@ function cerrarPreviewContrato() {
 
 .wizard-header {
   display: flex; align-items: center; gap: 1rem;
-  padding: 1.25rem 1.5rem 0.75rem;
-  max-width: 1200px; margin: 0 auto;
+  padding: 1.25rem 0 0.75rem;
+  max-width: none; width: 100%; margin: 0;
 }
 .wizard-back {
   width: 2.5rem; height: 2.5rem; border-radius: 0.75rem;
@@ -550,8 +555,8 @@ function cerrarPreviewContrato() {
 }
 
 .wizard-stepper {
-  display: flex; gap: 0; max-width: 1200px; margin: 0 auto;
-  padding: 0 1.5rem 1.25rem; overflow-x: auto;
+  display: flex; gap: 0; max-width: none; width: 100%; margin: 0;
+  padding: 0 0 1.25rem; overflow-x: auto;
 }
 .wizard-step {
   flex: 1; display: flex; align-items: center; gap: 0.6rem;
@@ -576,15 +581,42 @@ function cerrarPreviewContrato() {
 .wizard-root--dark .wizard-step-label { color: #d1d5db; }
 
 .wizard-body {
-  display: grid; grid-template-columns: 1fr; gap: 1.25rem;
-  max-width: 1200px; margin: 0 auto; padding: 0 1.5rem 2rem;
+  display: grid; grid-template-columns: 1fr; gap: 1.5rem;
+  max-width: none; width: 100%; margin: 0; padding: 0 1.5rem 2rem;
   align-items: start;
 }
 @media (min-width: 1024px) {
-  .wizard-body { grid-template-columns: 1fr 300px; }
+  :global(html:has(.wizard-root)),
+  :global(body:has(.wizard-root)) {
+    overflow: hidden;
+  }
+
+  .wizard-root {
+    height: calc(100vh - 6.5rem);
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .wizard-body {
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: minmax(0, 7fr) minmax(320px, 3fr);
+    padding-bottom: 1rem;
+    overflow: hidden;
+  }
 }
 
 .wizard-main { min-width: 0; }
+@media (min-width: 1024px) {
+  .wizard-main {
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 0.35rem;
+    scrollbar-gutter: stable;
+  }
+}
 .wizard-panel :deep(.form-section) { border: none; box-shadow: 0 8px 32px rgba(146,43,33,0.08); }
 .wizard-root--dark .wizard-panel :deep(.form-section) { box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
 

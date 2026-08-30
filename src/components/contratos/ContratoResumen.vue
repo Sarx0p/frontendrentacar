@@ -114,10 +114,13 @@ function lineaFechaHora(fecha, hora) {
 }
 @media (min-width: 1024px) {
   .ticket-panel {
-    position: sticky;
-    top: calc(64px + 1rem);
-    align-self: flex-start;
-    z-index: 10;
+    position: static;
+    align-self: stretch;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 }
 
