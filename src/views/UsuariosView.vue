@@ -48,12 +48,15 @@
         : 'bg-white border-gray-100'"
     >
       <UsuariosTabla
-        :usuarios="usuariosFiltrados"
+        :usuarios="usuariosPaginados"
         :search="search"
         :filtro-activo="filtroActivo"
         :filtros="filtros"
+        :pagination="pagination"
+        :loading="store.loading"
         @update:search="search = $event"
         @update:filtro="filtroActivo = $event"
+        @cambiar-pagina="cambiarPagina"
         @editar="abrirModalEditar"
         @cambiar-estado="cambiarEstado"
       />
@@ -71,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import UsuariosTabla from '@/components/usuarios/UsuariosTabla.vue'
 import UsuariosModal from '@/components/usuarios/UsuariosModal.vue'
 import { useUsuariosStore } from '@/stores/usuarios'
@@ -86,6 +89,8 @@ const filtroActivo = ref('todos')
 const modalAbierto = ref(false)
 const modoEdicion = ref(false)
 const usuarioSeleccionado = ref(null)
+const paginaActual = ref(1)
+const usuariosPorPagina = 10
 
 const filtros = [
   { label: 'Todos', value: 'todos' },
@@ -119,6 +124,46 @@ const usuariosFiltrados = computed(() => {
 
   return lista
 })
+
+const pagination = computed(() => {
+  const total = usuariosFiltrados.value.length
+  const lastPage = Math.max(1, Math.ceil(total / usuariosPorPagina))
+  const currentPage = Math.min(paginaActual.value, lastPage)
+  const from = total ? ((currentPage - 1) * usuariosPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * usuariosPorPagina, total) : 0
+
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    per_page: usuariosPorPagina,
+    total,
+    from,
+    to,
+  }
+})
+
+const usuariosPaginados = computed(() => {
+  const start = (pagination.value.current_page - 1) * usuariosPorPagina
+  return usuariosFiltrados.value.slice(start, start + usuariosPorPagina)
+})
+
+watch([search, filtroActivo], () => {
+  paginaActual.value = 1
+})
+
+watch(
+  () => usuariosFiltrados.value.length,
+  () => {
+    if (paginaActual.value > pagination.value.last_page) {
+      paginaActual.value = pagination.value.last_page
+    }
+  },
+)
+
+function cambiarPagina(page) {
+  if (page < 1 || page > pagination.value.last_page || page === paginaActual.value) return
+  paginaActual.value = page
+}
 
 function abrirModalCrear() {
   modoEdicion.value = false

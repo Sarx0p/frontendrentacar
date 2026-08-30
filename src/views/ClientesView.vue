@@ -140,7 +140,36 @@
         class="px-5 py-3 border-t text-xs"
         :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'"
       >
-        {{ clientesFiltrados.length }} cliente{{ clientesFiltrados.length !== 1 ? 's' : '' }}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span>
+            Mostrando {{ pagination.from }}-{{ pagination.to }} de {{ pagination.total }} cliente{{ pagination.total !== 1 ? 's' : '' }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeRetroceder || store.loading"
+              @click="cambiarPagina(pagination.current_page - 1)"
+            >
+              <i class="pi pi-chevron-left text-[0.65rem]"></i>
+              Anterior
+            </button>
+            <span class="pagination-page" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              Página {{ pagination.current_page }} de {{ pagination.last_page }}
+            </span>
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeAvanzar || store.loading"
+              @click="cambiarPagina(pagination.current_page + 1)"
+            >
+              Siguiente
+              <i class="pi pi-chevron-right text-[0.65rem]"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -165,13 +194,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import Swal from 'sweetalert2'
+import { ref, computed, onMounted, watch } from 'vue'
 import { formatFecha, fechaSoloISO, fechaHoyLocal } from '@/utils/reservaFormatters'
 import ClientesModal from '@/components/clientes/ClientesModal.vue'
 import ClientesHistorialModal from '@/components/clientes/ClientesHistorialModal.vue'
 import { useClientesStore } from '@/stores/clientes'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { toastSuccess } from '@/utils/toast'
 
 const { isDark } = useAppTheme()
 const store = useClientesStore()
@@ -187,18 +216,37 @@ const erroresFormulario   = ref({})
 const errorFormulario     = ref('')
 
 const clientes = computed(() => store.clientes)
+const pagination = computed(() => store.pagination)
+const puedeRetroceder = computed(() => pagination.value.current_page > 1)
+const puedeAvanzar = computed(() => pagination.value.current_page < pagination.value.last_page)
+let searchTimer = null
 
-onMounted(() => store.fetchClientes())
+onMounted(() => cargarClientes())
 
 const clientesFiltrados = computed(() => {
-  if (!search.value.trim()) return clientes.value
-  const q = search.value.toLowerCase()
-  return clientes.value.filter(c =>
-    c.nombre?.toLowerCase().includes(q) ||
-    c.dui?.toLowerCase().includes(q) ||
-    c.telefono?.toLowerCase().includes(q)
-  )
+  return clientes.value
 })
+
+watch(search, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => cargarClientes(1), 300)
+})
+
+function clientesParams(page = pagination.value.current_page || 1) {
+  const params = { page }
+  const term = search.value.trim()
+  if (term) params.search = term
+  return params
+}
+
+async function cargarClientes(page = pagination.value.current_page || 1) {
+  await store.fetchClientes(clientesParams(page))
+}
+
+async function cambiarPagina(page) {
+  if (page < 1 || page > pagination.value.last_page || page === pagination.value.current_page) return
+  await cargarClientes(page)
+}
 
 function abrirModalCrear() {
   modoEdicion.value = false
@@ -228,16 +276,12 @@ async function guardarCliente(form) {
   try {
     if (modoEdicion.value) {
       await store.actualizar(form)
+      toastSuccess('Cliente actualizado')
+      await cargarClientes()
     } else {
       await store.crear(form)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Cliente registrado!',
-        text: 'El cliente se creó correctamente.',
-        confirmButtonColor: '#c0392b',
-        background: isDark.value ? '#1f2937' : '#fff',
-        color: isDark.value ? '#f3f4f6' : '#111827',
-      })
+      toastSuccess('Cliente registrado')
+      await cargarClientes(1)
     }
     modalAbierto.value = false
   } catch (e) {
@@ -272,3 +316,58 @@ function ubicacionCliente(cliente) {
   return [municipio, departamento].filter(Boolean).join(', ') || '—'
 }
 </script>
+
+<style scoped>
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.pagination-btn-light {
+  color: #334155;
+  background: #ffffff;
+  border-color: #dbe3ed;
+}
+
+.pagination-btn-light:not(:disabled):hover {
+  color: #c0392b;
+  background: #fff7f5;
+  border-color: #fecaca;
+}
+
+.pagination-btn-dark {
+  color: #d1d5db;
+  background: #111827;
+  border-color: #374151;
+}
+
+.pagination-btn-dark:not(:disabled):hover {
+  color: #f0a500;
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+.pagination-page {
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+</style>

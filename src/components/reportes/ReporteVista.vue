@@ -199,7 +199,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import Swal from 'sweetalert2'
-import api from '@/services/api'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { abrirPdf } from '@/utils/pdfDownload'
 import { formatMoney, formatFechaReporte, formatFechaCorta, estadoClaseReporte } from '@/utils/reporteFormatters'
@@ -233,7 +232,7 @@ const totalRentas = computed(() =>
 )
 
 async function cargarReporte() {
-  const { fechaInicio, fechaFin, estado } = route.query
+  const { fechaInicio, fechaFin } = route.query
   if (!fechaInicio || !fechaFin) {
     error.value = 'Faltan las fechas del periodo. Regresa al formulario y selecciona un rango.'
     cargando.value = false
@@ -241,21 +240,8 @@ async function cargarReporte() {
   }
 
   cargando.value = true
-  error.value = ''
-  try {
-    const res = await api.get('/admin/reportes', {
-      params: {
-        fecha_inicio: fechaInicio,
-        fecha_fin: fechaFin,
-        ...(estado ? { estado } : {}),
-      },
-    })
-    datos.value = res.data.data
-  } catch (e) {
-    error.value = e.response?.data?.message || 'Error al consultar el reporte.'
-  } finally {
-    cargando.value = false
-  }
+  error.value = 'La vista previa de desempeño fue reemplazada por reportes PDF desde el módulo de reportes.'
+  cargando.value = false
 }
 
 async function descargarPdf() {
@@ -264,7 +250,7 @@ async function descargarPdf() {
   const { fechaInicio, fechaFin, estado } = route.query
   generandoPdf.value = true
   try {
-    await abrirPdf('/admin/reportes/pdf', {
+    await abrirPdf('/admin/reportes/desempeno-general', {
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
       ...(estado ? { estado } : {}),
@@ -285,4 +271,3 @@ async function descargarPdf() {
 
 onMounted(cargarReporte)
 </script>
-

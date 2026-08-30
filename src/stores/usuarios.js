@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 import { esAdministrador } from '@/utils/usuario'
+import { fetchAllPaginated } from '@/utils/apiPagination'
 
 export const useUsuariosStore = defineStore('usuarios', () => {
 
@@ -15,8 +16,8 @@ export const useUsuariosStore = defineStore('usuarios', () => {
     loading.value = true
     error.value   = null
     try {
-      const res = await api.get('/admin/usuarios')
-      usuarios.value = res.data.data.data
+      const { items } = await fetchAllPaginated((params) => api.get('/admin/usuarios', { params }))
+      usuarios.value = items
     } catch (e) {
       if (e.response?.status === 403) {
         error.value = 'No tienes permiso para ver usuarios. Solo los administradores pueden acceder a este módulo.'

@@ -127,9 +127,38 @@
       </div>
       <div
         class="px-5 py-3 border-t text-xs"
-        :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-50 text-gray-400'"
+        :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'"
       >
-        {{ usuarios.length }} usuario{{ usuarios.length !== 1 ? 's' : '' }}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span>
+            Mostrando {{ pagination.from }}-{{ pagination.to }} de {{ pagination.total }} usuario{{ pagination.total !== 1 ? 's' : '' }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="pagination.current_page <= 1 || loading"
+              @click="$emit('cambiar-pagina', pagination.current_page - 1)"
+            >
+              <i class="pi pi-chevron-left text-[0.65rem]"></i>
+              Anterior
+            </button>
+            <span class="pagination-page" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              Página {{ pagination.current_page }} de {{ pagination.last_page }}
+            </span>
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="pagination.current_page >= pagination.last_page || loading"
+              @click="$emit('cambiar-pagina', pagination.current_page + 1)"
+            >
+              Siguiente
+              <i class="pi pi-chevron-right text-[0.65rem]"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -146,9 +175,14 @@ defineProps({
   search:       String,
   filtroActivo: String,
   filtros:      Array,
+  loading:      { type: Boolean, default: false },
+  pagination:   {
+    type: Object,
+    default: () => ({ current_page: 1, last_page: 1, total: 0, from: 0, to: 0 }),
+  },
 })
 
-defineEmits(['update:search', 'update:filtro', 'editar', 'cambiar-estado'])
+defineEmits(['update:search', 'update:filtro', 'editar', 'cambiar-estado', 'cambiar-pagina'])
 
 const colores = ['#c0392b','#f0a500','#2563eb','#16a34a','#7c3aed','#0891b2']
 
@@ -200,3 +234,58 @@ function labelEstado(estado) {
   return map[estado] || estado
 }
 </script>
+
+<style scoped>
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.pagination-btn-light {
+  color: #334155;
+  background: #ffffff;
+  border-color: #dbe3ed;
+}
+
+.pagination-btn-light:not(:disabled):hover {
+  color: #c0392b;
+  background: #fff7f5;
+  border-color: #fecaca;
+}
+
+.pagination-btn-dark {
+  color: #d1d5db;
+  background: #111827;
+  border-color: #374151;
+}
+
+.pagination-btn-dark:not(:disabled):hover {
+  color: #f0a500;
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+.pagination-page {
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+</style>

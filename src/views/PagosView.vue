@@ -73,7 +73,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="p in pagosStore.pagos"
+              v-for="p in pagosPaginados"
               :key="p.id"
               class="border-b transition-colors"
               :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-50 hover:bg-gray-50/80'"
@@ -98,8 +98,38 @@
         </table>
       </div>
 
-      <div class="px-5 py-3 border-t text-xs" :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-50 text-gray-400'">
-        {{ pagosStore.pagos.length }} pago{{ pagosStore.pagos.length !== 1 ? 's' : '' }} · Total: ${{ formatPrecio(totalCobrado) }}
+      <div class="px-5 py-3 border-t text-xs" :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span>
+            Mostrando {{ pagination.from }}-{{ pagination.to }} de {{ pagination.total }} pago{{ pagination.total !== 1 ? 's' : '' }}
+            · Total: ${{ formatPrecio(totalCobrado) }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeRetroceder || pagosStore.loading"
+              @click="cambiarPagina(paginaActual - 1)"
+            >
+              <i class="pi pi-chevron-left text-[0.65rem]"></i>
+              Anterior
+            </button>
+            <span class="pagination-page" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              Página {{ pagination.current_page }} de {{ pagination.last_page }}
+            </span>
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeAvanzar || pagosStore.loading"
+              @click="cambiarPagina(paginaActual + 1)"
+            >
+              Siguiente
+              <i class="pi pi-chevron-right text-[0.65rem]"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -108,13 +138,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Swal from 'sweetalert2'
 import PagoRegistrarModal from '@/components/pagos/PagoRegistrarModal.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { usePagosStore } from '@/stores/pagos'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { toastSuccess } from '@/utils/toast'
 import { formatPrecio, saldoPendienteContrato, montoExtrasContrato, totalFinalContrato } from '@/utils/contratoFormatters'
 
 const route = useRoute()
@@ -126,6 +157,8 @@ const contratoId = ref('')
 const contratoSel = ref(null)
 const modalAbierto = ref(false)
 const guardando = ref(false)
+const paginaActual = ref(1)
+const pagosPorPagina = 10
 
 const contratosAbiertos = computed(() =>
   contratosStore.contratos.filter((c) =>
@@ -152,6 +185,31 @@ function saldoLabel(c) {
 
 const totalCobrado = computed(() => pagosStore.pagos.reduce((s, p) => s + Number(p.monto || 0), 0))
 
+const pagination = computed(() => {
+  const total = pagosStore.pagos.length
+  const lastPage = Math.max(1, Math.ceil(total / pagosPorPagina))
+  const currentPage = Math.min(paginaActual.value, lastPage)
+  const from = total ? ((currentPage - 1) * pagosPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * pagosPorPagina, total) : 0
+
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    per_page: pagosPorPagina,
+    total,
+    from,
+    to,
+  }
+})
+
+const pagosPaginados = computed(() => {
+  const start = (pagination.value.current_page - 1) * pagosPorPagina
+  return pagosStore.pagos.slice(start, start + pagosPorPagina)
+})
+
+const puedeRetroceder = computed(() => pagination.value.current_page > 1)
+const puedeAvanzar = computed(() => pagination.value.current_page < pagination.value.last_page)
+
 onMounted(async () => {
   await contratosStore.fetchContratos()
   pagosStore.fetchPagos()
@@ -161,6 +219,20 @@ onMounted(async () => {
     modalAbierto.value = true
   }
 })
+
+watch(
+  () => pagosStore.pagos.length,
+  () => {
+    if (paginaActual.value > pagination.value.last_page) {
+      paginaActual.value = pagination.value.last_page
+    }
+  },
+)
+
+function cambiarPagina(page) {
+  if (page < 1 || page > pagination.value.last_page || page === paginaActual.value) return
+  paginaActual.value = page
+}
 
 async function cargarContrato() {
   if (!contratoId.value) { contratoSel.value = null; return }
@@ -192,14 +264,7 @@ async function registrarPago(form) {
     await contratosStore.fetchContratos()
     pagosStore.fetchPagos()
     modalAbierto.value = false
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado',
-      showConfirmButton: false,
-      timer: 2500,
-    })
+    toastSuccess(pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado')
   } catch (e) {
     Swal.fire({ icon: 'error', title: 'Error', text: e.response?.data?.message || pagosStore.error, confirmButtonColor: '#922b21' })
   } finally {
@@ -230,3 +295,59 @@ function metodoStyle(m) {
   return map[m] || 'background:#f3f4f6; color:#6b7280;'
 }
 </script>
+
+<style scoped>
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.pagination-btn-light {
+  color: #334155;
+  background: #ffffff;
+  border-color: #dbe3ed;
+}
+
+.pagination-btn-light:not(:disabled):hover {
+  color: #c0392b;
+  background: #fff7f5;
+  border-color: #fecaca;
+}
+
+.pagination-btn-dark {
+  color: #d1d5db;
+  background: #111827;
+  border-color: #374151;
+}
+
+.pagination-btn-dark:not(:disabled):hover {
+  color: #f0a500;
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+.pagination-page {
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+</style>
+

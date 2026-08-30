@@ -71,7 +71,7 @@
         <table class="w-full text-sm mantenimiento-table">
           <thead>
             <tr :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-100 border-gray-200'" class="border-b">
-              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Vehiculo</th>
+              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Vehículo</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Tipo</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Fecha</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest opacity-70">Lugar</th>
@@ -82,7 +82,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="m in lista"
+              v-for="m in listaPaginada"
               :key="m.id"
               class="border-b transition-colors"
               :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-100 hover:bg-gray-50'"
@@ -154,8 +154,37 @@
         </table>
       </div>
 
-      <div class="px-5 py-3 border-t text-xs opacity-60" :class="isDark ? 'border-gray-800' : 'border-gray-100'">
-        {{ lista.length }} registro{{ lista.length !== 1 ? 's' : '' }}
+      <div class="px-5 py-3 border-t text-xs" :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span>
+            Mostrando {{ pagination.from }}-{{ pagination.to }} de {{ pagination.total }} registro{{ pagination.total !== 1 ? 's' : '' }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeRetroceder || store.loading"
+              @click="cambiarPagina(paginaActual - 1)"
+            >
+              <i class="pi pi-chevron-left text-[0.65rem]"></i>
+              Anterior
+            </button>
+            <span class="pagination-page" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              Página {{ pagination.current_page }} de {{ pagination.last_page }}
+            </span>
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeAvanzar || store.loading"
+              @click="cambiarPagina(paginaActual + 1)"
+            >
+              Siguiente
+              <i class="pi pi-chevron-right text-[0.65rem]"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -163,27 +192,30 @@
       :visible="modalAbierto"
       :modo-edicion="modoEdicion"
       :mantenimiento="seleccionado"
-      :vehiculos="vehiculosStore.vehiculos"
+      :vehiculos="vehiculosModal"
+      :vehiculos-loading="vehiculosModalLoading"
       :guardando="guardando"
       @cerrar="cerrarModal"
       @guardar="guardar"
+      @buscar-vehiculos="buscarVehiculosDisponibles"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import Swal from 'sweetalert2'
 import MantenimientoModal from '@/components/mantenimiento/MantenimientoModal.vue'
 import { useMantenimientosStore } from '@/stores/mantenimientos'
-import { useVehiculosStore } from '@/stores/vehiculos'
 import { useAuthStore } from '@/stores/auth'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { formatFecha, nombreVehiculo } from '@/utils/reservaFormatters'
+import api from '@/services/api'
+import { fetchAllPaginated } from '@/utils/apiPagination'
+import { toastSuccess } from '@/utils/toast'
 
 const { isDark } = useAppTheme()
 const store = useMantenimientosStore()
-const vehiculosStore = useVehiculosStore()
 const authStore = useAuthStore()
 
 const search = ref('')
@@ -193,6 +225,10 @@ const modalAbierto = ref(false)
 const modoEdicion = ref(false)
 const seleccionado = ref(null)
 const guardando = ref(false)
+const vehiculosModal = ref([])
+const vehiculosModalLoading = ref(false)
+const paginaActual = ref(1)
+const registrosPorPagina = 10
 
 const lista = computed(() => {
   const prioridadEstado = {
@@ -208,14 +244,49 @@ const lista = computed(() => {
   })
 })
 
+const pagination = computed(() => {
+  const total = lista.value.length
+  const lastPage = Math.max(1, Math.ceil(total / registrosPorPagina))
+  const currentPage = Math.min(paginaActual.value, lastPage)
+  const from = total ? ((currentPage - 1) * registrosPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * registrosPorPagina, total) : 0
+
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    per_page: registrosPorPagina,
+    total,
+    from,
+    to,
+  }
+})
+
+const listaPaginada = computed(() => {
+  const start = (pagination.value.current_page - 1) * registrosPorPagina
+  return lista.value.slice(start, start + registrosPorPagina)
+})
+
+const puedeRetroceder = computed(() => pagination.value.current_page > 1)
+const puedeAvanzar = computed(() => pagination.value.current_page < pagination.value.last_page)
+
 onMounted(async () => {
   await Promise.all([
     aplicarFiltros(),
-    vehiculosStore.fetchVehiculos(),
+    buscarVehiculosDisponibles(),
   ])
 })
 
+watch(
+  () => lista.value.length,
+  () => {
+    if (paginaActual.value > pagination.value.last_page) {
+      paginaActual.value = pagination.value.last_page
+    }
+  },
+)
+
 async function aplicarFiltros() {
+  paginaActual.value = 1
   const params = {}
   if (search.value.trim()) params.search = search.value.trim()
   if (filtroEstado.value) params.estado = filtroEstado.value
@@ -223,15 +294,39 @@ async function aplicarFiltros() {
   await store.fetchMantenimientos(params)
 }
 
-function abrirModalCrear() {
+function cambiarPagina(page) {
+  if (page < 1 || page > pagination.value.last_page || page === paginaActual.value) return
+  paginaActual.value = page
+}
+
+async function buscarVehiculosDisponibles(search = '') {
+  vehiculosModalLoading.value = true
+  try {
+    const params = { estado: 'DISPONIBLE' }
+    if (search.trim()) params.search = search.trim()
+    const { items } = await fetchAllPaginated(
+      (requestParams) => api.get('/admin/vehiculos', { params: requestParams }),
+      params,
+    )
+    vehiculosModal.value = items
+  } catch {
+    vehiculosModal.value = []
+  } finally {
+    vehiculosModalLoading.value = false
+  }
+}
+
+async function abrirModalCrear() {
   modoEdicion.value = false
   seleccionado.value = null
   modalAbierto.value = true
+  await buscarVehiculosDisponibles()
 }
 
 function abrirModalEditar(m) {
   modoEdicion.value = true
   seleccionado.value = m
+  vehiculosModal.value = m.vehiculo ? [m.vehiculo] : []
   modalAbierto.value = true
 }
 
@@ -248,18 +343,11 @@ async function guardar(form) {
     } else {
       await store.crear(form)
     }
-    await Swal.fire({
-      icon: 'success',
-      title: modoEdicion.value ? 'Actualizado' : 'Registrado',
-      text: 'El mantenimiento se guardo correctamente.',
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    toastSuccess(modoEdicion.value ? 'Mantenimiento actualizado' : 'Mantenimiento registrado')
     cerrarModal()
     await Promise.all([
       aplicarFiltros(),
-      vehiculosStore.fetchVehiculos(),
+      buscarVehiculosDisponibles(),
     ])
   } catch (e) {
     const errores = e.response?.data?.errors
@@ -283,7 +371,7 @@ async function confirmarEliminar(m) {
   const result = await Swal.fire({
     icon: 'warning',
     title: 'Anular mantenimiento',
-    text: `El mantenimiento de ${m.vehiculo?.placa || 'este vehiculo'} pasara a cancelado.`,
+    text: `El mantenimiento de ${m.vehiculo?.placa || 'este vehículo'} pasará a cancelado.`,
     showCancelButton: true,
     confirmButtonColor: '#c0392b',
     cancelButtonColor: '#6b7280',
@@ -297,15 +385,9 @@ async function confirmarEliminar(m) {
     await store.eliminar(m.id)
     await Promise.all([
       aplicarFiltros(),
-      vehiculosStore.fetchVehiculos(),
+      buscarVehiculosDisponibles(),
     ])
-    await Swal.fire({
-      icon: 'success',
-      title: 'Mantenimiento anulado',
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    toastSuccess('Mantenimiento anulado')
   } catch (e) {
     await Swal.fire({
       icon: 'error',
@@ -346,3 +428,58 @@ function estadoStyle(estado) {
   return styles[estado] || 'background:#f3f4f6;color:#6b7280;'
 }
 </script>
+
+<style scoped>
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.pagination-btn-light {
+  color: #334155;
+  background: #ffffff;
+  border-color: #dbe3ed;
+}
+
+.pagination-btn-light:not(:disabled):hover {
+  color: #c0392b;
+  background: #fff7f5;
+  border-color: #fecaca;
+}
+
+.pagination-btn-dark {
+  color: #d1d5db;
+  background: #111827;
+  border-color: #374151;
+}
+
+.pagination-btn-dark:not(:disabled):hover {
+  color: #f0a500;
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+.pagination-page {
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+</style>

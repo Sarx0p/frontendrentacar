@@ -113,7 +113,6 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import Swal from 'sweetalert2'
 import { useAuthStore } from '@/stores/auth'
 import logoElGuayabo from '@/assets/logo-el-guayabo.png'
 
@@ -144,28 +143,12 @@ async function handleLogin() {
   try {
     await authStore.login(form.email, form.password, form.remember)
 
-    await Swal.fire({
-      icon:             'success',
-      title:            '¡Sesión iniciada correctamente!',
-      text:             'Bienvenido al panel de RentaCar El Guayabo.',
-      confirmButtonColor: '#16a34a',
-      confirmButtonText:  'Continuar',
-      background:       '#fff',
-      iconColor:        '#16a34a',
-    })
-
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
     router.push(redirect || { name: 'dashboard' })
 
   } catch (e) {
     const msg = e.response?.data?.message || 'Credenciales incorrectas. Intenta de nuevo.'
     globalError.value = msg
-    Swal.fire({
-      icon:  'error',
-      title: 'Error al iniciar sesión',
-      text:   msg,
-      confirmButtonColor: '#c0392b',
-    })
   } finally {
     loading.value = false
   }

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/services/api'
+import { fetchAllPaginated } from '@/utils/apiPagination'
 
 export const useContratosStore = defineStore('contratos', () => {
   const contratos = ref([])
@@ -13,9 +14,11 @@ export const useContratosStore = defineStore('contratos', () => {
     loading.value = true
     error.value   = null
     try {
-      const res = await api.get('/admin/contratos', { params })
-      const payload = res.data?.data
-      contratos.value = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : [])
+      const { items } = await fetchAllPaginated(
+        (requestParams) => api.get('/admin/contratos', { params: requestParams }),
+        params,
+      )
+      contratos.value = items
     } catch {
       error.value = 'Error al cargar contratos.'
       contratos.value = []

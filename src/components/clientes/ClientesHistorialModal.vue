@@ -113,7 +113,7 @@
                 </div>
                 <div v-else class="hist-list">
                   <article
-                    v-for="r in reservas"
+                    v-for="r in reservasPaginadas"
                     :key="'r-' + r.id"
                     class="hist-record hist-record--reservas"
                     :class="isDark ? 'hist-record--dark' : 'hist-record--light'"
@@ -158,6 +158,11 @@
                     </div>
                   </article>
                 </div>
+                <HistorialPagination
+                  v-if="reservas.length > registrosPorPagina"
+                  :pagination="paginationReservas"
+                  @cambiar="paginaReservas = $event"
+                />
               </div>
 
               <!-- Contratos -->
@@ -179,7 +184,7 @@
                 </div>
                 <div v-else class="hist-list">
                   <article
-                    v-for="c in contratos"
+                    v-for="c in contratosPaginados"
                     :key="'c-' + c.id"
                     class="hist-record hist-record--contratos"
                     :class="isDark ? 'hist-record--dark' : 'hist-record--light'"
@@ -224,6 +229,11 @@
                     </div>
                   </article>
                 </div>
+                <HistorialPagination
+                  v-if="contratos.length > registrosPorPagina"
+                  :pagination="paginationContratos"
+                  @cambiar="paginaContratos = $event"
+                />
               </div>
 
               <!-- Incidentes -->
@@ -245,7 +255,7 @@
                 </div>
                 <div v-else class="hist-list">
                   <article
-                    v-for="item in incidentes"
+                    v-for="item in incidentesPaginados"
                     :key="'i-' + item.id"
                     class="hist-record hist-record--incidentes"
                     :class="isDark ? 'hist-record--dark' : 'hist-record--light'"
@@ -287,6 +297,11 @@
                     </div>
                   </article>
                 </div>
+                <HistorialPagination
+                  v-if="incidentes.length > registrosPorPagina"
+                  :pagination="paginationIncidentes"
+                  @cambiar="paginaIncidentes = $event"
+                />
               </div>
             </div>
           </div>
@@ -340,12 +355,60 @@ const clienteInfo = ref(null)
 const reservas = ref([])
 const contratos = ref([])
 const incidentes = ref([])
+const paginaReservas = ref(1)
+const paginaContratos = ref(1)
+const paginaIncidentes = ref(1)
+const registrosPorPagina = 4
 
 const tabs = computed(() => [
   { id: 'reservas', label: 'Reservas', desc: 'Citas programadas', icon: 'pi-calendar', count: reservas.value.length },
   { id: 'contratos', label: 'Contratos', desc: 'Rentas formalizadas', icon: 'pi-file-edit', count: contratos.value.length },
   { id: 'incidentes', label: 'Incidentes', desc: 'Deudas y daños', icon: 'pi-exclamation-triangle', count: incidentes.value.length },
 ])
+
+const paginationReservas = computed(() => paginar(reservas.value, paginaReservas.value))
+const paginationContratos = computed(() => paginar(contratos.value, paginaContratos.value))
+const paginationIncidentes = computed(() => paginar(incidentes.value, paginaIncidentes.value))
+
+const reservasPaginadas = computed(() => slicePagina(reservas.value, paginationReservas.value.current_page))
+const contratosPaginados = computed(() => slicePagina(contratos.value, paginationContratos.value.current_page))
+const incidentesPaginados = computed(() => slicePagina(incidentes.value, paginationIncidentes.value.current_page))
+
+const HistorialPagination = {
+  props: {
+    pagination: {
+      type: Object,
+      required: true,
+    },
+  },
+  emits: ['cambiar'],
+  template: `
+    <div class="hist-pagination">
+      <span>Mostrando {{ pagination.from }}-{{ pagination.to }} de {{ pagination.total }} registros</span>
+      <div class="hist-pagination__actions">
+        <button
+          type="button"
+          class="hist-pagination__btn"
+          :disabled="pagination.current_page <= 1"
+          @click="$emit('cambiar', pagination.current_page - 1)"
+        >
+          <i class="pi pi-chevron-left"></i>
+          Anterior
+        </button>
+        <span class="hist-pagination__page">Página {{ pagination.current_page }} de {{ pagination.last_page }}</span>
+        <button
+          type="button"
+          class="hist-pagination__btn"
+          :disabled="pagination.current_page >= pagination.last_page"
+          @click="$emit('cambiar', pagination.current_page + 1)"
+        >
+          Siguiente
+          <i class="pi pi-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  `,
+}
 
 const colores = ['#c0392b', '#f0a500', '#2563eb', '#16a34a', '#7c3aed', '#0891b2']
 function avatarColor(nombre) {
@@ -370,6 +433,27 @@ function seleccionarTabInicial() {
   else tabActiva.value = 'reservas'
 }
 
+function paginar(lista, pagina) {
+  const total = lista.length
+  const lastPage = Math.max(1, Math.ceil(total / registrosPorPagina))
+  const currentPage = Math.min(pagina, lastPage)
+  const from = total ? ((currentPage - 1) * registrosPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * registrosPorPagina, total) : 0
+
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    total,
+    from,
+    to,
+  }
+}
+
+function slicePagina(lista, pagina) {
+  const start = (pagina - 1) * registrosPorPagina
+  return lista.slice(start, start + registrosPorPagina)
+}
+
 watch(
   () => props.visible,
   async (val) => {
@@ -381,6 +465,9 @@ watch(
     incidentes.value = []
     clienteInfo.value = null
     tabActiva.value = 'reservas'
+    paginaReservas.value = 1
+    paginaContratos.value = 1
+    paginaIncidentes.value = 1
     try {
       const data = await store.fetchHistorial(props.cliente.id)
       clienteInfo.value = data.cliente || props.cliente
@@ -658,6 +745,91 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
+}
+
+.hist-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(146, 43, 33, 0.14);
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.hist-body--dark .hist-pagination {
+  border-top-color: #374151;
+  color: #9ca3af;
+}
+
+.hist-pagination__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.hist-pagination__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.65rem;
+  border: 1px solid #dbe3ed;
+  background: #fff;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.hist-pagination__btn i {
+  font-size: 0.65rem;
+}
+
+.hist-body--dark .hist-pagination__btn {
+  border-color: #374151;
+  background: #111827;
+  color: #d1d5db;
+}
+
+.hist-pagination__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hist-pagination__btn:not(:disabled):hover {
+  color: #c0392b;
+  border-color: #fecaca;
+  background: #fff7f5;
+  transform: translateY(-1px);
+}
+
+.hist-body--dark .hist-pagination__btn:not(:disabled):hover {
+  color: #f0a500;
+  border-color: #4b5563;
+  background: #1f2937;
+}
+
+.hist-pagination__page {
+  min-width: 6.5rem;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .hist-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hist-pagination__actions {
+    justify-content: flex-start;
+  }
 }
 
 .hist-record {

@@ -119,7 +119,7 @@
           </thead>
           <tbody :key="activeTab">
             <tr
-              v-for="(item, index) in itemsFiltrados"
+              v-for="(item, index) in itemsVisibles"
               :key="`${activeTab}-${item.id}-${index}`"
               class="border-b transition-colors"
               :class="isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-200 hover:bg-slate-50'"
@@ -188,8 +188,70 @@
           </tbody>
         </table>
       </div>
-      <div class="px-5 py-3 border-t text-xs" :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'">
-        Mostrando {{ itemsFiltrados.length }} de {{ conteoTab(activeTab) }} {{ contadorLabel(itemsFiltrados.length) }}
+      <div
+        class="px-5 py-3 border-t text-xs"
+        :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'"
+      >
+        <div v-if="activeTab === 'vehiculos'" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span>
+            Mostrando {{ pagination.from }}-{{ pagination.to }} de {{ pagination.total }} vehículo{{ pagination.total !== 1 ? 's' : '' }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeRetroceder || store.loading"
+              @click="cambiarPaginaVehiculos(pagination.current_page - 1)"
+            >
+              <i class="pi pi-chevron-left text-[0.65rem]"></i>
+              Anterior
+            </button>
+            <span class="pagination-page" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              Página {{ pagination.current_page }} de {{ pagination.last_page }}
+            </span>
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeAvanzar || store.loading"
+              @click="cambiarPaginaVehiculos(pagination.current_page + 1)"
+            >
+              Siguiente
+              <i class="pi pi-chevron-right text-[0.65rem]"></i>
+            </button>
+          </div>
+        </div>
+        <div v-else class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span>
+            Mostrando {{ catalogoPagination.from }}-{{ catalogoPagination.to }} de {{ catalogoPagination.total }} {{ contadorLabel(catalogoPagination.total) }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeRetrocederCatalogo || isLoadingTab"
+              @click="cambiarPaginaCatalogo(catalogoPaginaActual - 1)"
+            >
+              <i class="pi pi-chevron-left text-[0.65rem]"></i>
+              Anterior
+            </button>
+            <span class="pagination-page" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              Página {{ catalogoPagination.current_page }} de {{ catalogoPagination.last_page }}
+            </span>
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeAvanzarCatalogo || isLoadingTab"
+              @click="cambiarPaginaCatalogo(catalogoPaginaActual + 1)"
+            >
+              Siguiente
+              <i class="pi pi-chevron-right text-[0.65rem]"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -213,7 +275,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import Swal from 'sweetalert2'
 import api from '@/services/api'
 import VehiculosModal from '@/components/vehiculos/VehiculosModal.vue'
@@ -226,6 +288,7 @@ import {
   estadoVehiculoStyle,
   ESTADOS_VEHICULO_TODOS,
 } from '@/utils/vehiculoFormatters'
+import { toastSuccess } from '@/utils/toast'
 
 const { isDark } = useAppTheme()
 const store = useVehiculosStore()
@@ -243,6 +306,8 @@ const modoEdicion = ref(false)
 const vehiculoSeleccionado = ref(null)
 const modelos = ref([])
 const cargandoModelos = ref(false)
+const catalogoPaginaActual = ref(1)
+const catalogoItemsPorPagina = 10
 
 const estadosFiltro = ESTADOS_VEHICULO_TODOS
 const ordenEstadosVehiculo = {
@@ -256,9 +321,13 @@ const nombreFlexibleRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ./'-]+$/
 const nombrePersonaRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]+$/
 const contieneLetraRegex = /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/
 const vehiculos = computed(() => store.vehiculos)
+const pagination = computed(() => store.pagination)
+const puedeRetroceder = computed(() => pagination.value.current_page > 1)
+const puedeAvanzar = computed(() => pagination.value.current_page < pagination.value.last_page)
 const marcas = computed(() => store.marcas)
 const categorias = computed(() => store.categorias)
 const propietarios = computed(() => store.propietarios)
+let searchTimer = null
 
 const tabs = [
   { value: 'vehiculos', label: 'Vehículos', icon: 'pi pi-car', color: '#c0392b' },
@@ -321,9 +390,20 @@ const subtitulos = {
 }
 
 onMounted(() => {
-  store.fetchVehiculos()
+  cargarVehiculos()
   store.fetchCatalogos()
   cargarModelos()
+})
+
+watch([search, filtroEstado], () => {
+  if (activeTab.value !== 'vehiculos') return
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => cargarVehiculos(1), 300)
+})
+
+watch([search, activeTab], () => {
+  if (activeTab.value === 'vehiculos') return
+  catalogoPaginaActual.value = 1
 })
 
 function extraerLista(payload) {
@@ -369,7 +449,41 @@ const itemsFiltrados = computed(() => {
   return ordenarVehiculosPorEstado(filtrados)
 })
 
+const catalogoPagination = computed(() => {
+  const total = itemsFiltrados.value.length
+  const lastPage = Math.max(1, Math.ceil(total / catalogoItemsPorPagina))
+  const currentPage = Math.min(catalogoPaginaActual.value, lastPage)
+  const from = total ? ((currentPage - 1) * catalogoItemsPorPagina) + 1 : 0
+  const to = total ? Math.min(currentPage * catalogoItemsPorPagina, total) : 0
+
+  return {
+    current_page: currentPage,
+    last_page: lastPage,
+    per_page: catalogoItemsPorPagina,
+    total,
+    from,
+    to,
+  }
+})
+
+const itemsVisibles = computed(() => {
+  if (activeTab.value === 'vehiculos') return itemsFiltrados.value
+  const start = (catalogoPagination.value.current_page - 1) * catalogoItemsPorPagina
+  return itemsFiltrados.value.slice(start, start + catalogoItemsPorPagina)
+})
+
+const puedeRetrocederCatalogo = computed(() => catalogoPagination.value.current_page > 1)
+const puedeAvanzarCatalogo = computed(() => catalogoPagination.value.current_page < catalogoPagination.value.last_page)
+
+watch(catalogoPagination, (value) => {
+  if (activeTab.value === 'vehiculos') return
+  if (catalogoPaginaActual.value !== value.current_page) {
+    catalogoPaginaActual.value = value.current_page
+  }
+})
+
 function conteoTab(tab) {
+  if (tab === 'vehiculos') return store.total
   return listaTab(tab).length
 }
 
@@ -394,7 +508,7 @@ function textoBusqueda(item) {
 
 const searchPlaceholder = computed(() => {
   const map = {
-    vehiculos: 'Buscar por placa, color, marca o modelo...',
+    vehiculos: 'Buscar por placa, marca o modelo...',
     marcas: 'Buscar por nombre de marca...',
     categorias: 'Buscar por nombre o descripción...',
     modelos: 'Buscar por modelo o marca...',
@@ -427,7 +541,34 @@ function cambiarTab(tab) {
   if (activeTab.value === tab) return
   activeTab.value = tab
   search.value = ''
+  catalogoPaginaActual.value = 1
   if (tab !== 'vehiculos') filtroEstado.value = ''
+  if (tab === 'vehiculos') cargarVehiculos(1)
+}
+
+function vehiculosParams(page = pagination.value.current_page || 1) {
+  const params = { page }
+  const term = search.value.trim()
+  if (term) params.search = term
+  if (filtroEstado.value) params.estado = filtroEstado.value
+  return params
+}
+
+async function cargarVehiculos(page = pagination.value.current_page || 1) {
+  await store.fetchVehiculos(vehiculosParams(page))
+  if (page > 1 && vehiculos.value.length === 0) {
+    await store.fetchVehiculos(vehiculosParams(page - 1))
+  }
+}
+
+async function cambiarPaginaVehiculos(page) {
+  if (page < 1 || page > pagination.value.last_page || page === pagination.value.current_page) return
+  await cargarVehiculos(page)
+}
+
+function cambiarPaginaCatalogo(page) {
+  if (page < 1 || page > catalogoPagination.value.last_page || page === catalogoPaginaActual.value) return
+  catalogoPaginaActual.value = page
 }
 
 function descripcionCategoria(item) {
@@ -590,14 +731,7 @@ async function onCatalogoGuardado({ tipo, modoEdicion: catalogoEditado = false }
   const labelsEdicion = {
     propietario: 'Propietario actualizado',
   }
-  await Swal.fire({
-    icon: 'success',
-    title: catalogoEditado ? (labelsEdicion[tipo] || 'Registro actualizado') : labels[tipo],
-    text: 'El catálogo se actualizó correctamente.',
-    confirmButtonColor: '#c0392b',
-    background: isDark.value ? '#1f2937' : '#fff',
-    color: isDark.value ? '#f3f4f6' : '#111827',
-  })
+  toastSuccess(catalogoEditado ? (labelsEdicion[tipo] || 'Registro actualizado') : labels[tipo])
 }
 
 function abrirModalEditar(v) {
@@ -763,23 +897,14 @@ async function accionEliminar(item) {
     await api.delete(endpoints[activeTab.value])
 
     if (activeTab.value === 'vehiculos') {
-      await store.fetchVehiculos()
+      await cargarVehiculos()
     } else if (activeTab.value === 'modelos') {
       await cargarModelos()
     } else {
       await store.fetchCatalogos(true)
     }
 
-    await Swal.fire({
-      icon: 'success',
-      title: esVehiculo ? 'Vehículo fuera de servicio' : 'Registro eliminado',
-      text: esVehiculo
-        ? 'El vehículo quedó marcado como fuera de servicio.'
-        : 'El registro fue eliminado correctamente.',
-      confirmButtonColor: '#c0392b',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    toastSuccess(esVehiculo ? 'Vehículo fuera de servicio' : 'Registro eliminado')
   } catch (e) {
     await Swal.fire({
       icon: 'error',
@@ -840,24 +965,12 @@ async function guardarVehiculo(form) {
   try {
     if (modoEdicion.value) {
       await store.actualizar(form)
-      await Swal.fire({
-        icon: 'success',
-        title: 'Vehículo actualizado',
-        text: 'Los cambios se guardaron correctamente.',
-        confirmButtonColor: '#c0392b',
-        background: isDark.value ? '#1f2937' : '#fff',
-        color: isDark.value ? '#f3f4f6' : '#111827',
-      })
+      await cargarVehiculos()
+      toastSuccess('Vehículo actualizado')
     } else {
       await store.crear(form)
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Vehículo registrado!',
-        text: 'El vehículo se agregó a la flota.',
-        confirmButtonColor: '#c0392b',
-        background: isDark.value ? '#1f2937' : '#fff',
-        color: isDark.value ? '#f3f4f6' : '#111827',
-      })
+      await cargarVehiculos(1)
+      toastSuccess('Vehículo registrado')
     }
     modalAbierto.value = false
   } catch (e) {
@@ -908,5 +1021,57 @@ async function guardarVehiculo(form) {
 .catalogo-tab-inactive-dark:hover {
   background: #1f2937;
   color: #f3f4f6;
+}
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.pagination-btn-light {
+  color: #334155;
+  background: #ffffff;
+  border-color: #dbe3ed;
+}
+
+.pagination-btn-light:not(:disabled):hover {
+  color: #c0392b;
+  background: #fff7f5;
+  border-color: #fecaca;
+}
+
+.pagination-btn-dark {
+  color: #d1d5db;
+  background: #111827;
+  border-color: #374151;
+}
+
+.pagination-btn-dark:not(:disabled):hover {
+  color: #f0a500;
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+.pagination-page {
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 </style>

@@ -193,9 +193,38 @@
 
       <div
         class="px-5 py-3 border-t text-xs"
-        :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-50 text-gray-400'"
+        :class="isDark ? 'border-gray-800 text-gray-500' : 'border-gray-200 text-gray-500'"
       >
-        {{ reservasFiltradas.length }} reserva{{ reservasFiltradas.length !== 1 ? 's' : '' }}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span>
+            Mostrando {{ pagination.from }}-{{ pagination.to }} de {{ pagination.total }} reserva{{ pagination.total !== 1 ? 's' : '' }}
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeRetroceder || store.loading"
+              @click="cambiarPagina(pagination.current_page - 1)"
+            >
+              <i class="pi pi-chevron-left text-[0.65rem]"></i>
+              Anterior
+            </button>
+            <span class="pagination-page" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+              Página {{ pagination.current_page }} de {{ pagination.last_page }}
+            </span>
+            <button
+              type="button"
+              class="pagination-btn"
+              :class="isDark ? 'pagination-btn-dark' : 'pagination-btn-light'"
+              :disabled="!puedeAvanzar || store.loading"
+              @click="cambiarPagina(pagination.current_page + 1)"
+            >
+              Siguiente
+              <i class="pi pi-chevron-right text-[0.65rem]"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -223,7 +252,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import Swal from 'sweetalert2'
 import ReservaEditarModal from '@/components/reservas/ReservaEditarModal.vue'
 import ReservaCancelarModal from '@/components/reservas/ReservaCancelarModal.vue'
@@ -231,6 +260,7 @@ import ReservasCanceladasModal from '@/components/reservas/ReservasCanceladasMod
 import { useReservasStore } from '@/stores/reservas'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { formatFecha } from '@/utils/reservaFormatters'
+import { toastSuccess } from '@/utils/toast'
 
 const { isDark } = useAppTheme()
 const store = useReservasStore()
@@ -246,8 +276,17 @@ const guardandoEdicion            = ref(false)
 const guardandoCancelacion        = ref(false)
 
 const reservas = computed(() => store.reservas)
+const pagination = computed(() => store.pagination)
+const puedeRetroceder = computed(() => pagination.value.current_page > 1)
+const puedeAvanzar = computed(() => pagination.value.current_page < pagination.value.last_page)
+let searchTimer = null
 
-onMounted(() => aplicarFiltros())
+onMounted(() => cargarReservas())
+
+watch([search, filtroEstado], () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => cargarReservas(1), 300)
+})
 
 const reservasFiltradas = computed(() =>
   [...reservas.value]
@@ -255,11 +294,27 @@ const reservasFiltradas = computed(() =>
     .sort((a, b) => a.id - b.id)
 )
 
-async function aplicarFiltros() {
-  const params = {}
+function reservasParams(page = pagination.value.current_page || 1) {
+  const params = { page }
   if (filtroEstado.value) params.estado = filtroEstado.value
   if (search.value.trim()) params.search = search.value.trim()
-  await store.fetchReservas(params)
+  return params
+}
+
+async function cargarReservas(page = pagination.value.current_page || 1) {
+  await store.fetchReservas(reservasParams(page))
+  if (page > 1 && reservas.value.length === 0) {
+    await store.fetchReservas(reservasParams(page - 1))
+  }
+}
+
+async function aplicarFiltros() {
+  await cargarReservas(1)
+}
+
+async function cambiarPagina(page) {
+  if (page < 1 || page > pagination.value.last_page || page === pagination.value.current_page) return
+  await cargarReservas(page)
 }
 
 function abrirModalCancelar(reserva) {
@@ -277,15 +332,8 @@ async function confirmarCancelacion(motivo) {
   guardandoCancelacion.value = true
   try {
     await store.cancelar(reservaACancelar.value.id, motivo)
-    await aplicarFiltros()
-    await Swal.fire({
-      icon: 'success',
-      title: 'Reserva cancelada',
-      text: 'La reserva fue cancelada y ya no aparecerá en la lista activa.',
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    await cargarReservas()
+    toastSuccess('Reserva cancelada')
     cerrarModalCancelar()
   } catch (e) {
     await Swal.fire({
@@ -319,15 +367,8 @@ async function guardarReserva(form) {
       fecha_inicio: form.fecha_inicio,
       fecha_fin:    form.fecha_fin,
     })
-    await aplicarFiltros()
-    await Swal.fire({
-      icon: 'success',
-      title: 'Reserva actualizada',
-      text: 'Los cambios se guardaron correctamente.',
-      confirmButtonColor: '#922b21',
-      background: isDark.value ? '#1f2937' : '#fff',
-      color: isDark.value ? '#f3f4f6' : '#111827',
-    })
+    await cargarReservas()
+    toastSuccess('Reserva actualizada')
     cerrarModal()
   } catch (e) {
     await Swal.fire({
@@ -427,5 +468,58 @@ function tipoStyle(tipo) {
   letter-spacing: 0.02em;
   transition: all 0.15s ease;
   white-space: nowrap;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.pagination-btn-light {
+  color: #334155;
+  background: #ffffff;
+  border-color: #dbe3ed;
+}
+
+.pagination-btn-light:not(:disabled):hover {
+  color: #c0392b;
+  background: #fff7f5;
+  border-color: #fecaca;
+}
+
+.pagination-btn-dark {
+  color: #d1d5db;
+  background: #111827;
+  border-color: #374151;
+}
+
+.pagination-btn-dark:not(:disabled):hover {
+  color: #f0a500;
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+.pagination-page {
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 </style>

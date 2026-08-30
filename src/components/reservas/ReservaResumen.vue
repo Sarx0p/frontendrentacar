@@ -1,6 +1,6 @@
 <template>
   <aside
-    class="resumen-panel rounded-2xl border shadow-sm flex flex-col overflow-hidden lg:sticky lg:top-2"
+    class="resumen-panel rounded-2xl border shadow-sm flex flex-col overflow-hidden"
     :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
   >
     <!-- Cabecera -->

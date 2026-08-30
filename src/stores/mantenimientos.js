@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '@/services/api'
+import { fetchAllPaginated } from '@/utils/apiPagination'
 
 export const useMantenimientosStore = defineStore('mantenimientos', () => {
   const mantenimientos = ref([])
@@ -11,8 +12,11 @@ export const useMantenimientosStore = defineStore('mantenimientos', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await api.get('/admin/mantenimientos', { params })
-      mantenimientos.value = res.data.data.data ?? res.data.data ?? []
+      const { items } = await fetchAllPaginated(
+        (requestParams) => api.get('/admin/mantenimientos', { params: requestParams }),
+        params,
+      )
+      mantenimientos.value = items
     } catch (e) {
       error.value = e.response?.data?.message || 'Error al cargar mantenimientos.'
       mantenimientos.value = []
