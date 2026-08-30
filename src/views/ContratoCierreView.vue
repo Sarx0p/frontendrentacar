@@ -363,6 +363,7 @@ import { useAppTheme } from "@/composables/useAppTheme";
 import { toastSuccess } from "@/utils/toast";
 import {
   NIVELES_COMBUSTIBLE,
+  normalizarNivelCombustible,
   formatPrecio,
   formatFechaHora12,
   nivelCombustiblePct,
@@ -392,12 +393,12 @@ const aplicarCargoRetraso = ref(false);
 const montoRetraso = ref(15);
 
 const combIdx = computed(() => {
-  const i = NIVELES_COMBUSTIBLE.findIndex((n) => n.value === nivelRecepcion.value);
+  const i = NIVELES_COMBUSTIBLE.findIndex((n) => n.value === normalizarNivelCombustible(nivelRecepcion.value));
   return i >= 0 ? i : 2;
 });
 const combLabel = computed(() => NIVELES_COMBUSTIBLE[combIdx.value]?.label);
 const entregaLabel = computed(() =>
-  NIVELES_COMBUSTIBLE.find((n) => n.value === contrato.value?.nivel_combustible_entrega)?.label ||
+  NIVELES_COMBUSTIBLE.find((n) => n.value === normalizarNivelCombustible(contrato.value?.nivel_combustible_entrega))?.label ||
   contrato.value?.nivel_combustible_entrega ||
   "-",
 );
@@ -477,7 +478,7 @@ onMounted(async () => {
   window.addEventListener("beforeunload", advertirSalidaNavegador);
   try {
     contrato.value = await store.fetchContrato(route.params.id);
-    nivelRecepcion.value = contrato.value.nivel_combustible_entrega || "1/2";
+    nivelRecepcion.value = normalizarNivelCombustible(contrato.value.nivel_combustible_entrega) || "1/2";
     cargosRegistrados.value = cargosDesdeContrato(
       contrato.value.cargos_adicionales || contrato.value.cargosAdicionales,
     );
@@ -753,9 +754,7 @@ function labelResponsableIncidencia(responsable) {
 }
 
 function combustibleCorto(nivel) {
-  if (nivel.value === "VACIO") return "E";
-  if (nivel.value === "LLENO") return "F";
-  return nivel.label;
+  return nivel.value;
 }
 
 function agregarCargoCombustible() {
@@ -1570,3 +1569,5 @@ async function cerrarRenta() {
   }
 }
 </style>
+
+

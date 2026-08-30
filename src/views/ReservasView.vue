@@ -415,7 +415,7 @@ function labelEstado(estado) {
 }
 
 function labelTipo(tipo) {
-  const map = { INMEDIATA: 'Renta directa', ANTISIPADA: 'Reserva', ANTICIPADA: 'Reserva' }
+  const map = { INMEDIATA: 'Reserva inmediata', ANTISIPADA: 'Reserva', ANTICIPADA: 'Reserva' }
   return map[tipo] || 'Reserva'
 }
 
