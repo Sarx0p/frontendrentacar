@@ -119,46 +119,12 @@
 
             <div>
               <label class="field-label">Teléfono</label>
-              <div class="grid grid-cols-1 sm:grid-cols-[9.5rem_1fr] gap-2">
-                <div class="country-picker">
-                  <button
-                    type="button"
-                    class="country-trigger field-input"
-                    :class="errors.telefono ? 'error' : ''"
-                    @click="countryMenuOpen = !countryMenuOpen"
-                  >
-                    <span class="country-flag" :class="paisTelefono.flagClass"></span>
-                    <span class="country-code">{{ paisTelefono.codigo }}</span>
-                    <span class="country-prefix">{{ paisTelefono.prefijo }}</span>
-                    <i class="pi pi-chevron-down country-chevron"></i>
-                  </button>
-                  <div v-if="countryMenuOpen" class="country-menu" :class="isDark ? 'country-menu-dark' : 'country-menu-light'">
-                    <button
-                      v-for="pais in paisesTelefono"
-                      :key="pais.codigo"
-                      type="button"
-                      class="country-option"
-                      :class="form.pais_telefono === pais.codigo ? 'country-option-active' : ''"
-                      @click="seleccionarPais(pais.codigo)"
-                    >
-                      <span class="country-flag" :class="pais.flagClass"></span>
-                      <span class="country-code">{{ pais.codigo }}</span>
-                      <span class="country-prefix">{{ pais.prefijo }}</span>
-                    </button>
-                  </div>
-                </div>
-                <input
-                  :value="form.telefono"
-                  type="tel"
-                  inputmode="numeric"
-                  :placeholder="paisTelefono.placeholder"
-                  class="field-input"
-                  :class="errors.telefono ? 'error' : ''"
-                  @input="onTelefonoInput"
-                  @paste.prevent="onTelefonoPaste"
-                />
-              </div>
-              <p v-if="errors.telefono" class="field-error">{{ errors.telefono }}</p>
+              <TelefonoPaisInput
+                v-model="form.telefono"
+                v-model:pais="form.pais_telefono"
+                :error="errors.telefono"
+                :control-class="['field-input', errors.telefono ? 'error' : '']"
+              />
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -240,8 +206,16 @@
 
 <script setup>
 import { ref, reactive, watch, computed } from 'vue'
+import TelefonoPaisInput from '@/components/common/TelefonoPaisInput.vue'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useClientesStore } from '@/stores/clientes'
+import {
+  CODIGO_PAIS_DEFAULT,
+  buscarPaisTelefono,
+  detectarPaisTelefono,
+  telefonoNormalizadoCompleto,
+  validarTelefonoPais,
+} from '@/data/paisesTelefono'
 
 const { isDark } = useAppTheme()
 const store = useClientesStore()
@@ -262,7 +236,6 @@ const departamentos = ref([])
 const municipios = ref([])
 const cargandoDepartamentos = ref(false)
 const cargandoMunicipios = ref(false)
-const countryMenuOpen = ref(false)
 const inicializandoFormulario = ref(false)
 
 const form = reactive({
@@ -273,7 +246,7 @@ const form = reactive({
   numero_licencia: '',
   vencimiento_licencia: '',
   telefono: '',
-  pais_telefono: 'SV',
+  pais_telefono: CODIGO_PAIS_DEFAULT,
   departamento_id: '',
   municipio_id: '',
 })
@@ -289,18 +262,6 @@ const errors = reactive({
   municipio_id: '',
 })
 
-const paisesTelefono = [
-  { codigo: 'SV', flagClass: 'flag-sv', prefijo: '+503', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'GT', flagClass: 'flag-gt', prefijo: '+502', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'HN', flagClass: 'flag-hn', prefijo: '+504', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'NI', flagClass: 'flag-ni', prefijo: '+505', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'CR', flagClass: 'flag-cr', prefijo: '+506', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'PA', flagClass: 'flag-pa', prefijo: '+507', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'MX', flagClass: 'flag-mx', prefijo: '+52', digitos: 10, grupos: [2, 4, 4], placeholder: '00-0000-0000' },
-  { codigo: 'US', flagClass: 'flag-us', prefijo: '+1', digitos: 10, grupos: [3, 3, 4], placeholder: '000-000-0000' },
-]
-
-const paisTelefono = computed(() => paisesTelefono.find((pais) => pais.codigo === form.pais_telefono) || paisesTelefono[0])
 const fechaMinimaDui = computed(() => fechaMananaLocal())
 const fechaMinimaLicencia = computed(() => fechaMananaLocal())
 
@@ -356,8 +317,8 @@ function llenarFormulario() {
       vencimiento_dui: fechaInput(cliente.vencimiento_dui),
       numero_licencia: cliente.numero_licencia || '',
       vencimiento_licencia: fechaInput(cliente.vencimiento_licencia),
-      telefono: telefonoLocalDesdeGuardado(cliente.telefono || ''),
-      pais_telefono: paisDesdeTelefonoGuardado(cliente.telefono || ''),
+      telefono: telefonoNormalizadoCompleto(cliente.telefono || '', detectarPaisTelefono(cliente.telefono || '')),
+      pais_telefono: detectarPaisTelefono(cliente.telefono || '').codigo,
       departamento_id: String(cliente.departamento_id ?? municipio.departamento_id ?? municipio.departamento?.id ?? ''),
       municipio_id: String(cliente.municipio_id ?? municipio.id ?? ''),
     })
@@ -372,7 +333,7 @@ function llenarFormulario() {
     numero_licencia: '',
     vencimiento_licencia: '',
     telefono: '',
-    pais_telefono: 'SV',
+    pais_telefono: CODIGO_PAIS_DEFAULT,
     departamento_id: '',
     municipio_id: '',
   })
@@ -447,14 +408,8 @@ function validar() {
     errors.vencimiento_licencia = 'La licencia debe vencer después de hoy.'
     ok = false
   }
-  const telefonoLocal = telefonoLocalNormalizado(form.telefono)
-  if (!telefonoLocal) {
-    errors.telefono = 'El teléfono es obligatorio.'
-    ok = false
-  } else if (telefonoLocal.length !== paisTelefono.value.digitos) {
-    errors.telefono = `Debe tener ${paisTelefono.value.digitos} dígitos para ${paisTelefono.value.prefijo}.`
-    ok = false
-  }
+  const telefonoError = validarTelefonoPais(form.telefono, buscarPaisTelefono(form.pais_telefono))
+  if (telefonoError) { errors.telefono = telefonoError; ok = false }
   if (!form.departamento_id) { errors.departamento_id = 'Selecciona un departamento.'; ok = false }
   if (!form.municipio_id) { errors.municipio_id = 'Selecciona un municipio.'; ok = false }
   return ok
@@ -469,7 +424,7 @@ function handleGuardar() {
     vencimiento_dui: form.vencimiento_dui,
     numero_licencia: form.numero_licencia,
     vencimiento_licencia: form.vencimiento_licencia,
-    telefono: telefonoNormalizadoCompleto(),
+    telefono: telefonoNormalizadoCompleto(form.telefono, buscarPaisTelefono(form.pais_telefono)),
     municipio_id: form.municipio_id,
   })
 }
@@ -530,62 +485,6 @@ function duiValido(value) {
   return digits[8] === verificador
 }
 
-function soloDigitos(value) {
-  return String(value || '').replace(/\D/g, '')
-}
-
-function quitarPrefijoPais(digitos, pais = paisTelefono.value) {
-  const prefijo = soloDigitos(pais.prefijo)
-  return digitos.startsWith(prefijo) ? digitos.slice(prefijo.length) : digitos
-}
-
-function formatearTelefono(digitos, pais = paisTelefono.value) {
-  const local = quitarPrefijoPais(soloDigitos(digitos), pais).slice(0, pais.digitos)
-  const partes = []
-  let index = 0
-  pais.grupos.forEach((size) => {
-    const parte = local.slice(index, index + size)
-    if (parte) partes.push(parte)
-    index += size
-  })
-  return partes.join('-')
-}
-
-function telefonoNormalizadoCompleto() {
-  return `${paisTelefono.value.prefijo} ${form.telefono}`
-}
-
-function telefonoLocalNormalizado(value, pais = paisTelefono.value) {
-  return quitarPrefijoPais(soloDigitos(value), pais)
-}
-
-function paisDesdeTelefonoGuardado(value) {
-  const digitos = soloDigitos(value)
-  return paisesTelefono.find((pais) => digitos.startsWith(soloDigitos(pais.prefijo)))?.codigo || 'SV'
-}
-
-function telefonoLocalDesdeGuardado(value) {
-  const pais = paisesTelefono.find((item) => item.codigo === paisDesdeTelefonoGuardado(value)) || paisesTelefono[0]
-  return formatearTelefono(value, pais)
-}
-
-function seleccionarPais(codigo) {
-  const paisAnterior = paisTelefono.value
-  const siguientePais = paisesTelefono.find((pais) => pais.codigo === codigo) || paisTelefono.value
-  const digitosActuales = telefonoLocalNormalizado(form.telefono, paisAnterior)
-  form.pais_telefono = siguientePais.codigo
-  form.telefono = formatearTelefono(digitosActuales, siguientePais)
-  countryMenuOpen.value = false
-}
-
-function onTelefonoInput(event) {
-  form.telefono = formatearTelefono(event.target.value)
-}
-
-function onTelefonoPaste(event) {
-  form.telefono = formatearTelefono(event.clipboardData?.getData('text') || '')
-}
-
 function fechaInput(value) {
   if (!value) return ''
   return String(value).slice(0, 10)
@@ -615,28 +514,9 @@ function fechaPosteriorAHoy(value) {
 
 <style scoped>
 .field-label { display:block; font-size:0.7rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.375rem; }
-.input-icon  { position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); font-size:0.875rem; pointer-events:none; }
+.input-icon { position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); font-size:0.875rem; pointer-events:none; }
 .field-input { width:100%; padding:0.75rem 1rem 0.75rem 2.5rem; border-radius:0.75rem; font-size:0.875rem; transition:all 0.15s; outline:none; }
 .field-select { appearance:auto; padding-right:0.875rem; }
-.country-picker { position:relative; }
-.country-trigger { min-height:2.75rem; padding:0.72rem 0.65rem; display:flex; align-items:center; gap:0.35rem; }
-.country-flag { width:1.25rem; height:0.85rem; border-radius:0.16rem; flex-shrink:0; box-shadow:inset 0 0 0 1px rgba(15,23,42,0.14); background:#e5e7eb; }
-.flag-sv, .flag-hn, .flag-ni { background:linear-gradient(to bottom,#2563eb 0 33%,#fff 33% 66%,#2563eb 66%); }
-.flag-gt { background:linear-gradient(to right,#38bdf8 0 33%,#fff 33% 66%,#38bdf8 66%); }
-.flag-cr { background:linear-gradient(to bottom,#1d4ed8 0 18%,#fff 18% 34%,#dc2626 34% 66%,#fff 66% 82%,#1d4ed8 82%); }
-.flag-pa { background:linear-gradient(135deg,#fff 0 25%,#dc2626 25% 50%,#fff 50% 75%,#2563eb 75%); }
-.flag-mx { background:linear-gradient(to right,#16a34a 0 33%,#fff 33% 66%,#dc2626 66%); }
-.flag-us { background:repeating-linear-gradient(to bottom,#dc2626 0 0.12rem,#fff 0.12rem 0.24rem); position:relative; }
-.flag-us::before { content:''; position:absolute; left:0; top:0; width:45%; height:48%; background:#1d4ed8; border-radius:0.16rem 0 0 0; }
-.country-code { font-weight:700; }
-.country-prefix { color:#475569; }
-.country-chevron { margin-left:auto; font-size:0.65rem; color:#94a3b8; }
-.country-menu { position:absolute; z-index:60; left:0; right:0; top:calc(100% + 0.35rem); border:1px solid; border-radius:0.75rem; overflow:hidden; box-shadow:0 12px 24px rgba(15,23,42,0.18); }
-.country-menu-light { background:#fff; border-color:#cbd5e1; }
-.country-menu-dark { background:#111827; border-color:#374151; }
-.country-option { width:100%; min-height:2.25rem; padding:0.45rem 0.7rem; display:flex; align-items:center; gap:0.45rem; font-size:0.875rem; text-align:left; }
-.country-option:hover, .country-option-active { background:#eef2ff; color:#1d4ed8; }
-.country-menu-dark .country-option:hover, .country-menu-dark .country-option-active { background:#1f2937; color:#f0a500; }
 .field-input:focus { border-color:#c0392b; box-shadow:0 0 0 3px rgba(192,57,43,0.1); }
 .field-input:disabled { opacity:0.7; cursor:not-allowed; }
 .field-error { font-size:0.7rem; color:#c0392b; margin-top:0.25rem; }
@@ -655,5 +535,7 @@ function fechaPosteriorAHoy(value) {
 .modal-panel-dark .field-input:focus { background:#111827; }
 .modal-panel-dark .field-input.error { border-color:#f87171; background:#450a0a; }
 .modal-panel-dark .field-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.85); }
-.modal-panel-dark .country-prefix { color:#cbd5e1; }
 </style>
+
+
+

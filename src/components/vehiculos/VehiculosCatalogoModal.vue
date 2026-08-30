@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <Teleport to="body">
     <Transition name="modal">
       <div
@@ -61,46 +61,12 @@
 
             <div v-if="tipo === 'propietario'">
               <label class="field-label">Teléfono</label>
-              <div class="phone-row">
-                <div class="country-picker">
-                  <button
-                    type="button"
-                    class="country-trigger"
-                    :class="inputClass(false)"
-                    @click="countryMenuOpen = !countryMenuOpen"
-                  >
-                    <span class="country-flag" :class="paisTelefono.flagClass"></span>
-                    <span class="country-code">{{ paisTelefono.codigo }}</span>
-                    <span class="country-prefix">{{ paisTelefono.prefijo }}</span>
-                    <i class="pi pi-chevron-down country-chevron"></i>
-                  </button>
-                  <div v-if="countryMenuOpen" class="country-menu" :class="isDark ? 'country-menu-dark' : 'country-menu-light'">
-                    <button
-                      v-for="pais in paisesTelefono"
-                      :key="pais.codigo"
-                      type="button"
-                      class="country-option"
-                      :class="form.pais_telefono === pais.codigo ? 'country-option-active' : ''"
-                      @click="seleccionarPais(pais.codigo)"
-                    >
-                      <span class="country-flag" :class="pais.flagClass"></span>
-                      <span class="country-code">{{ pais.codigo }}</span>
-                      <span class="country-prefix">{{ pais.prefijo }}</span>
-                    </button>
-                  </div>
-                </div>
-                <input
-                  :value="form.telefono"
-                  type="tel"
-                  inputmode="numeric"
-                  class="field-input"
-                  :class="inputClass(errors.telefono)"
-                  :placeholder="paisTelefono.placeholder"
-                  @input="onTelefonoInput"
-                  @paste.prevent="onTelefonoPaste"
-                />
-              </div>
-              <p v-if="errors.telefono" class="field-error">{{ errors.telefono }}</p>
+              <TelefonoPaisInput
+                v-model="form.telefono"
+                v-model:pais="form.pais_telefono"
+                :error="errors.telefono"
+                :control-class="inputClass(errors.telefono)"
+              />
             </div>
 
             <div v-if="tipo === 'propietario'">
@@ -134,9 +100,18 @@
 
 <script setup>
 import { ref, reactive, watch, computed } from 'vue'
+import TelefonoPaisInput from '@/components/common/TelefonoPaisInput.vue'
 import api from '@/services/api'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { fetchAllPaginated } from '@/utils/apiPagination'
+import {
+  CODIGO_PAIS_DEFAULT,
+  buscarPaisTelefono,
+  detectarPaisTelefono,
+  telefonoLocalNormalizado,
+  telefonoNormalizadoCompleto,
+  validarTelefonoPais,
+} from '@/data/paisesTelefono'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -154,23 +129,11 @@ const marcas = ref([])
 const categoriasExistentes = ref([])
 const modelosExistentes = ref([])
 const propietariosExistentes = ref([])
-const countryMenuOpen = ref(false)
-const form = reactive({ nombre: '', precio_dia: '', marca_id: '', telefono: '', pais_telefono: 'SV', tipo_propietario: '' })
+const form = reactive({ nombre: '', precio_dia: '', marca_id: '', telefono: '', pais_telefono: CODIGO_PAIS_DEFAULT, tipo_propietario: '' })
 const errors = reactive({ nombre: '', precio_dia: '', marca_id: '', telefono: '', tipo_propietario: '' })
 const nombreFlexibleRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ./'-]+$/
 const nombrePersonaRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]+$/
 const contieneLetraRegex = /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/
-
-const paisesTelefono = [
-  { codigo: 'SV', flagClass: 'flag-sv', prefijo: '+503', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'GT', flagClass: 'flag-gt', prefijo: '+502', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'HN', flagClass: 'flag-hn', prefijo: '+504', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'NI', flagClass: 'flag-ni', prefijo: '+505', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'CR', flagClass: 'flag-cr', prefijo: '+506', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'PA', flagClass: 'flag-pa', prefijo: '+507', digitos: 8, grupos: [4, 4], placeholder: '0000-0000' },
-  { codigo: 'MX', flagClass: 'flag-mx', prefijo: '+52', digitos: 10, grupos: [2, 4, 4], placeholder: '00-0000-0000' },
-  { codigo: 'US', flagClass: 'flag-us', prefijo: '+1', digitos: 10, grupos: [3, 3, 4], placeholder: '000-000-0000' },
-]
 
 const tiposPropietario = [
   { value: 'PROPIO', label: 'Propio' },
@@ -226,7 +189,6 @@ const subtituloModal = computed(() =>
   modoEdicionPropietario.value ? 'Actualiza los datos del propietario' : config.value.subtitulo,
 )
 const iconWrapStyle = computed(() => ({ background: config.value.bg }))
-const paisTelefono = computed(() => paisesTelefono.find((pais) => pais.codigo === form.pais_telefono) || paisesTelefono[0])
 const hasFieldErrors = computed(() => Object.values(errors).some(Boolean))
 const nombreMax = computed(() => props.tipo === 'marca' || props.tipo === 'categoria' ? 80 : 100)
 const hayPropietarioPropio = computed(() =>
@@ -290,8 +252,7 @@ watch(
     form.precio_dia = ''
     form.marca_id = ''
     form.telefono = ''
-    form.pais_telefono = 'SV'
-    countryMenuOpen.value = false
+    form.pais_telefono = CODIGO_PAIS_DEFAULT
     form.tipo_propietario = ''
     Object.keys(errors).forEach((k) => { errors[k] = '' })
     if (props.tipo === 'marca' || props.tipo === 'modelo') await cargarMarcas()
@@ -303,45 +264,11 @@ watch(
       const pais = detectarPaisTelefono(propietario.telefono)
       form.nombre = propietario.nombre || ''
       form.pais_telefono = pais.codigo
-      form.telefono = formatearTelefono(propietario.telefono || '', pais)
+      form.telefono = telefonoNormalizadoCompleto(propietario.telefono || '', pais)
       form.tipo_propietario = String(propietario.tipo_propietario || '').toUpperCase()
     }
   },
 )
-
-function soloDigitos(value) {
-  return String(value || '').replace(/\D/g, '')
-}
-
-function quitarPrefijoPais(digitos, pais = paisTelefono.value) {
-  const prefijo = soloDigitos(pais.prefijo)
-  return digitos.startsWith(prefijo) ? digitos.slice(prefijo.length) : digitos
-}
-
-function formatearTelefono(digitos, pais = paisTelefono.value) {
-  const local = quitarPrefijoPais(soloDigitos(digitos), pais).slice(0, pais.digitos)
-  const partes = []
-  let index = 0
-  pais.grupos.forEach((size) => {
-    const parte = local.slice(index, index + size)
-    if (parte) partes.push(parte)
-    index += size
-  })
-  return partes.join('-')
-}
-
-function detectarPaisTelefono(value) {
-  const digitos = soloDigitos(value)
-  return paisesTelefono.find((pais) => digitos.startsWith(soloDigitos(pais.prefijo))) || paisesTelefono[0]
-}
-
-function telefonoNormalizadoCompleto() {
-  return `${paisTelefono.value.prefijo} ${form.telefono}`
-}
-
-function telefonoLocalNormalizado(value, pais = paisTelefono.value) {
-  return quitarPrefijoPais(soloDigitos(value), pais)
-}
 
 function normalizarNombre(value) {
   return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase()
@@ -350,22 +277,6 @@ function normalizarNombre(value) {
 function existeNombre(lista, nombre, extra = () => true) {
   const nombreNormalizado = normalizarNombre(nombre)
   return lista.some((item) => normalizarNombre(item.nombre) === nombreNormalizado && extra(item))
-}
-
-function seleccionarPais(codigo) {
-  const paisAnterior = paisTelefono.value
-  const siguientePais = paisesTelefono.find((pais) => pais.codigo === codigo) || paisTelefono.value
-  const digitosActuales = telefonoLocalNormalizado(form.telefono, paisAnterior)
-  form.pais_telefono = siguientePais.codigo
-  form.telefono = formatearTelefono(digitosActuales, siguientePais)
-  countryMenuOpen.value = false
-}
-function onTelefonoInput(event) {
-  form.telefono = formatearTelefono(event.target.value)
-}
-
-function onTelefonoPaste(event) {
-  form.telefono = formatearTelefono(event.clipboardData?.getData('text') || '')
 }
 
 function validar() {
@@ -420,17 +331,18 @@ function validar() {
     ok = false
   }
   if (props.tipo === 'propietario') {
-    const telefonoLocal = telefonoLocalNormalizado(form.telefono)
-    if (!telefonoLocal) {
-      errors.telefono = 'Requerido'
+    const pais = buscarPaisTelefono(form.pais_telefono)
+    const telefonoError = validarTelefonoPais(form.telefono, pais)
+    const telefonoLocal = telefonoLocalNormalizado(form.telefono, pais)
+    if (telefonoError) {
+      errors.telefono = telefonoError
       ok = false
-    } else if (telefonoLocal.length !== paisTelefono.value.digitos) {
-      errors.telefono = `Debe tener ${paisTelefono.value.digitos} dígitos para ${paisTelefono.value.prefijo}.`
-      ok = false
-    } else if (propietariosExistentes.value.some((p) =>
-      Number(p.id) !== Number(props.registroEdicion?.id)
-      && telefonoLocalNormalizado(p.telefono) === telefonoLocal,
-    )) {
+    } else if (propietariosExistentes.value.some((p) => {
+      const paisPropietario = detectarPaisTelefono(p.telefono)
+      return Number(p.id) !== Number(props.registroEdicion?.id)
+        && paisPropietario.prefijo === pais.prefijo
+        && telefonoLocalNormalizado(p.telefono, paisPropietario) === telefonoLocal
+    })) {
       errors.telefono = 'Ya existe un propietario registrado con ese número de teléfono.'
       ok = false
     }
@@ -459,7 +371,7 @@ async function handleGuardar() {
     } else if (props.tipo === 'propietario') {
       const payload = {
         nombre,
-        telefono: telefonoNormalizadoCompleto(),
+        telefono: telefonoNormalizadoCompleto(form.telefono, buscarPaisTelefono(form.pais_telefono)),
         tipo_propietario: form.tipo_propietario,
       }
       res = modoEdicionPropietario.value
@@ -487,26 +399,6 @@ async function handleGuardar() {
 <style scoped>
 .field-label { display:block; font-size:0.7rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.375rem; color:#4b5563; }
 .field-input { width:100%; padding:0.75rem 1rem; border-radius:0.75rem; font-size:0.875rem; outline:none; }
-.phone-row { display:grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap:0.5rem; }
-.country-select { width:100%; padding:0.75rem 0.65rem; border-radius:0.75rem; font-size:0.875rem; outline:none; }
-.country-picker { position:relative; }
-.country-trigger { width:100%; min-height:2.75rem; padding:0.72rem 0.65rem; border-radius:0.75rem; display:flex; align-items:center; gap:0.35rem; font-size:0.875rem; outline:none; }
-.country-flag { width:1.25rem; height:0.85rem; border-radius:0.16rem; flex-shrink:0; box-shadow:inset 0 0 0 1px rgba(15,23,42,0.14); background:#e5e7eb; }
-.flag-sv, .flag-hn, .flag-ni { background:linear-gradient(to bottom,#2563eb 0 33%,#fff 33% 66%,#2563eb 66%); }
-.flag-gt { background:linear-gradient(to right,#38bdf8 0 33%,#fff 33% 66%,#38bdf8 66%); }
-.flag-cr { background:linear-gradient(to bottom,#1d4ed8 0 18%,#fff 18% 34%,#dc2626 34% 66%,#fff 66% 82%,#1d4ed8 82%); }
-.flag-pa { background:linear-gradient(135deg,#fff 0 25%,#dc2626 25% 50%,#fff 50% 75%,#2563eb 75%); }
-.flag-mx { background:linear-gradient(to right,#16a34a 0 33%,#fff 33% 66%,#dc2626 66%); }
-.flag-us { background:repeating-linear-gradient(to bottom,#dc2626 0 0.12rem,#fff 0.12rem 0.24rem); position:relative; }
-.flag-us::before { content:''; position:absolute; left:0; top:0; width:45%; height:48%; background:#1d4ed8; border-radius:0.16rem 0 0 0; }
-.country-code { font-weight:700; }
-.country-prefix { color:#475569; }
-.country-chevron { margin-left:auto; font-size:0.65rem; color:#94a3b8; }
-.country-menu { position:absolute; z-index:60; left:0; right:0; top:calc(100% + 0.35rem); border:1px solid; border-radius:0.75rem; overflow:hidden; box-shadow:0 12px 24px rgba(15,23,42,0.18); }
-.country-menu-light { background:#fff; border-color:#cbd5e1; }
-.country-menu-dark { background:#1f2937; border-color:#374151; }
-.country-option { width:100%; padding:0.65rem 0.75rem; display:flex; align-items:center; gap:0.45rem; font-size:0.875rem; text-align:left; }
-.country-option:hover, .country-option-active { background:#dbeafe; color:#1d4ed8; }
 .field-input-light { border:1px solid #cbd5e1; background:#f8fafc; color:#1f2937; }
 .field-input-light:focus { border-color:#c0392b; box-shadow:0 0 0 3px rgba(192,57,43,0.1); background:#fff; }
 .field-input-dark { border:1px solid #374151; background:#1f2937; color:#f3f4f6; }
@@ -515,4 +407,5 @@ async function handleGuardar() {
 .modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
 </style>
+
 
