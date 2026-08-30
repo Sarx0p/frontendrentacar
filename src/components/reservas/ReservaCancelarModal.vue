@@ -3,9 +3,9 @@
     <Transition name="modal">
       <div
         v-if="visible"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 z-[80] flex items-center justify-center p-4"
         style="background:rgba(0,0,0,0.45);"
-        @click.self="$emit('cerrar')"
+        @click.self.stop="$emit('cerrar')"
       >
         <div
           class="rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
@@ -22,7 +22,7 @@
                 <p class="text-xs" :class="isDark ? 'text-gray-500' : 'text-gray-400'">N° {{ reserva?.id }}</p>
               </div>
             </div>
-            <button type="button" class="w-8 h-8 rounded-lg border flex items-center justify-center" @click="$emit('cerrar')">
+            <button type="button" class="w-8 h-8 rounded-lg border flex items-center justify-center" @click.stop.prevent="$emit('cerrar')">
               <i class="pi pi-times text-sm"></i>
             </button>
           </div>
@@ -57,7 +57,7 @@
                 class="flex-1 py-2.5 rounded-xl font-bold text-sm border"
                 :class="isDark ? 'border-gray-700 text-gray-300' : 'border-gray-200 text-gray-600'"
                 :disabled="guardando"
-                @click="$emit('cerrar')"
+                @click.stop.prevent="$emit('cerrar')"
               >
                 Volver
               </button>
@@ -123,3 +123,4 @@ function confirmar() {
 .modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
 </style>
+

@@ -3,9 +3,9 @@
     <Transition name="modal">
       <div
         v-if="visible"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 z-[80] flex items-center justify-center p-4"
         style="background:rgba(0,0,0,0.45);"
-        @click.self="$emit('cerrar')"
+        @click.self.stop="$emit('cerrar')"
       >
         <div
           class="rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
@@ -30,7 +30,7 @@
             </div>
             <button
               type="button"
-              @click="$emit('cerrar')"
+              @click.stop.prevent="$emit('cerrar')"
               class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors border"
               :class="isDark
                 ? 'border-red-900/60 text-[#f0a500] hover:bg-red-950/50'
@@ -49,7 +49,7 @@
               type="button"
               class="mt-4 w-full py-2.5 rounded-xl font-bold text-sm border transition-colors"
               :class="isDark ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'"
-              @click="$emit('cerrar')"
+              @click.stop.prevent="$emit('cerrar')"
             >
               Cerrar
             </button>
@@ -99,7 +99,7 @@
                 class="flex-1 py-2.5 rounded-xl font-bold text-sm border transition-colors"
                 :class="isDark ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'"
                 :disabled="guardando"
-                @click="$emit('cerrar')"
+                @click.stop.prevent="$emit('cerrar')"
               >
                 Cancelar
               </button>
@@ -234,3 +234,4 @@ function handleGuardar() {
 .modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
 </style>
+

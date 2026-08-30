@@ -3,9 +3,9 @@
     <Transition name="modal">
       <div
         v-if="visible"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 z-[80] flex items-center justify-center p-4"
         style="background: rgba(0, 0, 0, 0.45)"
-        @click.self="$emit('cerrar')"
+        @click.self.stop="$emit('cerrar')"
       >
         <div
           class="rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
@@ -42,7 +42,7 @@
             <button
               type="button"
               class="w-8 h-8 rounded-lg border flex items-center justify-center"
-              @click="$emit('cerrar')"
+              @click.stop.prevent="$emit('cerrar')"
             >
               <i class="pi pi-times text-sm"></i>
             </button>
@@ -196,7 +196,7 @@
               <button
                 type="button"
                 class="flex-1 py-2.5 rounded-xl font-bold text-sm border"
-                @click="$emit('cerrar')"
+                @click.stop.prevent="$emit('cerrar')"
               >
                 Cancelar
               </button>
@@ -601,3 +601,4 @@ function handleGuardar() {
   opacity: 0;
 }
 </style>
+

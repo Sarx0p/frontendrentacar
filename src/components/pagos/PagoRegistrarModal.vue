@@ -1,10 +1,10 @@
 <template>
   <Teleport to="body">
     <Transition name="pay-slide">
-      <div v-if="visible" class="pay-overlay" @click.self="$emit('cerrar')">
+      <div v-if="visible" class="pay-overlay" @click.self.stop="$emit('cerrar')">
         <div class="pay-modal" :class="isDark ? 'pay-modal--dark' : ''" @click.stop>
           <header class="pay-header">
-            <button type="button" class="pay-close" @click="$emit('cerrar')">
+            <button type="button" class="pay-close" @click.stop.prevent="$emit('cerrar')">
               <i class="pi pi-times"></i>
             </button>
             <p class="pay-kicker">Cobro de contrato</p>
@@ -255,7 +255,7 @@ function guardar() {
 .pay-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 80;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -304,12 +304,14 @@ function guardar() {
   position: absolute;
   top: 1rem;
   right: 1rem;
+  z-index: 2;
   width: 2rem;
   height: 2rem;
   border-radius: 999px;
   border: 0;
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
+  cursor: pointer;
 }
 
 .pay-kicker {
@@ -569,3 +571,4 @@ function guardar() {
   transform: translateY(24px) scale(0.98);
 }
 </style>
+
