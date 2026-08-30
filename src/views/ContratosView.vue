@@ -72,7 +72,7 @@
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Periodo</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Total</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Estado</th>
-              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Pago</th>
+              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest min-w-[130px]" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Pago</th>
               <th class="px-5 py-3.5 min-w-[180px] text-center text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Acciones</th>
             </tr>
           </thead>
@@ -106,10 +106,10 @@
                 </p>
               </td>
               <td class="px-5 py-4">
-                <span class="text-xs font-bold px-2.5 py-1 rounded-full" :style="estadoContratoStyle(c.estado_contrato)">{{ labelEstadoContrato(c.estado_contrato) }}</span>
+                <span class="status-badge" :style="estadoContratoStyle(c.estado_contrato)">{{ labelEstadoContrato(c.estado_contrato) }}</span>
               </td>
               <td class="px-5 py-4">
-                <span class="text-xs font-bold px-2.5 py-1 rounded-full" :style="estadoPagoStyle(c.estado_pago)">{{ labelEstadoPago(c.estado_pago) }}</span>
+                <span class="status-badge" :style="estadoPagoStyle(c.estado_pago)">{{ labelEstadoPago(c.estado_pago) }}</span>
               </td>
               <td class="px-5 py-4">
                 <div class="flex items-center justify-center gap-2">
@@ -504,6 +504,19 @@ async function registrarPago(form) {
   text-align: center;
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max-content;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 </style>
 
