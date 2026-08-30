@@ -145,6 +145,7 @@ import PagoRegistrarModal from '@/components/pagos/PagoRegistrarModal.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { usePagosStore } from '@/stores/pagos'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { toastSuccess } from '@/utils/toast'
 import { formatPrecio, saldoPendienteContrato, montoExtrasContrato, totalFinalContrato } from '@/utils/contratoFormatters'
 
 const route = useRoute()
@@ -263,14 +264,7 @@ async function registrarPago(form) {
     await contratosStore.fetchContratos()
     pagosStore.fetchPagos()
     modalAbierto.value = false
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado',
-      showConfirmButton: false,
-      timer: 2500,
-    })
+    toastSuccess(pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado')
   } catch (e) {
     Swal.fire({ icon: 'error', title: 'Error', text: e.response?.data?.message || pagosStore.error, confirmButtonColor: '#922b21' })
   } finally {
@@ -356,3 +350,4 @@ function metodoStyle(m) {
   font-weight: 700;
 }
 </style>
+

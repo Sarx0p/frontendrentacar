@@ -113,7 +113,6 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import Swal from 'sweetalert2'
 import { useAuthStore } from '@/stores/auth'
 import logoElGuayabo from '@/assets/logo-el-guayabo.png'
 
@@ -150,12 +149,6 @@ async function handleLogin() {
   } catch (e) {
     const msg = e.response?.data?.message || 'Credenciales incorrectas. Intenta de nuevo.'
     globalError.value = msg
-    Swal.fire({
-      icon:  'error',
-      title: 'Error al iniciar sesión',
-      text:   msg,
-      confirmButtonColor: '#c0392b',
-    })
   } finally {
     loading.value = false
   }
@@ -267,3 +260,4 @@ async function handleLogin() {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 </style>
+

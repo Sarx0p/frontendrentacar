@@ -208,6 +208,7 @@ import ContratoPdfPreview from '@/components/contratos/ContratoPdfPreview.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { usePagosStore } from '@/stores/pagos'
 import { useAppTheme } from '@/composables/useAppTheme'
+import { toastSuccess } from '@/utils/toast'
 import {
   nombreVehiculo,
   formatPrecio,
@@ -442,14 +443,7 @@ async function registrarPago(form) {
     actualizarContratoEnLista(actualizado)
     modalPago.value = false
     contratoPago.value = null
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado',
-      showConfirmButton: false,
-      timer: 2500,
-    })
+    toastSuccess(pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado')
   } catch (e) {
     Swal.fire({ icon: 'error', title: 'Error', text: e.response?.data?.message || pagosStore.error, confirmButtonColor: '#922b21' })
   } finally {
@@ -512,3 +506,4 @@ async function registrarPago(form) {
   font-weight: 700;
 }
 </style>
+
