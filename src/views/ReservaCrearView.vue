@@ -1,75 +1,75 @@
 <template>
-  <div class="min-h-screen" :class="isDark ? 'bg-gray-950' : 'bg-gray-50'">
-    <div class="flex items-center gap-3 mb-6">
-      <button
-        type="button"
-        @click="volver"
-        class="w-10 h-10 rounded-xl flex items-center justify-center border transition-all hover:shadow-sm"
-        :class="
-          isDark
-            ? 'border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700'
-            : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-        "
-        title="Volver"
-      >
-        <i class="pi pi-arrow-left text-sm"></i>
-      </button>
-      <div>
-        <h1 class="text-2xl font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">
-          Nueva reserva
-        </h1>
-        <p class="text-sm mt-0.5" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
-          Completa los datos para registrar la reserva
-        </p>
+  <div class="reserva-wizard-root" :class="isDark ? 'bg-gray-950' : 'bg-gray-50'">
+    <div class="reserva-wizard-body">
+      <div class="reserva-wizard-main">
+        <div class="reserva-wizard-header">
+          <button
+            type="button"
+            @click="volver"
+            class="w-10 h-10 rounded-xl flex items-center justify-center border transition-all hover:shadow-sm"
+            :class="
+              isDark
+                ? 'border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+            "
+            title="Volver"
+          >
+            <i class="pi pi-arrow-left text-sm"></i>
+          </button>
+          <div>
+            <h1 class="text-2xl font-extrabold" :class="isDark ? 'text-gray-100' : 'text-gray-900'">
+              Nueva reserva
+            </h1>
+            <p class="text-sm mt-0.5" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+              Completa los datos para registrar la reserva
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-5">
+          <ReservaClienteBuscar
+            v-model:busqueda="busquedaCliente"
+            :cliente-seleccionado="clienteSeleccionado"
+            :resultados="resultadosClientes"
+            :buscando="buscandoClientes"
+            @buscar="onBuscarCliente"
+            @seleccionar="seleccionarCliente"
+            @limpiar="limpiarCliente"
+            @agregar-nuevo="abrirModalCliente"
+          />
+
+          <ReservaFechas
+            v-if="clienteSeleccionado"
+            v-model:fecha-inicio="fechaInicio"
+            v-model:fecha-fin="fechaFin"
+            v-model:tipo-reserva="tipoReserva"
+            :hoy="hoy"
+            :min-fecha-inicio="minFechaInicio"
+            :error-inicio="errorFechaInicio"
+            :error-fin="errorFechaFin"
+            :dias-reserva="diasReserva"
+            :tipo-reserva="tipoReserva"
+            @change="onFechasChange"
+          />
+
+          <ReservaVehiculosDisponibles
+            v-if="clienteSeleccionado"
+            :fecha-inicio="fechaInicio"
+            :fecha-fin="fechaFin"
+            :vehiculos="vehiculosDisponibles"
+            :vehiculo-seleccionado="vehiculoSeleccionado"
+            :cargando="cargandoVehiculos"
+            :consultados="vehiculosConsultados"
+            @seleccionar="seleccionarVehiculo"
+          />
+
+          <p v-if="errorGlobal" class="text-sm text-center font-medium" style="color: #c0392b">
+            {{ errorGlobal }}
+          </p>
+        </div>
       </div>
-    </div>
 
-    <div
-      class="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-5 items-start"
-    >
-      <div class="space-y-5 order-2 lg:order-1">
-        <ReservaClienteBuscar
-          v-model:busqueda="busquedaCliente"
-          :cliente-seleccionado="clienteSeleccionado"
-          :resultados="resultadosClientes"
-          :buscando="buscandoClientes"
-          @buscar="onBuscarCliente"
-          @seleccionar="seleccionarCliente"
-          @limpiar="limpiarCliente"
-          @agregar-nuevo="abrirModalCliente"
-        />
-
-        <ReservaFechas
-          v-if="clienteSeleccionado"
-          v-model:fecha-inicio="fechaInicio"
-          v-model:fecha-fin="fechaFin"
-          v-model:tipo-reserva="tipoReserva"
-          :hoy="hoy"
-          :min-fecha-inicio="minFechaInicio"
-          :error-inicio="errorFechaInicio"
-          :error-fin="errorFechaFin"
-          :dias-reserva="diasReserva"
-          :tipo-reserva="tipoReserva"
-          @change="onFechasChange"
-        />
-
-        <ReservaVehiculosDisponibles
-          v-if="clienteSeleccionado"
-          :fecha-inicio="fechaInicio"
-          :fecha-fin="fechaFin"
-          :vehiculos="vehiculosDisponibles"
-          :vehiculo-seleccionado="vehiculoSeleccionado"
-          :cargando="cargandoVehiculos"
-          :consultados="vehiculosConsultados"
-          @seleccionar="seleccionarVehiculo"
-        />
-
-        <p v-if="errorGlobal" class="text-sm text-center font-medium" style="color: #c0392b">
-          {{ errorGlobal }}
-        </p>
-      </div>
-
-      <div class="order-1 lg:order-2 lg:sticky lg:top-24 lg:self-start">
+      <div class="reserva-wizard-summary">
         <ReservaResumen
           :cliente="clienteSeleccionado"
           :fecha-inicio="fechaInicio"
@@ -97,7 +97,6 @@
     />
   </div>
 </template>
-
 <script setup>
 import { ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -393,3 +392,67 @@ function volver() {
   router.push({ name: "reservas" });
 }
 </script>
+
+<style scoped>
+.reserva-wizard-root {
+  min-height: 100vh;
+}
+
+.reserva-wizard-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0 1.5rem 2rem;
+  box-sizing: border-box;
+  align-items: start;
+}
+
+.reserva-wizard-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.reserva-wizard-main,
+.reserva-wizard-summary {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  :global(html:has(.reserva-wizard-root)),
+  :global(body:has(.reserva-wizard-root)) {
+    overflow: hidden;
+  }
+
+  .reserva-wizard-root {
+    height: calc(100vh - 6.5rem);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .reserva-wizard-body {
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: minmax(0, 7fr) minmax(320px, 3fr);
+    padding-bottom: 1rem;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .reserva-wizard-main {
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 0.35rem;
+    scrollbar-gutter: stable;
+  }
+
+  .reserva-wizard-summary {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+</style>

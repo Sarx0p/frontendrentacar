@@ -55,7 +55,7 @@
       class="rounded-2xl border shadow-sm overflow-hidden"
       :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
     >
-      <div v-if="pagosStore.loading" class="flex items-center justify-center py-20 gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+      <div v-if="cargandoVista" class="flex items-center justify-center py-20 gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
         <i class="pi pi-spin pi-spinner"></i>
         <span class="text-sm">Cargando pagos...</span>
       </div>
@@ -69,6 +69,8 @@
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Cliente</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Monto</th>
               <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Método</th>
+              <th class="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Estado</th>
+              <th class="text-right px-5 py-3.5 text-xs font-bold uppercase tracking-widest" :class="isDark ? 'text-gray-500' : 'text-gray-400'">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -83,13 +85,43 @@
               <td class="px-5 py-4">
                 <p class="font-semibold" :class="isDark ? 'text-gray-200' : 'text-gray-800'">{{ nombreClientePago(p) }}</p>
               </td>
-              <td class="px-5 py-4 font-bold tabular-nums" style="color:#166534;">${{ formatPrecio(p.monto) }}</td>
+              <td class="px-5 py-4 font-bold tabular-nums" :class="p.estado_transaccion === 'CANCELADO' ? (isDark ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : ''" :style="p.estado_transaccion === 'CANCELADO' ? '' : 'color:#166534;'">${{ formatPrecio(p.monto) }}</td>
               <td class="px-5 py-4">
                 <span class="text-xs font-bold px-2.5 py-1 rounded-full" :style="metodoStyle(p.metodo_pago)">{{ p.metodo_pago }}</span>
               </td>
+              <td class="px-5 py-4">
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full" :style="estadoTransaccionStyle(p.estado_transaccion)">
+                  {{ labelEstadoTransaccion(p.estado_transaccion) }}
+                </span>
+                <p v-if="p.estado_transaccion === 'CANCELADO' && p.motivo_cancelacion" class="text-[11px] mt-1" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+                  {{ p.motivo_cancelacion }}
+                </p>
+              </td>
+              <td class="px-5 py-4 text-right">
+                <button
+                  v-if="puedeCancelarPago(p)"
+                  type="button"
+                  class="inline-flex items-center justify-center gap-1.5 min-h-8 px-3 rounded-lg border text-xs font-bold transition-all hover:shadow-sm whitespace-nowrap"
+                  :class="isDark
+                    ? 'border-red-800 bg-red-950/40 text-red-300 hover:bg-red-950/70 hover:border-red-700'
+                    : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'"
+                  title="Cancelar pago"
+                  @click="cancelarPago(p)"
+                >
+                  <i class="pi pi-times text-xs"></i>
+                  Cancelar
+                </button>
+                <span
+                  v-else
+                  class="inline-flex whitespace-nowrap text-xs font-semibold"
+                  :class="isDark ? 'text-gray-600' : 'text-gray-400'"
+                >
+                  No disponible
+                </span>
+              </td>
             </tr>
             <tr v-if="!pagosStore.pagos.length">
-              <td colspan="5" class="px-5 py-16 text-center">
+              <td colspan="7" class="px-5 py-16 text-center">
                 <i class="pi pi-dollar text-4xl mb-3 block" :class="isDark ? 'text-gray-700' : 'text-gray-200'"></i>
                 <p class="font-medium" :class="isDark ? 'text-gray-500' : 'text-gray-400'">No hay pagos registrados</p>
               </td>
@@ -145,6 +177,8 @@ import PagoRegistrarModal from '@/components/pagos/PagoRegistrarModal.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { usePagosStore } from '@/stores/pagos'
 import { useAppTheme } from '@/composables/useAppTheme'
+import api from '@/services/api'
+import { fetchAllPaginated } from '@/utils/apiPagination'
 import { toastSuccess } from '@/utils/toast'
 import { formatPrecio, saldoPendienteContrato, montoExtrasContrato, totalFinalContrato } from '@/utils/contratoFormatters'
 
@@ -157,8 +191,24 @@ const contratoId = ref('')
 const contratoSel = ref(null)
 const modalAbierto = ref(false)
 const guardando = ref(false)
+const cargandoInicial = ref(true)
 const paginaActual = ref(1)
 const pagosPorPagina = 10
+
+const MOTIVOS_CANCELACION_PAGO = [
+  'Error al registrar el pago',
+  'Pago duplicado',
+  'Monto incorrecto',
+  'Método de pago incorrecto',
+  'Cliente solicitó anulación',
+  'Comprobante inválido',
+]
+
+const motivosCancelacionOptions = Object.fromEntries(
+  MOTIVOS_CANCELACION_PAGO.map((motivo) => [motivo, motivo]),
+)
+
+const cargandoVista = computed(() => cargandoInicial.value || pagosStore.loading)
 
 const contratosAbiertos = computed(() =>
   contratosStore.contratos.filter((c) =>
@@ -183,7 +233,9 @@ function saldoLabel(c) {
   return `Total $${formatPrecio(totalFinalContrato(c))}`
 }
 
-const totalCobrado = computed(() => pagosStore.pagos.reduce((s, p) => s + Number(p.monto || 0), 0))
+const totalCobrado = computed(() => pagosStore.pagos
+  .filter((p) => p.estado_transaccion === 'CONFIRMADO')
+  .reduce((s, p) => s + Number(p.monto || 0), 0))
 
 const pagination = computed(() => {
   const total = pagosStore.pagos.length
@@ -211,12 +263,19 @@ const puedeRetroceder = computed(() => pagination.value.current_page > 1)
 const puedeAvanzar = computed(() => pagination.value.current_page < pagination.value.last_page)
 
 onMounted(async () => {
-  await contratosStore.fetchContratos()
-  pagosStore.fetchPagos()
-  if (route.query.contrato_id) {
-    contratoId.value = String(route.query.contrato_id)
-    await cargarContrato()
-    modalAbierto.value = true
+  cargandoInicial.value = true
+  try {
+    await Promise.all([
+      contratosStore.fetchContratos(),
+      pagosStore.fetchPagos(),
+    ])
+    if (route.query.contrato_id) {
+      contratoId.value = String(route.query.contrato_id)
+      await cargarContrato()
+      modalAbierto.value = true
+    }
+  } finally {
+    cargandoInicial.value = false
   }
 })
 
@@ -242,8 +301,11 @@ async function cargarContrato() {
 
 async function completarContratoConPagos(contrato) {
   if (!contrato?.numero_contrato) return contrato
-  await pagosStore.fetchPagos({ search: contrato.numero_contrato, per_page: 100 })
-  const pagosContrato = pagosStore.pagos.filter((p) => Number(p.contrato_id || p.contrato?.id) === Number(contrato.id))
+  const { items } = await fetchAllPaginated(
+    (requestParams) => api.get('/admin/pagos', { params: requestParams }),
+    { search: contrato.numero_contrato, per_page: 100 },
+  )
+  const pagosContrato = items.filter((p) => Number(p.contrato_id || p.contrato?.id) === Number(contrato.id))
   return {
     ...contrato,
     pagos: pagosContrato,
@@ -262,7 +324,7 @@ async function registrarPago(form) {
     }
     await cargarContrato()
     await contratosStore.fetchContratos()
-    pagosStore.fetchPagos()
+    await pagosStore.fetchPagos()
     modalAbierto.value = false
     toastSuccess(pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado')
   } catch (e) {
@@ -272,6 +334,44 @@ async function registrarPago(form) {
   }
 }
 
+async function cancelarPago(pago) {
+  const result = await Swal.fire({
+    icon: 'warning',
+    title: '¿Cancelar pago?',
+    text: `El pago de $${formatPrecio(pago.monto)} quedará cancelado y el saldo del contrato se recalculará.`,
+    input: 'select',
+    inputLabel: 'Motivo de cancelación',
+    inputOptions: motivosCancelacionOptions,
+    inputPlaceholder: 'Selecciona un motivo...',
+    showCancelButton: true,
+    confirmButtonText: 'Cancelar pago',
+    cancelButtonText: 'Volver',
+    confirmButtonColor: '#c0392b',
+    cancelButtonColor: '#6b7280',
+    background: isDark.value ? '#1f2937' : '#fff',
+    color: isDark.value ? '#f3f4f6' : '#111827',
+    preConfirm: (value) => {
+      const motivo = String(value || '').trim()
+      if (!motivo) {
+        Swal.showValidationMessage('Debes seleccionar el motivo de cancelación')
+        return false
+      }
+      return motivo
+    },
+  })
+
+  if (!result.isConfirmed) return
+
+  try {
+    await pagosStore.cancelar(pago.id, result.value)
+    await pagosStore.fetchPagos()
+    await contratosStore.fetchContratos()
+    if (contratoSel.value) await cargarContrato()
+    toastSuccess('Pago cancelado')
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'Error', text: e.response?.data?.message || pagosStore.error, confirmButtonColor: '#922b21' })
+  }
+}
 function fmt(v) {
   if (!v) return '—'
   return new Date(v).toLocaleString('es-SV', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -282,8 +382,18 @@ function nombreCliente(contrato) {
 }
 
 function nombreClientePago(pago) {
-  const contratoCompleto = contratosStore.contratos.find((c) => c.id === pago.contrato_id || c.id === pago.contrato?.id)
-  return nombreCliente(contratoCompleto)
+  return nombreCliente(contratoPago(pago))
+}
+
+function contratoPago(pago) {
+  const contratoId = pago.contrato_id || pago.contrato?.id
+  const contratoCompleto = contratosStore.contratos.find((c) => Number(c.id) === Number(contratoId))
+  return { ...(pago.contrato || {}), ...(contratoCompleto || {}) }
+}
+
+function puedeCancelarPago(pago) {
+  const contrato = contratoPago(pago)
+  return pago.estado_transaccion === 'CONFIRMADO' && contrato?.estado_contrato !== 'FINALIZADO'
 }
 
 function metodoStyle(m) {
@@ -293,6 +403,19 @@ function metodoStyle(m) {
     DEPOSITO: 'background:#f3e8ff; color:#6b21a8;',
   }
   return map[m] || 'background:#f3f4f6; color:#6b7280;'
+}
+
+function labelEstadoTransaccion(estado) {
+  const map = { CONFIRMADO: 'Confirmado', CANCELADO: 'Cancelado' }
+  return map[estado] || estado || 'Sin estado'
+}
+
+function estadoTransaccionStyle(estado) {
+  const map = {
+    CONFIRMADO: 'background:#dcfce7; color:#166534;',
+    CANCELADO: 'background:#fee2e2; color:#991b1b;',
+  }
+  return map[estado] || 'background:#f3f4f6; color:#6b7280;'
 }
 </script>
 
@@ -350,4 +473,6 @@ function metodoStyle(m) {
   font-weight: 700;
 }
 </style>
+
+
 

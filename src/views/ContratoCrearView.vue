@@ -11,13 +11,10 @@
       </button>
       <div class="flex-1 min-w-0">
         <p class="wizard-kicker">Generación digital</p>
-        <h1 class="wizard-title">{{ reservaId ? 'Contrato desde reserva' : 'Nueva renta directa' }}</h1>
+        <h1 class="wizard-title">{{ reservaId ? 'Contrato desde reserva' : 'Nuevo contrato' }}</h1>
       </div>
       <div v-if="reservaOrigen" class="wizard-badge-reserva">
         Reserva #{{ reservaOrigen.id }}
-      </div>
-      <div v-else class="wizard-badge-reserva wizard-badge-reserva--directa">
-        Renta directa
       </div>
       <div v-if="contratoGenerado" class="wizard-badge-ok">
         <i class="pi pi-check"></i> {{ contratoGenerado.numero_contrato }}
@@ -549,9 +546,6 @@ function cerrarPreviewContrato() {
   font-size: 0.7rem; font-weight: 800; padding: 0.35rem 0.75rem;
   border-radius: 999px; background: rgba(146,43,33,0.1); color: #922b21;
   border: 1px solid rgba(146,43,33,0.25);
-}
-.wizard-badge-reserva--directa {
-  background: rgba(22,163,74,0.1); color: #166534; border-color: rgba(22,163,74,0.28);
 }
 
 .wizard-stepper {

@@ -45,12 +45,17 @@ export function formatFechaHora12(valor) {
 }
 
 export const NIVELES_COMBUSTIBLE = [
-  { value: 'VACIO', label: 'Vacío', pct: 0 },
+  { value: 'E', label: 'Vacío', pct: 0 },
   { value: '1/4', label: '1/4', pct: 25 },
   { value: '1/2', label: '1/2', pct: 50 },
   { value: '3/4', label: '3/4', pct: 75 },
-  { value: 'LLENO', label: 'Lleno', pct: 100 },
+  { value: 'F', label: 'Lleno', pct: 100 },
 ]
+
+export function normalizarNivelCombustible(valor) {
+  const nivelesLegacy = { VACIO: 'E', LLENO: 'F' }
+  return nivelesLegacy[valor] || valor
+}
 
 export function moneyCents(value) {
   const n = Number(value)
@@ -150,7 +155,8 @@ export function documentosVigentes(cliente) {
 }
 
 export function nivelCombustiblePct(valor) {
-  return NIVELES_COMBUSTIBLE.find((n) => n.value === valor)?.pct ?? 0
+  const nivel = normalizarNivelCombustible(valor)
+  return NIVELES_COMBUSTIBLE.find((n) => n.value === nivel)?.pct ?? 0
 }
 
 const ESTADOS_CARGO_COBRABLE = ['PENDIENTE', 'APLICADO']
