@@ -55,7 +55,7 @@
       class="rounded-2xl border shadow-sm overflow-hidden"
       :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
     >
-      <div v-if="pagosStore.loading" class="flex items-center justify-center py-20 gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
+      <div v-if="cargandoVista" class="flex items-center justify-center py-20 gap-2" :class="isDark ? 'text-gray-500' : 'text-gray-400'">
         <i class="pi pi-spin pi-spinner"></i>
         <span class="text-sm">Cargando pagos...</span>
       </div>
@@ -99,9 +99,9 @@
               </td>
               <td class="px-5 py-4 text-right">
                 <button
-                  v-if="p.estado_transaccion === 'CONFIRMADO'"
+                  v-if="puedeCancelarPago(p)"
                   type="button"
-                  class="w-8 h-8 rounded-lg inline-flex items-center justify-center border transition-all hover:shadow-sm"
+                  class="inline-flex items-center justify-center gap-1.5 min-h-8 px-3 rounded-lg border text-xs font-bold transition-all hover:shadow-sm whitespace-nowrap"
                   :class="isDark
                     ? 'border-red-800 bg-red-950/40 text-red-300 hover:bg-red-950/70 hover:border-red-700'
                     : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'"
@@ -109,8 +109,15 @@
                   @click="cancelarPago(p)"
                 >
                   <i class="pi pi-times text-xs"></i>
+                  Cancelar
                 </button>
-                <span v-else class="text-xs" :class="isDark ? 'text-gray-600' : 'text-gray-300'">—</span>
+                <span
+                  v-else
+                  class="inline-flex whitespace-nowrap text-xs font-semibold"
+                  :class="isDark ? 'text-gray-600' : 'text-gray-400'"
+                >
+                  No disponible
+                </span>
               </td>
             </tr>
             <tr v-if="!pagosStore.pagos.length">
@@ -170,6 +177,8 @@ import PagoRegistrarModal from '@/components/pagos/PagoRegistrarModal.vue'
 import { useContratosStore } from '@/stores/contratos'
 import { usePagosStore } from '@/stores/pagos'
 import { useAppTheme } from '@/composables/useAppTheme'
+import api from '@/services/api'
+import { fetchAllPaginated } from '@/utils/apiPagination'
 import { toastSuccess } from '@/utils/toast'
 import { formatPrecio, saldoPendienteContrato, montoExtrasContrato, totalFinalContrato } from '@/utils/contratoFormatters'
 
@@ -182,8 +191,24 @@ const contratoId = ref('')
 const contratoSel = ref(null)
 const modalAbierto = ref(false)
 const guardando = ref(false)
+const cargandoInicial = ref(true)
 const paginaActual = ref(1)
 const pagosPorPagina = 10
+
+const MOTIVOS_CANCELACION_PAGO = [
+  'Error al registrar el pago',
+  'Pago duplicado',
+  'Monto incorrecto',
+  'Método de pago incorrecto',
+  'Cliente solicitó anulación',
+  'Comprobante inválido',
+]
+
+const motivosCancelacionOptions = Object.fromEntries(
+  MOTIVOS_CANCELACION_PAGO.map((motivo) => [motivo, motivo]),
+)
+
+const cargandoVista = computed(() => cargandoInicial.value || pagosStore.loading)
 
 const contratosAbiertos = computed(() =>
   contratosStore.contratos.filter((c) =>
@@ -238,12 +263,19 @@ const puedeRetroceder = computed(() => pagination.value.current_page > 1)
 const puedeAvanzar = computed(() => pagination.value.current_page < pagination.value.last_page)
 
 onMounted(async () => {
-  await contratosStore.fetchContratos()
-  pagosStore.fetchPagos()
-  if (route.query.contrato_id) {
-    contratoId.value = String(route.query.contrato_id)
-    await cargarContrato()
-    modalAbierto.value = true
+  cargandoInicial.value = true
+  try {
+    await Promise.all([
+      contratosStore.fetchContratos(),
+      pagosStore.fetchPagos(),
+    ])
+    if (route.query.contrato_id) {
+      contratoId.value = String(route.query.contrato_id)
+      await cargarContrato()
+      modalAbierto.value = true
+    }
+  } finally {
+    cargandoInicial.value = false
   }
 })
 
@@ -269,8 +301,11 @@ async function cargarContrato() {
 
 async function completarContratoConPagos(contrato) {
   if (!contrato?.numero_contrato) return contrato
-  await pagosStore.fetchPagos({ search: contrato.numero_contrato, per_page: 100 })
-  const pagosContrato = pagosStore.pagos.filter((p) => Number(p.contrato_id || p.contrato?.id) === Number(contrato.id))
+  const { items } = await fetchAllPaginated(
+    (requestParams) => api.get('/admin/pagos', { params: requestParams }),
+    { search: contrato.numero_contrato, per_page: 100 },
+  )
+  const pagosContrato = items.filter((p) => Number(p.contrato_id || p.contrato?.id) === Number(contrato.id))
   return {
     ...contrato,
     pagos: pagosContrato,
@@ -289,7 +324,7 @@ async function registrarPago(form) {
     }
     await cargarContrato()
     await contratosStore.fetchContratos()
-    pagosStore.fetchPagos()
+    await pagosStore.fetchPagos()
     modalAbierto.value = false
     toastSuccess(pagos.length > 1 ? 'Pagos registrados' : 'Pago registrado')
   } catch (e) {
@@ -304,10 +339,10 @@ async function cancelarPago(pago) {
     icon: 'warning',
     title: '¿Cancelar pago?',
     text: `El pago de $${formatPrecio(pago.monto)} quedará cancelado y el saldo del contrato se recalculará.`,
-    input: 'textarea',
+    input: 'select',
     inputLabel: 'Motivo de cancelación',
-    inputPlaceholder: 'Indica por qué se cancela este pago...',
-    inputAttributes: { maxlength: 500 },
+    inputOptions: motivosCancelacionOptions,
+    inputPlaceholder: 'Selecciona un motivo...',
     showCancelButton: true,
     confirmButtonText: 'Cancelar pago',
     cancelButtonText: 'Volver',
@@ -318,7 +353,7 @@ async function cancelarPago(pago) {
     preConfirm: (value) => {
       const motivo = String(value || '').trim()
       if (!motivo) {
-        Swal.showValidationMessage('Debes indicar el motivo de cancelación')
+        Swal.showValidationMessage('Debes seleccionar el motivo de cancelación')
         return false
       }
       return motivo
@@ -347,8 +382,18 @@ function nombreCliente(contrato) {
 }
 
 function nombreClientePago(pago) {
-  const contratoCompleto = contratosStore.contratos.find((c) => c.id === pago.contrato_id || c.id === pago.contrato?.id)
-  return nombreCliente(contratoCompleto)
+  return nombreCliente(contratoPago(pago))
+}
+
+function contratoPago(pago) {
+  const contratoId = pago.contrato_id || pago.contrato?.id
+  const contratoCompleto = contratosStore.contratos.find((c) => Number(c.id) === Number(contratoId))
+  return { ...(pago.contrato || {}), ...(contratoCompleto || {}) }
+}
+
+function puedeCancelarPago(pago) {
+  const contrato = contratoPago(pago)
+  return pago.estado_transaccion === 'CONFIRMADO' && contrato?.estado_contrato !== 'FINALIZADO'
 }
 
 function metodoStyle(m) {
